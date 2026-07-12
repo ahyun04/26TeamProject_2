@@ -4,12 +4,12 @@ using UnityEngine;
 namespace LockdownProtocol.Networking
 {
     /// <summary>
-    /// ³×Æ®¿öÅ© µ¿±âÈ­µÇ´Â ÇÃ·¹ÀÌ¾î ÀÌµ¿ ·ÎÁ÷.
-    /// FixedUpdateNetwork()¿¡¼­ ÀÔ·ÂÀ» ¹Ş¾Æ CharacterController·Î ½ÇÁ¦ ÀÌµ¿À» °è»êÇÑ´Ù.
-    /// À§Ä¡/È¸Àü °ª ÀÚÃ¼ÀÇ ³×Æ®¿öÅ© Àü¼ÛÀº NetworkTransform ÄÄÆ÷³ÍÆ®°¡ ´ë½Å Ã³¸®ÇÏ¹Ç·Î
-    /// ÀÌ Å¬·¡½º´Â "ÀÔ·Â ¡æ ÀÌµ¿ °è»ê"¸¸ Ã¥ÀÓÁø´Ù (SRP).
+    /// ë„¤íŠ¸ì›Œí¬ ë™ê¸°í™”ë˜ëŠ” í”Œë ˆì´ì–´ ì´ë™ ë¡œì§.
+    /// FixedUpdateNetwork()ì—ì„œ ì…ë ¥ì„ ë°›ì•„ CharacterControllerë¡œ ì‹¤ì œ ì´ë™ì„ ê³„ì‚°í•œë‹¤.
+    /// ìœ„ì¹˜/íšŒì „ ê°’ ìì²´ì˜ ë„¤íŠ¸ì›Œí¬ ì „ì†¡ì€ NetworkTransform ì»´í¬ë„ŒíŠ¸ê°€ ëŒ€ì‹  ì²˜ë¦¬í•˜ë¯€ë¡œ
+    /// ì´ í´ë˜ìŠ¤ëŠ” "ì…ë ¥ â†’ ì´ë™ ê³„ì‚°"ë§Œ ì±…ì„ì§„ë‹¤ (SRP).
     ///
-    /// Ä«¸Ş¶ó »óÇÏ ½ÃÁ¡(Pitch)Àº ¼ø¼ö ·ÎÄÃ ¿¬ÃâÀÌ¶ó ÀÌ Å¬·¡½º°¡ ¾Æ´Ñ PlayerCameraController°¡ ´ã´çÇÑ´Ù.
+    /// ì¹´ë©”ë¼ ìƒí•˜ ì‹œì (Pitch)ì€ ìˆœìˆ˜ ë¡œì»¬ ì—°ì¶œì´ë¼ ì´ í´ë˜ìŠ¤ê°€ ì•„ë‹Œ PlayerCameraControllerê°€ ë‹´ë‹¹í•œë‹¤.
     /// </summary>
     [RequireComponent(typeof(CharacterController))]
     public class PlayerMovement : NetworkBehaviour
@@ -28,14 +28,18 @@ namespace LockdownProtocol.Networking
 
         private CharacterController _characterController;
         private PlayerStamina _stamina;
-        private Vector3 _verticalVelocity;
 
         /// <summary>
-        /// ´Ù¸¥ ½ºÅ©¸³Æ®(Ä«¸Ş¶ó, ¾Ö´Ï¸ŞÀÌ¼Ç)°¡ ÂüÁ¶ÇÒ ¼ö ÀÖµµ·Ï ÀÌµ¿ »óÅÂ¸¦ ÀĞ±â Àü¿ëÀ¸·Î ³ëÃâ.
-        /// Networked ¼Ó¼ºÀ¸·Î ¼±¾ğÇØ State Authority°¡ °è»êÇÑ °ªÀÌ ¸ğµç Å¬¶óÀÌ¾ğÆ®¿¡ µ¿±âÈ­µÇ°Ô ÇÑ´Ù.
+        /// ë‹¤ë¥¸ ìŠ¤í¬ë¦½íŠ¸(ì¹´ë©”ë¼, ì• ë‹ˆë©”ì´ì…˜)ê°€ ì°¸ì¡°í•  ìˆ˜ ìˆë„ë¡ ì´ë™ ìƒíƒœë¥¼ ì½ê¸° ì „ìš©ìœ¼ë¡œ ë…¸ì¶œ.
+        /// Networked ì†ì„±ìœ¼ë¡œ ì„ ì–¸í•´ State Authorityê°€ ê³„ì‚°í•œ ê°’ì´ ëª¨ë“  í´ë¼ì´ì–¸íŠ¸ì— ë™ê¸°í™”ë˜ê²Œ í•œë‹¤.
         /// </summary>
         [Networked] public bool IsGrounded { get; private set; }
         [Networked] public float CurrentSpeed { get; private set; }
+
+        // ì¤‘ìš”: FixedUpdateNetwork() ì•ˆì—ì„œ ê³„ì‚°ì— ì“°ì´ëŠ” ê°’ì€ ë°˜ë“œì‹œ [Networked]ì—¬ì•¼ í•œë‹¤.
+        // ì¼ë°˜ private í•„ë“œë¡œ ë‘ë©´ Fusionì˜ ë¡¤ë°±(Rollback)/ì¬ì‹œë®¬ë ˆì´ì…˜ ì‹œ ì´ ê°’ì´ ì €ì¥Â·ë³µì›ë˜ì§€ ì•Šì•„,
+        // í´ë¼ì´ì–¸íŠ¸ ì˜ˆì¸¡ê°’ê³¼ Hostì˜ ê¶Œìœ„ ìˆëŠ” ê°’ì´ ì ì  ì–´ê¸‹ë‚˜ëŠ” ë””ì‹±í¬(desync)ê°€ ë°œìƒí•œë‹¤.
+        [Networked] private Vector3 VerticalVelocity { get; set; }
 
         public override void Spawned()
         {
@@ -45,7 +49,7 @@ namespace LockdownProtocol.Networking
 
         public override void FixedUpdateNetwork()
         {
-            // Input Authority°¡ ¾ø´Â(°üÀü ÁßÀÌ°Å³ª ³²ÀÇ ¿ÀºêÁ§Æ®ÀÎ) °æ¿ì ÀÔ·ÂÀÌ ¾øÀ¸¹Ç·Î °è»êÀ» °Ç³Ê¶Ú´Ù.
+            // Input Authorityê°€ ì—†ëŠ”(ê´€ì „ ì¤‘ì´ê±°ë‚˜ ë‚¨ì˜ ì˜¤ë¸Œì íŠ¸ì¸) ê²½ìš° ì…ë ¥ì´ ì—†ìœ¼ë¯€ë¡œ ê³„ì‚°ì„ ê±´ë„ˆë›´ë‹¤.
             if (!GetInput(out NetworkInputData input))
                 return;
 
@@ -55,7 +59,7 @@ namespace LockdownProtocol.Networking
 
         private void ApplyRotation(NetworkInputData input)
         {
-            // ÁÂ¿ì ½ÃÁ¡(Yaw)¸¸ Ä³¸¯ÅÍ ¸öÅë È¸Àü¿¡ ¹İ¿µÇÑ´Ù. »óÇÏ ½ÃÁ¡Àº ·ÎÄÃ Ä«¸Ş¶ó Àü¿ë.
+            // ì¢Œìš° ì‹œì (Yaw)ë§Œ ìºë¦­í„° ëª¸í†µ íšŒì „ì— ë°˜ì˜í•œë‹¤. ìƒí•˜ ì‹œì ì€ ë¡œì»¬ ì¹´ë©”ë¼ ì „ìš©.
             float yaw = input.LookRotation.x * turnSpeed;
             transform.Rotate(Vector3.up, yaw);
         }
@@ -70,19 +74,22 @@ namespace LockdownProtocol.Networking
 
             IsGrounded = _characterController.isGrounded;
 
-            if (IsGrounded && _verticalVelocity.y < 0f)
+            Vector3 verticalVelocity = VerticalVelocity;
+
+            if (IsGrounded && verticalVelocity.y < 0f)
             {
-                _verticalVelocity.y = -2f; // Áö¸é¿¡ ¹ĞÂø À¯Áö (isGrounded ¿À°ËÃâ ¹æÁö¿ë °üÇà°ª)
+                verticalVelocity.y = -2f; // ì§€ë©´ì— ë°€ì°© ìœ ì§€ (isGrounded ì˜¤ê²€ì¶œ ë°©ì§€ìš© ê´€í–‰ê°’)
             }
 
             if (IsGrounded && input.IsPressed(InputButton.Jump))
             {
-                _verticalVelocity.y = jumpForce;
+                verticalVelocity.y = jumpForce;
             }
 
-            _verticalVelocity.y += gravity * Runner.DeltaTime;
+            verticalVelocity.y += gravity * Runner.DeltaTime;
+            VerticalVelocity = verticalVelocity;
 
-            Vector3 finalMove = (moveDirection + _verticalVelocity) * Runner.DeltaTime;
+            Vector3 finalMove = (moveDirection + verticalVelocity) * Runner.DeltaTime;
             _characterController.Move(finalMove);
         }
 
@@ -92,7 +99,7 @@ namespace LockdownProtocol.Networking
                 return crouchSpeed;
 
             bool wantsSprint = input.IsPressed(InputButton.Sprint);
-            // _stamina°¡ ¾ø´Â ÇÁ¸®ÆÕ(¿¹: ÇâÈÄ NPC Àç»ç¿ë)¿¡¼­´Â Á¦¾à ¾øÀÌ ½ºÇÁ¸°Æ®¸¦ Çã¿ëÇÑ´Ù.
+            // _staminaê°€ ì—†ëŠ” í”„ë¦¬íŒ¹(ì˜ˆ: í–¥í›„ NPC ì¬ì‚¬ìš©)ì—ì„œëŠ” ì œì•½ ì—†ì´ ìŠ¤í”„ë¦°íŠ¸ë¥¼ í—ˆìš©í•œë‹¤.
             bool canSprint = _stamina == null || _stamina.HasStamina;
 
             if (wantsSprint && canSprint)
