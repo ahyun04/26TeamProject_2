@@ -9,7 +9,23 @@ namespace HyunWoo
 {
     public class BasicSpawner : MonoBehaviour, INetworkRunnerCallbacks
     {
+        [SerializeField] private NetworkPrefabRef _playerPrefab;
+        private Dictionary<PlayerRef, NetworkObject> _spawnedCharacters = 
+            new Dictionary<PlayerRef, NetworkObject>();
+
         private NetworkRunner _runner;
+        private Vector2 lookDelta;
+
+        private void Update()
+        {
+            if (Cursor.lockState != CursorLockMode.Locked)
+                return;
+
+            lookDelta += new Vector2(
+                -Input.GetAxisRaw("Mouse Y"),
+                 Input.GetAxisRaw("Mouse X")
+            );
+        }
 
         async void StartGame(GameMode mode)
         {
@@ -37,6 +53,13 @@ namespace HyunWoo
             if (!runner.IsServer)
                 return;
 
+            if (runner.IsServer)
+            {
+                Vector3 spawnPosition = new Vector3((player.RawEncoded % runner.Config.Simulation.PlayerCount) * 3, 1, 0);
+                NetworkObject networkPlayerObject = runner.Spawn(_playerPrefab, spawnPosition, Quaternion.identity, player);
+                _spawnedCharacters.Add(player, networkPlayerObject);
+            }
+
             MissionSystem missionSystem =
                 FindFirstObjectByType<MissionSystem>();
 
@@ -58,8 +81,31 @@ namespace HyunWoo
             }
         }
 
-        public void OnPlayerLeft(NetworkRunner runner, PlayerRef player) { }
-        public void OnInput(NetworkRunner runner, NetworkInput input) { }
+        public void OnPlayerLeft(NetworkRunner runner, PlayerRef player)
+        {
+            if (_spawnedCharacters.TryGetValue(player, out NetworkObject networkObject))
+            {
+                runner.Despawn(networkObject);
+                _spawnedCharacters.Remove(player);
+            }
+        }
+
+        public void OnInput(NetworkRunner runner, NetworkInput input)
+        {
+            Vector2 move = new Vector2(
+                           Input.GetAxisRaw("Horizontal"),
+                           Input.GetAxisRaw("Vertical"));
+
+            NetworkInputData data = new NetworkInputData
+            {
+                Move = Vector2.ClampMagnitude(move, 1f),
+                LookDelta = lookDelta
+            };
+
+            lookDelta = Vector2.zero;
+            input.Set(data);
+        }
+
         public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input) { }
         public void OnShutdown(NetworkRunner runner, ShutdownReason shutdownReason) { }
         public void OnConnectedToServer(NetworkRunner runner) { }

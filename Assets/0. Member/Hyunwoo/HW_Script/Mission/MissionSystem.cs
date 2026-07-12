@@ -131,17 +131,17 @@ public class MissionSystem : NetworkBehaviour
     /// <summary>
     /// 미션 진행도를 증가시키고 목표에 도달하면 완료 처리한다
     /// </summary>
-    public void AddProgress(int id, PlayerRef player, int amount = 1)
+    public bool AddProgress(int id, PlayerRef player, int amount = 1)
     {
         // 호스트만 진행도를 변경하며, 0 이하는 허용하지 않음
         if (!Object.HasStateAuthority || amount <= 0)
-            return;
+            return false;
 
         // 미션 원본 데이터 검색
         MissionData data = GetData(id);
 
         if (data == null)
-            return;
+            return false;
 
         // 등록된 미션 중 ID가 같은 미션 검색
         for (int i = 0; i < Count; i++)
@@ -157,7 +157,7 @@ public class MissionSystem : NetworkBehaviour
 
             // 이미 완료된 미션은 진행하지 않음
             if (mission.IsCompleted)
-                return;
+                return false;
 
             // 목표 횟수를 넘지 않도록 진행도 증가
             mission.CurrentCount = Mathf.Min(
@@ -171,8 +171,13 @@ public class MissionSystem : NetworkBehaviour
 
             // 변경된 구조체를 네트워크 배열에 다시 저장
             Missions.Set(i, mission);
-            return;
+
+            if (mission.IsCompleted)
+                Debug.Log($"미션 완료: {data.MissionName}");
+
+            return true;
         }
+        return false;
     }
 
     /// <summary>
