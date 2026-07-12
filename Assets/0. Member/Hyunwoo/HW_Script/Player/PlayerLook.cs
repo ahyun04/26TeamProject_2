@@ -18,7 +18,12 @@ namespace HyunWoo
 
         public override void Spawned()
         {
-            if (!Object.HasInputAuthority)
+            bool isLocal = Object.HasInputAuthority;
+
+            // 자신의 카메라 계층만 활성화
+            viewRoot.gameObject.SetActive(isLocal);
+
+            if (!isLocal)
                 return;
 
             Cursor.lockState = CursorLockMode.Locked;
