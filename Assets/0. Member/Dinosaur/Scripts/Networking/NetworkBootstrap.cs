@@ -8,9 +8,9 @@ using UnityEngine;
 namespace LockdownProtocol.Networking
 {
     /// <summary>
-    /// °ÔÀÓÀÇ ³×Æ®¿öÅ© ÁøÀÔÁ¡(Entry Point).
-    /// NetworkRunner¸¦ »ı¼ºÇÏ°í Host ¶Ç´Â Client·Î ¼¼¼ÇÀ» ½ÃÀÛÇÏ´Â °Í¸¸ Ã¥ÀÓÁø´Ù.
-    /// ÇÃ·¹ÀÌ¾î ½ºÆù, °ÔÀÓ ·ÎÁ÷Àº ÀÌ Å¬·¡½º°¡ ´ã´çÇÏÁö ¾Ê´Â´Ù (SRP).
+    /// ê²Œì„ì˜ ë„¤íŠ¸ì›Œí¬ ì§„ì…ì (Entry Point).
+    /// NetworkRunnerë¥¼ ìƒì„±í•˜ê³  Host ë˜ëŠ” Clientë¡œ ì„¸ì…˜ì„ ì‹œì‘í•˜ëŠ” ê²ƒë§Œ ì±…ì„ì§„ë‹¤.
+    /// í”Œë ˆì´ì–´ ìŠ¤í°, ê²Œì„ ë¡œì§ì€ ì´ í´ë˜ìŠ¤ê°€ ë‹´ë‹¹í•˜ì§€ ì•ŠëŠ”ë‹¤ (SRP).
     /// </summary>
     public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
     {
@@ -23,14 +23,14 @@ namespace LockdownProtocol.Networking
         private NetworkRunner _runner;
 
         /// <summary>
-        /// ´Ù¸¥ ½ºÅ©¸³Æ®(¿¹: PlayerSpawner)°¡ ±¸µ¶ÇØ¼­ ÇÃ·¹ÀÌ¾î ½ºÆù µîÀ» Ã³¸®ÇÒ ¼ö ÀÖµµ·Ï
-        /// Á¢¼Ó ÀÌº¥Æ®¸¦ ¿ÜºÎ·Î ³ëÃâÇÑ´Ù. ÀÌ Å¬·¡½º´Â "¹«¾ùÀ» ÇÒÁö"´Â ¸ğ¸£°í "ÀÏ¾î³µ´Ù"´Â »ç½Ç¸¸ ¾Ë¸°´Ù.
+        /// ë‹¤ë¥¸ ìŠ¤í¬ë¦½íŠ¸(ì˜ˆ: PlayerSpawner)ê°€ êµ¬ë…í•´ì„œ í”Œë ˆì´ì–´ ìŠ¤í° ë“±ì„ ì²˜ë¦¬í•  ìˆ˜ ìˆë„ë¡
+        /// ì ‘ì† ì´ë²¤íŠ¸ë¥¼ ì™¸ë¶€ë¡œ ë…¸ì¶œí•œë‹¤. ì´ í´ë˜ìŠ¤ëŠ” "ë¬´ì—‡ì„ í• ì§€"ëŠ” ëª¨ë¥´ê³  "ì¼ì–´ë‚¬ë‹¤"ëŠ” ì‚¬ì‹¤ë§Œ ì•Œë¦°ë‹¤.
         /// </summary>
         public static event Action<NetworkRunner, PlayerRef> OnPlayerJoinedEvent;
         public static event Action<NetworkRunner, PlayerRef> OnPlayerLeftEvent;
 
         /// <summary>
-        /// Å×½ºÆ®/·Îºñ UI¿¡¼­ È£ÃâÇÒ ÁøÀÔÁ¡. Host·Î ¼¼¼ÇÀ» ½ÃÀÛÇÑ´Ù.
+        /// í…ŒìŠ¤íŠ¸/ë¡œë¹„ UIì—ì„œ í˜¸ì¶œí•  ì§„ì…ì . Hostë¡œ ì„¸ì…˜ì„ ì‹œì‘í•œë‹¤.
         /// </summary>
         public async void StartHost()
         {
@@ -38,7 +38,7 @@ namespace LockdownProtocol.Networking
         }
 
         /// <summary>
-        /// Å×½ºÆ®/·Îºñ UI¿¡¼­ È£ÃâÇÒ ÁøÀÔÁ¡. ±âÁ¸ Host ¼¼¼Ç¿¡ Client·Î Á¢¼ÓÇÑ´Ù.
+        /// í…ŒìŠ¤íŠ¸/ë¡œë¹„ UIì—ì„œ í˜¸ì¶œí•  ì§„ì…ì . ê¸°ì¡´ Host ì„¸ì…˜ì— Clientë¡œ ì ‘ì†í•œë‹¤.
         /// </summary>
         public async void StartClient()
         {
@@ -49,14 +49,14 @@ namespace LockdownProtocol.Networking
         {
             if (_runner != null)
             {
-                Debug.LogWarning("[NetworkBootstrap] Runner°¡ ÀÌ¹Ì Á¸ÀçÇÕ´Ï´Ù. Áßº¹ ½ÃÀÛÀ» ¹«½ÃÇÕ´Ï´Ù.");
+                Debug.LogWarning("[NetworkBootstrap] Runnerê°€ ì´ë¯¸ ì¡´ì¬í•©ë‹ˆë‹¤. ì¤‘ë³µ ì‹œì‘ì„ ë¬´ì‹œí•©ë‹ˆë‹¤.");
                 return;
             }
 
-            // NetworkRunner´Â NetworkObject°¡ ¾Æ´Ï¶ó ÀÏ¹İ ÄÄÆ÷³ÍÆ®ÀÌ¹Ç·Î Instantiate()·Î »ı¼ºÇØµµ ¹«¹æÇÏ´Ù.
-            // (Runner.Spawn()ÀÇ ´ë»óÀº NetworkObject¸¦ °¡Áø ÇÁ¸®ÆÕ»ÓÀÌ¸ç, Runner ÀÚ½ÅÀº ±× ±ÔÄ¢ÀÇ ¿¹¿Ü´Ù.)
+            // NetworkRunnerëŠ” NetworkObjectê°€ ì•„ë‹ˆë¼ ì¼ë°˜ ì»´í¬ë„ŒíŠ¸ì´ë¯€ë¡œ Instantiate()ë¡œ ìƒì„±í•´ë„ ë¬´ë°©í•˜ë‹¤.
+            // (Runner.Spawn()ì˜ ëŒ€ìƒì€ NetworkObjectë¥¼ ê°€ì§„ í”„ë¦¬íŒ¹ë¿ì´ë©°, Runner ìì‹ ì€ ê·¸ ê·œì¹™ì˜ ì˜ˆì™¸ë‹¤.)
             _runner = gameObject.AddComponent<NetworkRunner>();
-            _runner.ProvideInput = true; // ÀÌ Å¬¶óÀÌ¾ğÆ®°¡ ÀÔ·ÂÀ» Fusion¿¡ Á¦°øÇÏµµ·Ï ¼³Á¤ (´ÙÀ½ ´Ü°è PlayerInputHandler¿Í ¿¬°áµÊ)
+            _runner.ProvideInput = true; // ì´ í´ë¼ì´ì–¸íŠ¸ê°€ ì…ë ¥ì„ Fusionì— ì œê³µí•˜ë„ë¡ ì„¤ì • (ë‹¤ìŒ ë‹¨ê³„ PlayerInputHandlerì™€ ì—°ê²°ë¨)
 
             var sceneManager = gameObject.AddComponent<NetworkSceneManagerDefault>();
 
@@ -66,16 +66,16 @@ namespace LockdownProtocol.Networking
                 SessionName = defaultRoomName,
                 Scene = SceneRef.FromIndex(UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex),
                 SceneManager = sceneManager,
-                PlayerCount = 10 // ¼Ò¼È µğ´ö¼Ç Àå¸£ ±âÁØ ÀÓ½Ã ÃÖ´ë ÀÎ¿ø, ÃßÈÄ GameConfig·Î ºĞ¸® ¿¹Á¤
+                PlayerCount = 10 // ì†Œì…œ ë””ë•ì…˜ ì¥ë¥´ ê¸°ì¤€ ì„ì‹œ ìµœëŒ€ ì¸ì›, ì¶”í›„ GameConfigë¡œ ë¶„ë¦¬ ì˜ˆì •
             });
 
             if (result.Ok)
             {
-                Debug.Log($"[NetworkBootstrap] ¼¼¼Ç ½ÃÀÛ ¼º°ø. Mode: {mode}");
+                Debug.Log($"[NetworkBootstrap] ì„¸ì…˜ ì‹œì‘ ì„±ê³µ. Mode: {mode}");
             }
             else
             {
-                Debug.LogError($"[NetworkBootstrap] ¼¼¼Ç ½ÃÀÛ ½ÇÆĞ: {result.ShutdownReason}");
+                Debug.LogError($"[NetworkBootstrap] ì„¸ì…˜ ì‹œì‘ ì‹¤íŒ¨: {result.ShutdownReason}");
                 Destroy(_runner);
                 _runner = null;
             }
@@ -85,19 +85,19 @@ namespace LockdownProtocol.Networking
 
         public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
         {
-            Debug.Log($"[NetworkBootstrap] ÇÃ·¹ÀÌ¾î Á¢¼Ó: {player}");
+            Debug.Log($"[NetworkBootstrap] í”Œë ˆì´ì–´ ì ‘ì†: {player}");
             OnPlayerJoinedEvent?.Invoke(runner, player);
         }
 
         public void OnPlayerLeft(NetworkRunner runner, PlayerRef player)
         {
-            Debug.Log($"[NetworkBootstrap] ÇÃ·¹ÀÌ¾î ÅğÀå: {player}");
+            Debug.Log($"[NetworkBootstrap] í”Œë ˆì´ì–´ í‡´ì¥: {player}");
             OnPlayerLeftEvent?.Invoke(runner, player);
         }
 
         public void OnShutdown(NetworkRunner runner, ShutdownReason shutdownReason)
         {
-            Debug.Log($"[NetworkBootstrap] ¼¼¼Ç Á¾·á: {shutdownReason}");
+            Debug.Log($"[NetworkBootstrap] ì„¸ì…˜ ì¢…ë£Œ: {shutdownReason}");
         }
 
         public void OnConnectedToServer(NetworkRunner runner) { }
@@ -108,7 +108,7 @@ namespace LockdownProtocol.Networking
         {
             if (inputHandler == null)
             {
-                Debug.LogWarning("[NetworkBootstrap] PlayerInputHandler°¡ ¿¬°áµÇÁö ¾Ê¾Ò½À´Ï´Ù. Inspector¿¡¼­ ÇÒ´çÇØÁÖ¼¼¿ä.");
+                Debug.LogWarning("[NetworkBootstrap] PlayerInputHandlerê°€ ì—°ê²°ë˜ì§€ ì•Šì•˜ìŠµë‹ˆë‹¤. Inspectorì—ì„œ í• ë‹¹í•´ì£¼ì„¸ìš”.");
                 return;
             }
 
@@ -129,11 +129,11 @@ namespace LockdownProtocol.Networking
 
         #endregion
 
-        // ===== ÀÓ½Ã Å×½ºÆ® ÄÚµå =====
-        // ·Îºñ UI°¡ ¸¸µé¾îÁö±â Àü±îÁö¸¸ »ç¿ë. ·Îºñ ½Ã½ºÅÛ ±¸Çö ½Ã ÀÌ ºí·ÏÀº Á¦°ÅÇÑ´Ù.
+        // ===== ì„ì‹œ í…ŒìŠ¤íŠ¸ ì½”ë“œ =====
+        // ë¡œë¹„ UIê°€ ë§Œë“¤ì–´ì§€ê¸° ì „ê¹Œì§€ë§Œ ì‚¬ìš©. ë¡œë¹„ ì‹œìŠ¤í…œ êµ¬í˜„ ì‹œ ì´ ë¸”ë¡ì€ ì œê±°í•œë‹¤.
         private void OnGUI()
         {
-            if (_runner != null) return; // ÀÌ¹Ì ¼¼¼ÇÀÌ ½ÃÀÛµÆÀ¸¸é ¹öÆ° ¼û±è
+            if (_runner != null) return; // ì´ë¯¸ ì„¸ì…˜ì´ ì‹œì‘ëìœ¼ë©´ ë²„íŠ¼ ìˆ¨ê¹€
 
             if (GUI.Button(new Rect(10, 10, 150, 40), "Start Host"))
                 StartHost();

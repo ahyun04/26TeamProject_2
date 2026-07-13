@@ -4,24 +4,24 @@ using UnityEngine;
 namespace LockdownProtocol.Networking
 {
     /// <summary>
-    /// ·ÎÄÃ Å¬¶óÀÌ¾ğÆ®ÀÇ Å°º¸µå/¸¶¿ì½º ÀÔ·ÂÀ» ¸Å ÇÁ·¹ÀÓ(Update) ´©ÀûÇÏ°í,
-    /// FusionÀÌ ¿äÃ»ÇÏ´Â ½ÃÁ¡(NetworkBootstrap.OnInput)¿¡ NetworkInputData·Î ÆĞÅ·ÇØ ¹İÈ¯ÇÑ´Ù.
+    /// ë¡œì»¬ í´ë¼ì´ì–¸íŠ¸ì˜ í‚¤ë³´ë“œ/ë§ˆìš°ìŠ¤ ì…ë ¥ì„ ë§¤ í”„ë ˆì„(Update) ëˆ„ì í•˜ê³ ,
+    /// Fusionì´ ìš”ì²­í•˜ëŠ” ì‹œì (NetworkBootstrap.OnInput)ì— NetworkInputDataë¡œ íŒ¨í‚¹í•´ ë°˜í™˜í•œë‹¤.
     ///
-    /// ÀÌ Å¬·¡½º´Â ¼ø¼ö ·ÎÄÃ ·ÎÁ÷ÀÌ´Ù. State Authority ¿©ºÎ, ³×Æ®¿öÅ© »óÅÂ¸¦ ÀüÇô ½Å°æ ¾²Áö ¾Ê´Â´Ù.
-    /// Runner.ProvideInput = trueÀÎ Å¬¶óÀÌ¾ğÆ®¿¡¼­¸¸ ÀÌ °ªÀÌ ½ÇÁ¦·Î ¼ÒºñµÈ´Ù.
+    /// ì´ í´ë˜ìŠ¤ëŠ” ìˆœìˆ˜ ë¡œì»¬ ë¡œì§ì´ë‹¤. State Authority ì—¬ë¶€, ë„¤íŠ¸ì›Œí¬ ìƒíƒœë¥¼ ì „í˜€ ì‹ ê²½ ì“°ì§€ ì•ŠëŠ”ë‹¤.
+    /// Runner.ProvideInput = trueì¸ í´ë¼ì´ì–¸íŠ¸ì—ì„œë§Œ ì´ ê°’ì´ ì‹¤ì œë¡œ ì†Œë¹„ëœë‹¤.
     /// </summary>
     public class PlayerInputHandler : MonoBehaviour
     {
         [Header("Look Sensitivity")]
         [SerializeField] private float lookSensitivity = 2f;
 
-        // ¸¶¿ì½º µ¨Å¸´Â Unity Update()°¡ Fusion ½Ã¹Ä·¹ÀÌ¼Ç Æ½º¸´Ù ´õ ÀÚÁÖ ½ÇÇàµÉ ¼ö ÀÖ¾î
-        // ÇÁ·¹ÀÓ¸¶´Ù ´©ÀûÇØµ×´Ù°¡ GatherInput() È£Ãâ ½ÃÁ¡¿¡ ÇÑ ¹ø¿¡ ¼ÒºñÇÏ°í ÃÊ±âÈ­ÇÑ´Ù.
-        // ±×·¸Áö ¾ÊÀ¸¸é Æ½ »çÀÌÀÇ ¸¶¿ì½º ¿òÁ÷ÀÓÀÌ À¯½ÇµÇ¾î ½ÃÁ¡ È¸ÀüÀÌ ²÷°Ü º¸ÀÎ´Ù.
+        // ë§ˆìš°ìŠ¤ ë¸íƒ€ëŠ” Unity Update()ê°€ Fusion ì‹œë®¬ë ˆì´ì…˜ í‹±ë³´ë‹¤ ë” ìì£¼ ì‹¤í–‰ë  ìˆ˜ ìˆì–´
+        // í”„ë ˆì„ë§ˆë‹¤ ëˆ„ì í•´ë’€ë‹¤ê°€ GatherInput() í˜¸ì¶œ ì‹œì ì— í•œ ë²ˆì— ì†Œë¹„í•˜ê³  ì´ˆê¸°í™”í•œë‹¤.
+        // ê·¸ë ‡ì§€ ì•Šìœ¼ë©´ í‹± ì‚¬ì´ì˜ ë§ˆìš°ìŠ¤ ì›€ì§ì„ì´ ìœ ì‹¤ë˜ì–´ ì‹œì  íšŒì „ì´ ëŠê²¨ ë³´ì¸ë‹¤.
         private Vector2 _accumulatedLookDelta;
 
-        // GetKeyDownÀº ´­¸° ±× ÇÁ·¹ÀÓ¿¡¸¸ trueÀÌ¹Ç·Î, ±× ÇÁ·¹ÀÓ¿¡ Æ½ÀÌ ¾øÀ¸¸é ÀÔ·ÂÀÌ À¯½ÇµÈ´Ù.
-        // µû¶ó¼­ ¼Òºñ(GatherInput) ½ÃÁ¡±îÁö »óÅÂ¸¦ ´©Àû/º¸Á¸ÇÑ´Ù.
+        // GetKeyDownì€ ëˆŒë¦° ê·¸ í”„ë ˆì„ì—ë§Œ trueì´ë¯€ë¡œ, ê·¸ í”„ë ˆì„ì— í‹±ì´ ì—†ìœ¼ë©´ ì…ë ¥ì´ ìœ ì‹¤ëœë‹¤.
+        // ë”°ë¼ì„œ ì†Œë¹„(GatherInput) ì‹œì ê¹Œì§€ ìƒíƒœë¥¼ ëˆ„ì /ë³´ì¡´í•œë‹¤.
         private NetworkButtons _accumulatedButtons;
 
         private void Update()
@@ -40,9 +40,9 @@ namespace LockdownProtocol.Networking
         }
 
         /// <summary>
-        /// NetworkBootstrap.OnInput()¿¡¼­ È£ÃâµÈ´Ù.
-        /// ´©ÀûµÈ "¼ø°£ ¹öÆ°" ÀÔ·ÂÀº ¿©±â¼­ ¼Òºñ ÈÄ ÃÊ±âÈ­ÇÏ°í,
-        /// ÀÌµ¿/½ÃÁ¡Ã³·³ Áö¼Ó »óÅÂÀÎ °ªÀº ÀÌ ½ÃÁ¡¿¡ »õ·Î ÀĞ´Â´Ù.
+        /// NetworkBootstrap.OnInput()ì—ì„œ í˜¸ì¶œëœë‹¤.
+        /// ëˆ„ì ëœ "ìˆœê°„ ë²„íŠ¼" ì…ë ¥ì€ ì—¬ê¸°ì„œ ì†Œë¹„ í›„ ì´ˆê¸°í™”í•˜ê³ ,
+        /// ì´ë™/ì‹œì ì²˜ëŸ¼ ì§€ì† ìƒíƒœì¸ ê°’ì€ ì´ ì‹œì ì— ìƒˆë¡œ ì½ëŠ”ë‹¤.
         /// </summary>
         public NetworkInputData GatherInput()
         {
@@ -53,11 +53,11 @@ namespace LockdownProtocol.Networking
                 Buttons = _accumulatedButtons
             };
 
-            // Held »óÅÂ(´©¸£´Â µ¿¾È °è¼Ó true)´Â ¸Å Æ½ »õ·Î ÀĞ¾îµµ À¯½Ç À§ÇèÀÌ ¾ø´Ù.
+            // Held ìƒíƒœ(ëˆ„ë¥´ëŠ” ë™ì•ˆ ê³„ì† true)ëŠ” ë§¤ í‹± ìƒˆë¡œ ì½ì–´ë„ ìœ ì‹¤ ìœ„í—˜ì´ ì—†ë‹¤.
             data.Buttons.Set(InputButton.Sprint, Input.GetKey(KeyCode.LeftShift));
             data.Buttons.Set(InputButton.Crouch, Input.GetKey(KeyCode.LeftControl));
 
-            // ´©Àû°ª ¼Òºñ ¿Ï·á - ´ÙÀ½ Æ½À» À§ÇØ ÃÊ±âÈ­
+            // ëˆ„ì ê°’ ì†Œë¹„ ì™„ë£Œ - ë‹¤ìŒ í‹±ì„ ìœ„í•´ ì´ˆê¸°í™”
             _accumulatedLookDelta = Vector2.zero;
             _accumulatedButtons = default;
 

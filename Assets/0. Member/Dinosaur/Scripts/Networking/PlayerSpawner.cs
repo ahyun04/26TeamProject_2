@@ -5,12 +5,12 @@ using UnityEngine;
 namespace LockdownProtocol.Networking
 {
     /// <summary>
-    /// ÇÃ·¹ÀÌ¾î Á¢¼Ó/ÅğÀå ÀÌº¥Æ®¸¦ ±¸µ¶ÇØ Player ÇÁ¸®ÆÕÀ» Spawn/DespawnÇÏ´Â °Í¸¸ Ã¥ÀÓÁø´Ù.
-    /// NetworkBootstrapÀÌ ½î´Â ÀÌº¥Æ®¸¦ ±¸µ¶ÇÏ´Â ´Ü¹æÇâ ÀÇÁ¸ ±¸Á¶¶ó,
-    /// NetworkBootstrapÀº ÀÌ Å¬·¡½ºÀÇ Á¸Àç¸¦ ÀüÇô ¸ô¶óµµ µÈ´Ù (´À½¼ÇÑ °áÇÕ).
+    /// í”Œë ˆì´ì–´ ì ‘ì†/í‡´ì¥ ì´ë²¤íŠ¸ë¥¼ êµ¬ë…í•´ Player í”„ë¦¬íŒ¹ì„ Spawn/Despawní•˜ëŠ” ê²ƒë§Œ ì±…ì„ì§„ë‹¤.
+    /// NetworkBootstrapì´ ì˜ëŠ” ì´ë²¤íŠ¸ë¥¼ êµ¬ë…í•˜ëŠ” ë‹¨ë°©í–¥ ì˜ì¡´ êµ¬ì¡°ë¼,
+    /// NetworkBootstrapì€ ì´ í´ë˜ìŠ¤ì˜ ì¡´ì¬ë¥¼ ì „í˜€ ëª°ë¼ë„ ëœë‹¤ (ëŠìŠ¨í•œ ê²°í•©).
     ///
-    /// Runner.Spawn()Àº ¹İµå½Ã State Authority(Host)¿¡¼­¸¸ È£ÃâÇØ¾ß ÇÏ¹Ç·Î,
-    /// ¸ğµç ÁøÀÔÁ¡¿¡¼­ runner.IsServer¸¦ ¸ÕÀú È®ÀÎÇÑ´Ù.
+    /// Runner.Spawn()ì€ ë°˜ë“œì‹œ State Authority(Host)ì—ì„œë§Œ í˜¸ì¶œí•´ì•¼ í•˜ë¯€ë¡œ,
+    /// ëª¨ë“  ì§„ì…ì ì—ì„œ runner.IsServerë¥¼ ë¨¼ì € í™•ì¸í•œë‹¤.
     /// </summary>
     public class PlayerSpawner : MonoBehaviour
     {
@@ -20,7 +20,7 @@ namespace LockdownProtocol.Networking
         [Header("Spawn Points")]
         [SerializeField] private Transform[] spawnPoints;
 
-        // ÅğÀå ½Ã Á¤È®È÷ ¾î¶² NetworkObject¸¦ DespawnÇÒÁö Ã£±â À§ÇÑ ÃßÀû Å×ÀÌºí.
+        // í‡´ì¥ ì‹œ ì •í™•íˆ ì–´ë–¤ NetworkObjectë¥¼ Despawní• ì§€ ì°¾ê¸° ìœ„í•œ ì¶”ì  í…Œì´ë¸”.
         private readonly Dictionary<PlayerRef, NetworkObject> _spawnedPlayers = new Dictionary<PlayerRef, NetworkObject>();
 
         private void OnEnable()
@@ -37,24 +37,24 @@ namespace LockdownProtocol.Networking
 
         private void HandlePlayerJoined(NetworkRunner runner, PlayerRef player)
         {
-            // Host(State Authority)¸¸ ½ºÆùÀ» ½ÇÇàÇÑ´Ù. Client¿¡¼­µµ ÀÌ ÀÌº¥Æ®´Â µé¾î¿ÀÁö¸¸ ¹«½ÃÇØ¾ß ÇÑ´Ù.
+            // Host(State Authority)ë§Œ ìŠ¤í°ì„ ì‹¤í–‰í•œë‹¤. Clientì—ì„œë„ ì´ ì´ë²¤íŠ¸ëŠ” ë“¤ì–´ì˜¤ì§€ë§Œ ë¬´ì‹œí•´ì•¼ í•œë‹¤.
             if (!runner.IsServer)
                 return;
 
             if (playerPrefab == null)
             {
-                Debug.LogError("[PlayerSpawner] Player PrefabÀÌ ÇÒ´çµÇÁö ¾Ê¾Ò½À´Ï´Ù.");
+                Debug.LogError("[PlayerSpawner] Player Prefabì´ í• ë‹¹ë˜ì§€ ì•Šì•˜ìŠµë‹ˆë‹¤.");
                 return;
             }
 
             Vector3 spawnPosition = GetSpawnPosition(player);
 
-            // 4¹øÂ° ÀÎÀÚ(player)°¡ Input Authority´Ù.
-            // ÀÌ ¿ÀºêÁ§Æ®´Â ÀÌÁ¦ ÇØ´ç ÇÃ·¹ÀÌ¾îÀÇ NetworkInputData¸¦ GetInput()À¸·Î ¹Ş°Ô µÈ´Ù.
+            // 4ë²ˆì§¸ ì¸ì(player)ê°€ Input Authorityë‹¤.
+            // ì´ ì˜¤ë¸Œì íŠ¸ëŠ” ì´ì œ í•´ë‹¹ í”Œë ˆì´ì–´ì˜ NetworkInputDataë¥¼ GetInput()ìœ¼ë¡œ ë°›ê²Œ ëœë‹¤.
             NetworkObject spawnedObject = runner.Spawn(playerPrefab, spawnPosition, Quaternion.identity, player);
             _spawnedPlayers[player] = spawnedObject;
 
-            Debug.Log($"[PlayerSpawner] Player {player} ½ºÆù ¿Ï·á at {spawnPosition}");
+            Debug.Log($"[PlayerSpawner] Player {player} ìŠ¤í° ì™„ë£Œ at {spawnPosition}");
         }
 
         private void HandlePlayerLeft(NetworkRunner runner, PlayerRef player)
@@ -66,7 +66,7 @@ namespace LockdownProtocol.Networking
             {
                 runner.Despawn(spawnedObject);
                 _spawnedPlayers.Remove(player);
-                Debug.Log($"[PlayerSpawner] Player {player} ¿ÀºêÁ§Æ® Á¦°Å ¿Ï·á");
+                Debug.Log($"[PlayerSpawner] Player {player} ì˜¤ë¸Œì íŠ¸ ì œê±° ì™„ë£Œ");
             }
         }
 
@@ -74,7 +74,7 @@ namespace LockdownProtocol.Networking
         {
             if (spawnPoints == null || spawnPoints.Length == 0)
             {
-                // ½ºÆù Æ÷ÀÎÆ® ¹Ì¼³Á¤ ½Ã ÀÓ½Ã·Î ¿øÁ¡ ±ÙÃ³¿¡ °ãÄ¡Áö ¾Ê°Ô Èğ»Ñ¸² (Å×½ºÆ® ´Ü°è ÇÑÁ¤)
+                // ìŠ¤í° í¬ì¸íŠ¸ ë¯¸ì„¤ì • ì‹œ ì„ì‹œë¡œ ì›ì  ê·¼ì²˜ì— ê²¹ì¹˜ì§€ ì•Šê²Œ í©ë¿Œë¦¼ (í…ŒìŠ¤íŠ¸ ë‹¨ê³„ í•œì •)
                 return new Vector3(player.RawEncoded % 10, 1f, 0f);
             }
 

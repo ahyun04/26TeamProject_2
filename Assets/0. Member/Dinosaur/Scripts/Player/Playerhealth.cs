@@ -5,9 +5,9 @@ using UnityEngine;
 namespace LockdownProtocol.Networking
 {
     /// <summary>
-    /// ÇÃ·¹ÀÌ¾î Ã¼·Â °ü¸®. °ª º¯°æÀº ¹Ýµå½Ã State Authority(Host)¿¡¼­¸¸ ÀÏ¾î³­´Ù.
-    /// µ¥¹ÌÁö¸¦ ÁÖ´Â ÂÊ(ÇÔÁ¤, °ø°Ý ÆÇÁ¤ µî)ÀÌ ÀÌ¹Ì ±ÇÇÑÀ» °¡Áø ÄÁÅØ½ºÆ®¿¡¼­ È£ÃâÇÑ´Ù´Â ÀüÁ¦ÀÌ¸ç,
-    /// ÀÌ Å¬·¡½º´Â ÀÌÁß ¹æ¾î·Î ³»ºÎ¿¡¼­µµ HasStateAuthority¸¦ ´Ù½Ã È®ÀÎÇÑ´Ù.
+    /// í”Œë ˆì´ì–´ ì²´ë ¥ ê´€ë¦¬. ê°’ ë³€ê²½ì€ ë°˜ë“œì‹œ State Authority(Host)ì—ì„œë§Œ ì¼ì–´ë‚œë‹¤.
+    /// ë°ë¯¸ì§€ë¥¼ ì£¼ëŠ” ìª½(í•¨ì •, ê³µê²© íŒì • ë“±)ì´ ì´ë¯¸ ê¶Œí•œì„ ê°€ì§„ ì»¨í…ìŠ¤íŠ¸ì—ì„œ í˜¸ì¶œí•œë‹¤ëŠ” ì „ì œì´ë©°,
+    /// ì´ í´ëž˜ìŠ¤ëŠ” ì´ì¤‘ ë°©ì–´ë¡œ ë‚´ë¶€ì—ì„œë„ HasStateAuthorityë¥¼ ë‹¤ì‹œ í™•ì¸í•œë‹¤.
     /// </summary>
     [RequireComponent(typeof(NetworkObject))]
     public class PlayerHealth : NetworkBehaviour
@@ -23,13 +23,13 @@ namespace LockdownProtocol.Networking
 
         public float MaxHealth => maxHealth;
 
-        /// <summary>UI, »ç¿îµå, ÀÌÆåÆ® µî ¿ÜºÎ ½Ã½ºÅÛÀÌ ±¸µ¶ÇØ Ã¼·Â º¯È­¿¡ ¹ÝÀÀÇÒ ¼ö ÀÖµµ·Ï ³ëÃâ.</summary>
+        /// <summary>UI, ì‚¬ìš´ë“œ, ì´íŽ™íŠ¸ ë“± ì™¸ë¶€ ì‹œìŠ¤í…œì´ êµ¬ë…í•´ ì²´ë ¥ ë³€í™”ì— ë°˜ì‘í•  ìˆ˜ ìžˆë„ë¡ ë…¸ì¶œ.</summary>
         public event Action<float, float> HealthChanged; // (current, max)
         public event Action Died;
 
         public override void Spawned()
         {
-            // ÃÊ±â°ªÀº State Authority¸¸ ¼³Á¤ÇÑ´Ù. ´Ù¸¥ Å¬¶óÀÌ¾ðÆ®´Â ³×Æ®¿öÅ©·Î °ªÀ» º¹Á¦¹Þ´Â´Ù.
+            // ì´ˆê¸°ê°’ì€ State Authorityë§Œ ì„¤ì •í•œë‹¤. ë‹¤ë¥¸ í´ë¼ì´ì–¸íŠ¸ëŠ” ë„¤íŠ¸ì›Œí¬ë¡œ ê°’ì„ ë³µì œë°›ëŠ”ë‹¤.
             if (Object.HasStateAuthority)
             {
                 CurrentHealth = maxHealth;

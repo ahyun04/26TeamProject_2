@@ -5,8 +5,8 @@ using UnityEngine;
 namespace LockdownProtocol.Networking
 {
     /// <summary>
-    /// ÇÃ·¹ÀÌ¾î ½ºÅÂ¹Ì³Ê °ü¸®. Ã¼·Â°ú ´Þ¸® ¿ÜºÎ ¿äÃ»ÀÌ ¾Æ´Ï¶ó ÀÚ±â ÀÚ½ÅÀÇ ÀÔ·Â(½ºÇÁ¸°Æ® ¿©ºÎ)¿¡ ¹ÝÀÀÇØ
-    /// ¸Å Æ½ ½º½º·Î Áõ°¨À» °è»êÇÑ´Ù. PlayerMovement´Â HasStamina¸¸ Á¶È¸ÇØ ½ºÇÁ¸°Æ® Çã¿ë ¿©ºÎ¸¦ ÆÇ´ÜÇÑ´Ù.
+    /// í”Œë ˆì´ì–´ ìŠ¤íƒœë¯¸ë„ˆ ê´€ë¦¬. ì²´ë ¥ê³¼ ë‹¬ë¦¬ ì™¸ë¶€ ìš”ì²­ì´ ì•„ë‹ˆë¼ ìžê¸° ìžì‹ ì˜ ìž…ë ¥(ìŠ¤í”„ë¦°íŠ¸ ì—¬ë¶€)ì— ë°˜ì‘í•´
+    /// ë§¤ í‹± ìŠ¤ìŠ¤ë¡œ ì¦ê°ì„ ê³„ì‚°í•œë‹¤. PlayerMovementëŠ” HasStaminaë§Œ ì¡°íšŒí•´ ìŠ¤í”„ë¦°íŠ¸ í—ˆìš© ì—¬ë¶€ë¥¼ íŒë‹¨í•œë‹¤.
     /// </summary>
     [RequireComponent(typeof(NetworkObject))]
     public class PlayerStamina : NetworkBehaviour
@@ -24,7 +24,7 @@ namespace LockdownProtocol.Networking
 
         public float MaxStamina => maxStamina;
 
-        /// <summary>½ºÅÂ¹Ì³Ê°¡ 0ÀÌ¸é false. PlayerMovement°¡ ½ºÇÁ¸°Æ® Çã¿ë ¿©ºÎ¸¦ ÆÇ´ÜÇÒ ¶§ ÂüÁ¶.</summary>
+        /// <summary>ìŠ¤íƒœë¯¸ë„ˆê°€ 0ì´ë©´ false. PlayerMovementê°€ ìŠ¤í”„ë¦°íŠ¸ í—ˆìš© ì—¬ë¶€ë¥¼ íŒë‹¨í•  ë•Œ ì°¸ì¡°.</summary>
         public bool HasStamina => CurrentStamina > 0f;
 
         public event Action<float, float> StaminaChanged; // (current, max)

@@ -4,9 +4,9 @@ using UnityEngine;
 namespace LockdownProtocol.Networking
 {
     /// <summary>
-    /// 1ÀÎÄª Ä«¸Ş¶ó °ü¸®. ÀÌ Å¬¶óÀÌ¾ğÆ®°¡ ½ÇÁ¦·Î Á¶Á¾ÇÏ´Â Ä³¸¯ÅÍ(Input Authority)ÀÇ Ä«¸Ş¶ó¸¸ È°¼ºÈ­ÇÑ´Ù.
-    /// ÁÂ¿ì ½ÃÁ¡(Yaw)Àº PlayerMovement°¡ NetworkInputData¸¦ ÅëÇØ Ä³¸¯ÅÍ ¸öÅë È¸ÀüÀ¸·Î ÀÌ¹Ì Ã³¸®ÇÏ¹Ç·Î,
-    /// ÀÌ Å¬·¡½º´Â »óÇÏ ½ÃÁ¡(Pitch)¸¸ ´ã´çÇÑ´Ù. Pitch´Â ¼ø¼ö ·ÎÄÃ ¿¬ÃâÀÌ¶ó ³×Æ®¿öÅ© Àü¼ÛÇÏÁö ¾Ê´Â´Ù.
+    /// 1ì¸ì¹­ ì¹´ë©”ë¼ ê´€ë¦¬. ì´ í´ë¼ì´ì–¸íŠ¸ê°€ ì‹¤ì œë¡œ ì¡°ì¢…í•˜ëŠ” ìºë¦­í„°(Input Authority)ì˜ ì¹´ë©”ë¼ë§Œ í™œì„±í™”í•œë‹¤.
+    /// ì¢Œìš° ì‹œì (Yaw)ì€ PlayerMovementê°€ NetworkInputDataë¥¼ í†µí•´ ìºë¦­í„° ëª¸í†µ íšŒì „ìœ¼ë¡œ ì´ë¯¸ ì²˜ë¦¬í•˜ë¯€ë¡œ,
+    /// ì´ í´ë˜ìŠ¤ëŠ” ìƒí•˜ ì‹œì (Pitch)ë§Œ ë‹´ë‹¹í•œë‹¤. PitchëŠ” ìˆœìˆ˜ ë¡œì»¬ ì—°ì¶œì´ë¼ ë„¤íŠ¸ì›Œí¬ ì „ì†¡í•˜ì§€ ì•ŠëŠ”ë‹¤.
     /// </summary>
     [RequireComponent(typeof(NetworkObject))]
     public class PlayerCameraController : NetworkBehaviour
@@ -14,7 +14,7 @@ namespace LockdownProtocol.Networking
         [Header("References")]
         [SerializeField] private Camera playerCamera;
         [SerializeField] private AudioListener audioListener;
-        [SerializeField] private Transform cameraPivot; // ¸Ó¸® À§Ä¡, Pitch È¸ÀüÃà
+        [SerializeField] private Transform cameraPivot; // ë¨¸ë¦¬ ìœ„ì¹˜, Pitch íšŒì „ì¶•
 
         [Header("Look Settings")]
         [SerializeField] private float pitchSensitivity = 2f;
@@ -27,9 +27,9 @@ namespace LockdownProtocol.Networking
         {
             bool isLocalPlayer = Object.HasInputAuthority;
 
-            // ·ÎÄÃ ÇÃ·¹ÀÌ¾î(³»°¡ Á¶Á¾ÇÏ´Â Ä³¸¯ÅÍ)¸¸ Ä«¸Ş¶ó/¿Àµğ¿À ¸®½º³Ê¸¦ ÄÒ´Ù.
-            // ´Ù¸¥ Å¬¶óÀÌ¾ğÆ®ÀÇ Ä³¸¯ÅÍ±îÁö Ä«¸Ş¶ó¸¦ ÄÑµÎ¸é ¾À¿¡ È°¼º Ä«¸Ş¶ó¿Í AudioListener°¡
-            // ¿©·¯ °³ Á¸ÀçÇÏ°Ô µÇ¾î ·»´õ¸µ/¿Àµğ¿À°¡ µÚ¼¯ÀÎ´Ù.
+            // ë¡œì»¬ í”Œë ˆì´ì–´(ë‚´ê°€ ì¡°ì¢…í•˜ëŠ” ìºë¦­í„°)ë§Œ ì¹´ë©”ë¼/ì˜¤ë””ì˜¤ ë¦¬ìŠ¤ë„ˆë¥¼ ì¼ ë‹¤.
+            // ë‹¤ë¥¸ í´ë¼ì´ì–¸íŠ¸ì˜ ìºë¦­í„°ê¹Œì§€ ì¹´ë©”ë¼ë¥¼ ì¼œë‘ë©´ ì”¬ì— í™œì„± ì¹´ë©”ë¼ì™€ AudioListenerê°€
+            // ì—¬ëŸ¬ ê°œ ì¡´ì¬í•˜ê²Œ ë˜ì–´ ë Œë”ë§/ì˜¤ë””ì˜¤ê°€ ë’¤ì„ì¸ë‹¤.
             playerCamera.gameObject.SetActive(isLocalPlayer);
             if (audioListener != null)
                 audioListener.enabled = isLocalPlayer;

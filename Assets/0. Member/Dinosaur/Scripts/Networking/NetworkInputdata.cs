@@ -4,8 +4,8 @@ using UnityEngine;
 namespace LockdownProtocol.Networking
 {
     /// <summary>
-    /// ¹öÆ° ÀÔ·ÂÀ» ºñÆ® ÇÃ·¡±×·Î ±¸ºÐÇÏ±â À§ÇÑ ÀÎµ¦½º.
-    /// NetworkButtons´Â ³»ºÎÀûÀ¸·Î ºñÆ®¸¶½ºÅ©·Î ÀúÀåµÇ¹Ç·Î, bool ¿©·¯ °³º¸´Ù ÈÎ¾À ÀûÀº ´ë¿ªÆøÀ» »ç¿ëÇÑ´Ù.
+    /// ë²„íŠ¼ ìž…ë ¥ì„ ë¹„íŠ¸ í”Œëž˜ê·¸ë¡œ êµ¬ë¶„í•˜ê¸° ìœ„í•œ ì¸ë±ìŠ¤.
+    /// NetworkButtonsëŠ” ë‚´ë¶€ì ìœ¼ë¡œ ë¹„íŠ¸ë§ˆìŠ¤í¬ë¡œ ì €ìž¥ë˜ë¯€ë¡œ, bool ì—¬ëŸ¬ ê°œë³´ë‹¤ í›¨ì”¬ ì ì€ ëŒ€ì—­í­ì„ ì‚¬ìš©í•œë‹¤.
     /// </summary>
     public static class InputButton
     {
@@ -17,23 +17,23 @@ namespace LockdownProtocol.Networking
     }
 
     /// <summary>
-    /// ÇÑ Æ½(Tick) µ¿¾ÈÀÇ ÇÃ·¹ÀÌ¾î ÀÔ·ÂÀ» ´ã´Â µ¥ÀÌÅÍ ÄÁÅ×ÀÌ³Ê.
-    /// ÀÌ ±¸Á¶Ã¼´Â ·ÎÁ÷À» °®Áö ¾Ê´Â´Ù (¼ø¼ö µ¥ÀÌÅÍ). ·ÎÄÃ Å¬¶óÀÌ¾ðÆ®°¡ °ªÀ» Ã¤¿ì°í,
-    /// FusionÀÌ ÀÌ¸¦ Á÷·ÄÈ­ÇØ State Authority(Host)·Î Àü¼ÛÇÏ¸é,
-    /// PlayerMovement°¡ FixedUpdateNetwork()¿¡¼­ ÀÌ °ªÀ» ¼ÒºñÇØ ½ÇÁ¦ ÀÌµ¿À» °è»êÇÑ´Ù.
+    /// í•œ í‹±(Tick) ë™ì•ˆì˜ í”Œë ˆì´ì–´ ìž…ë ¥ì„ ë‹´ëŠ” ë°ì´í„° ì»¨í…Œì´ë„ˆ.
+    /// ì´ êµ¬ì¡°ì²´ëŠ” ë¡œì§ì„ ê°–ì§€ ì•ŠëŠ”ë‹¤ (ìˆœìˆ˜ ë°ì´í„°). ë¡œì»¬ í´ë¼ì´ì–¸íŠ¸ê°€ ê°’ì„ ì±„ìš°ê³ ,
+    /// Fusionì´ ì´ë¥¼ ì§ë ¬í™”í•´ State Authority(Host)ë¡œ ì „ì†¡í•˜ë©´,
+    /// PlayerMovementê°€ FixedUpdateNetwork()ì—ì„œ ì´ ê°’ì„ ì†Œë¹„í•´ ì‹¤ì œ ì´ë™ì„ ê³„ì‚°í•œë‹¤.
     /// </summary>
     public struct NetworkInputData : INetworkInput
     {
-        /// <summary>WASD µî ¼öÆò ÀÌµ¿ ÀÔ·Â. X = ÁÂ¿ì, Y = ÀüÈÄ.</summary>
+        /// <summary>WASD ë“± ìˆ˜í‰ ì´ë™ ìž…ë ¥. X = ì¢Œìš°, Y = ì „í›„.</summary>
         public Vector2 MoveDirection;
 
-        /// <summary>¸¶¿ì½º ½ÃÁ¡ È¸Àü. X = Yaw(ÁÂ¿ì), Y = Pitch(»óÇÏ).</summary>
+        /// <summary>ë§ˆìš°ìŠ¤ ì‹œì  íšŒì „. X = Yaw(ì¢Œìš°), Y = Pitch(ìƒí•˜).</summary>
         public Vector2 LookRotation;
 
-        /// <summary>Jump, Sprint, Crouch, Interact, Attack µîÀ» ºñÆ®·Î ¾ÐÃàÇØ¼­ ´ã´Â´Ù.</summary>
+        /// <summary>Jump, Sprint, Crouch, Interact, Attack ë“±ì„ ë¹„íŠ¸ë¡œ ì••ì¶•í•´ì„œ ë‹´ëŠ”ë‹¤.</summary>
         public NetworkButtons Buttons;
 
-        /// <summary>¹öÆ°ÀÌ ´­·ÁÀÖ´ÂÁö Á¶È¸ÇÏ´Â ÇïÆÛ. È£ÃâºÎ¿¡¼­ ºñÆ® ÀÎµ¦½º¸¦ Á÷Á¢ ´Ù·çÁö ¾Êµµ·Ï Ä¸½¶È­.</summary>
+        /// <summary>ë²„íŠ¼ì´ ëˆŒë ¤ìžˆëŠ”ì§€ ì¡°íšŒí•˜ëŠ” í—¬í¼. í˜¸ì¶œë¶€ì—ì„œ ë¹„íŠ¸ ì¸ë±ìŠ¤ë¥¼ ì§ì ‘ ë‹¤ë£¨ì§€ ì•Šë„ë¡ ìº¡ìŠí™”.</summary>
         public bool IsPressed(int buttonIndex) => Buttons.IsSet(buttonIndex);
     }
 }
