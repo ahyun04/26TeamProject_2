@@ -28,6 +28,7 @@ namespace LockdownProtocol.Networking
 
         private CharacterController _characterController;
         private PlayerStamina _stamina;
+        private PlayerHealth _health;   // 다현
 
         /// <summary>
         /// 다른 스크립트(카메라, 애니메이션)가 참조할 수 있도록 이동 상태를 읽기 전용으로 노출.
@@ -45,12 +46,17 @@ namespace LockdownProtocol.Networking
         {
             _characterController = GetComponent<CharacterController>();
             _stamina = GetComponent<PlayerStamina>();
+            _health = GetComponent<PlayerHealth>();
         }
 
         public override void FixedUpdateNetwork()
         {
             // Input Authority가 없는(관전 중이거나 남의 오브젝트인) 경우 입력이 없으므로 계산을 건너뛴다.
             if (!GetInput(out NetworkInputData input))
+                return;
+
+            // 다현
+            if (_health != null && _health.IsDead)
                 return;
 
             ApplyRotation(input);

@@ -201,4 +201,22 @@ public class MissionSystem : NetworkBehaviour
 
         return null;
     }
+
+
+    // 다현 추가
+    /// <summary>
+    /// 해당 플레이어의 개인 미션이 완료됐는지 확인한다
+    /// </summary>
+    public bool IsPersonalMissionComplete(PlayerRef player)
+    {
+        for (int i = 0; i < Count; i++)
+        {
+            MissionState mission = Missions[i];
+
+            if (mission.IsPersonal && mission.Owner == player)
+                return mission.IsCompleted;
+        }
+
+        return false; 
+    }
 }

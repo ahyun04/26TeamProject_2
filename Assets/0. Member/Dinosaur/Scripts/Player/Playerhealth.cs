@@ -70,5 +70,25 @@ namespace LockdownProtocol.Networking
                 Died?.Invoke();
             }
         }
+
+        /// 다현 추가 - 즉사 처리 전용 일반 데미지와 구분해 사망 원인을 명확히 남기기 위해 분리
+        public void Kill(PlayerRef source = default)
+        {
+            if (!Object.HasStateAuthority) return;
+            if (IsDead) return;
+
+            CurrentHealth = 0f;
+            IsDead = true;
+        }
+
+        // 테스트용, 나중에 삭제
+        private void Update()
+        {
+            if (Object == null || !Object.IsValid) return;
+            if (Object.HasStateAuthority && Input.GetKeyDown(KeyCode.K))
+            {
+                Kill();
+            }
+        }
     }
 }
