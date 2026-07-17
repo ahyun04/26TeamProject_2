@@ -32,14 +32,23 @@ public class MissionSystem : NetworkBehaviour
 
     [Networked] public NetworkBool IsInitialized { get; set; }
 
+    [Networked] public int Revision { get; set; }
+
+    public bool HasSpawned { get; private set; }
+
     private System.Random random;
 
     public override void Spawned()
     {
+        HasSpawned = true;
+
         if (Object.HasStateAuthority)
-        {
             random = new System.Random();
-        }
+    }
+
+    public override void Despawned(NetworkRunner runner, bool hasState)
+    {
+        HasSpawned = false;
     }
 
     public void InitializeMissions(Dictionary<PlayerRef, PlayerRole> playerRoles)
@@ -84,6 +93,7 @@ public class MissionSystem : NetworkBehaviour
         }
 
         IsInitialized = true;
+        Revision++;
     }
 
     private void AssignRandomMissions(
@@ -194,6 +204,7 @@ public class MissionSystem : NetworkBehaviour
                 state.TargetCount);
 
             Missions.Set(i, state);
+            Revision++;
 
             return true;
         }
@@ -228,6 +239,7 @@ public class MissionSystem : NetworkBehaviour
 
         ClearMissions();
         IsInitialized = false;
+        Revision++;
     }
 
     private void ClearMissions()
