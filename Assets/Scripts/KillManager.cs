@@ -96,11 +96,12 @@ namespace LockdownProtocol.Networking
             }
 
             // 6. 미션 완료 확인
-            if (missionSystem != null && !missionSystem.IsPersonalMissionComplete(Object.InputAuthority))
-            {
-                RPC_KillFailed(Object.InputAuthority, "미션 미완료");
-                return;
-            }
+            // 현우가 미션 시스템 재구성 사유로 주석 처리했음
+            //if (missionSystem != null && !missionSystem.IsPersonalMissionComplete(Object.InputAuthority))
+            //{
+            //    RPC_KillFailed(Object.InputAuthority, "미션 미완료");
+            //    return;
+            //}
 
             // ---- 살인 승인 ----
             targetHealth.Kill(Object.InputAuthority);
