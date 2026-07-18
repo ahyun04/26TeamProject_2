@@ -1,13 +1,17 @@
 using Fusion;
+using Fusion.Addons.SimpleKCC;
 using UnityEngine;
 
 namespace LockdownProtocol.Networking
 {
     /// <summary>
-    /// 1인칭 카메라 관리. 이 클라이언트가 실제로 조종하는 캐릭터(Input Authority)의 카메라만 활성화한다.
-    /// 좌우 시점(Yaw)은 PlayerMovement가 NetworkInputData를 통해 캐릭터 몸통 회전으로 이미 처리하므로,
-    /// 이 클래스는 상하 시점(Pitch)만 담당한다. Pitch는 순수 로컬 연출이라 네트워크 전송하지 않는다.
+    /// 1인칭 카메라 관리 (Simple KCC 기반).
+    ///
+    /// 이전 버전은 Pitch를 직접 마우스 입력에서 계산했지만, 이제는 PlayerMovement가
+    /// AddLookRotation()으로 KCC에 넘긴 Pitch/Yaw 값을 KCC.GetLookRotation()으로 읽어와서
+    /// 그대로 카메라 회전에 반영한다. 즉 이 클래스는 "값을 계산"하지 않고 "KCC가 계산한 값을 반영"만 한다.
     /// </summary>
+    [RequireComponent(typeof(SimpleKCC))]
     [RequireComponent(typeof(NetworkObject))]
     public class PlayerCameraController : NetworkBehaviour
     {
@@ -16,20 +20,14 @@ namespace LockdownProtocol.Networking
         [SerializeField] private AudioListener audioListener;
         [SerializeField] private Transform cameraPivot; // 머리 위치, Pitch 회전축
 
-        [Header("Look Settings")]
-        [SerializeField] private float pitchSensitivity = 2f;
-        [SerializeField] private float minPitch = -80f;
-        [SerializeField] private float maxPitch = 80f;
-
-        private float _pitch;
+        private SimpleKCC _kcc;
 
         public override void Spawned()
         {
+            _kcc = GetComponent<SimpleKCC>();
+
             bool isLocalPlayer = Object.HasInputAuthority;
 
-            // 로컬 플레이어(내가 조종하는 캐릭터)만 카메라/오디오 리스너를 켠다.
-            // 다른 클라이언트의 캐릭터까지 카메라를 켜두면 씬에 활성 카메라와 AudioListener가
-            // 여러 개 존재하게 되어 렌더링/오디오가 뒤섞인다.
             playerCamera.gameObject.SetActive(isLocalPlayer);
             if (audioListener != null)
                 audioListener.enabled = isLocalPlayer;
@@ -41,14 +39,17 @@ namespace LockdownProtocol.Networking
             }
         }
 
-        private void Update()
+        private void LateUpdate()
         {
-            if (!Object.HasInputAuthority) return;
+            // LateUpdate를 쓰는 이유: KCC는 Render() 콜백에서 매 렌더 프레임마다 보간된 위치/회전을
+            // 먼저 갱신하는데, LateUpdate는 그 이후에 실행되므로 최신 보간 결과를 반영할 수 있다.
+            // (Fusion 공식 Simple KCC 샘플과 동일한 패턴)
+            if (Object == null || !Object.HasInputAuthority) return;
 
-            float mouseY = Input.GetAxisRaw("Mouse Y") * pitchSensitivity;
-            _pitch = Mathf.Clamp(_pitch - mouseY, minPitch, maxPitch);
-
-            cameraPivot.localRotation = Quaternion.Euler(_pitch, 0f, 0f);
+            // KCC에 이미 누적된 Pitch/Yaw 중 Pitch만 꺼내와 카메라 피벗에 반영한다.
+            // Yaw는 PlayerMovement가 이미 캐릭터 몸통(transform) 회전에 반영해뒀으므로 여기선 필요 없다.
+            Vector2 pitchRotation = _kcc.GetLookRotation(true, false);
+            cameraPivot.localRotation = Quaternion.Euler(pitchRotation);
         }
     }
 }
