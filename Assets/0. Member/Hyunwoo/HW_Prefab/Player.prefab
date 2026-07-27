@@ -101,31 +101,31 @@ MonoBehaviour:
   m_Script: {fileID: -1869825851, guid: 977dbcf975465374990f471e1497f563, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _stateAuthorityChangeErrorCorrectionDelta: 0
+  _stateAuthorityChangeErrorCorrectionDelta: 1
   _settings:
     Shape: 1
     IsTrigger: 0
-    Radius: 0.5
-    Height: 1.8
-    Extent: 0.035
+    Radius: 0.3
+    Height: 1.4
+    Extent: 0.05
     ColliderLayer: 0
     CollisionLayerMask:
       serializedVersion: 2
       m_Bits: 1
     ProxyInterpolationMode: 0
-    MaxPenetrationSteps: 8
+    MaxPenetrationSteps: 12
     CCDRadiusMultiplier: 0.75
     AntiJitterDistance: {x: 0.025, y: 0.01}
     CompressNetworkPosition: 0
     ForcePredictedLookRotation: 0
-    StepHeight: 0.5
-    StepDepth: 0.2
+    StepHeight: 0.3
+    StepDepth: 0.1
     StepSpeed: 1
-    StepMinPushBack: 0.5
+    StepMinPushBack: 0.7
     StepGroundCheckRadiusScale: 0.5
     StepRequireGroundTarget: 0
-    SnapDistance: 0.25
-    SnapSpeed: 4
+    SnapDistance: 0.1
+    SnapSpeed: 1
 --- !u!95 &3474993063057965012
 Animator:
   serializedVersion: 5
@@ -159,9 +159,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f0e5cd63e270eb449ba251e55c2cbf98, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  walkSpeed: 4
-  sprintSpeed: 6
-  crouchSpeed: 2
+  walkSpeed: 3
+  sprintSpeed: 5
+  crouchSpeed: 1.5
   jumpImpulseForce: 3
   minimumPitch: -80
   maximumPitch: 80
@@ -348,7 +348,7 @@ Transform:
   m_GameObject: {fileID: 7133201011640763965}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1.3, z: 0.5}
+  m_LocalPosition: {x: 0, y: 1.3, z: 0.3}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -373,7 +373,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: f54722e8212df164bb7dfe2ff99c8a8f, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0
+      value: -0.1
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: f54722e8212df164bb7dfe2ff99c8a8f, type: 3}
       propertyPath: m_LocalRotation.w

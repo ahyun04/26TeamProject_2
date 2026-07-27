@@ -10,13 +10,13 @@ public class PlayerAnimation : NetworkBehaviour
     [Header("애니메이션 설정")]
     [SerializeField] private float speedDampTime = 0.1f;
 
-    private static readonly int MoveXHash =
-        Animator.StringToHash("MoveX");
+    private static readonly int MoveXHash = Animator.StringToHash("MoveX");
 
-    private static readonly int MoveYHash =
-        Animator.StringToHash("MoveY");
+    private static readonly int MoveYHash = Animator.StringToHash("MoveY");
 
-    private static readonly int ZActionHash = Animator.StringToHash("ZAction");
+    private static readonly int IsGroundedHash = Animator.StringToHash("IsGrounded");
+
+    private static readonly int IsThumbsUp = Animator.StringToHash("IsThumbsUp");
 
     private void Awake()
     {
@@ -33,7 +33,7 @@ public class PlayerAnimation : NetworkBehaviour
             return;
 
         if (Input.GetKeyDown(KeyCode.Z))
-            animator.SetTrigger(ZActionHash);
+            animator.SetTrigger(IsThumbsUp);
     }
 
     public override void Render()
@@ -45,5 +45,6 @@ public class PlayerAnimation : NetworkBehaviour
 
         animator.SetFloat(MoveXHash, localVelocity.x, speedDampTime, Time.deltaTime);
         animator.SetFloat(MoveYHash, localVelocity.y, speedDampTime, Time.deltaTime);
+        animator.SetBool(IsGroundedHash, playerMovement.IsGrounded);
     }
 }
