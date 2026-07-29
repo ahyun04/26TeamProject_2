@@ -16,6 +16,7 @@ GameObject:
   - component: {fileID: 6973550270493207715}
   - component: {fileID: 1574249280902531591}
   - component: {fileID: 8266630481436026970}
+  - component: {fileID: 573913746281326121}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -61,6 +62,7 @@ MonoBehaviour:
   - {fileID: 6973550270493207715}
   - {fileID: 1574249280902531591}
   - {fileID: 8266630481436026970}
+  - {fileID: 573913746281326121}
   ForceRemoteRenderTimeframe: 0
 --- !u!54 &5758612769849293622
 Rigidbody:
@@ -195,6 +197,23 @@ MonoBehaviour:
   playerCamera: {fileID: 5081197394923011804}
   audioListener: {fileID: 0}
   cameraPivot: {fileID: 8036499726057783225}
+--- !u!114 &573913746281326121
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1265554726670306911}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 55bf76dff46b97f45b53b8cb7ef5528d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playerCamera: {fileID: 5081197394923011804}
+  detectDistance: 2
+  missionLayer:
+    serializedVersion: 2
+    m_Bits: 64
 --- !u!1 &7105434541691375249
 GameObject:
   m_ObjectHideFlags: 0
@@ -302,7 +321,7 @@ MonoBehaviour:
     m_Bits: 1
   m_VolumeTrigger: {fileID: 0}
   m_VolumeFrameworkUpdateModeOption: 2
-  m_RenderPostProcessing: 0
+  m_RenderPostProcessing: 1
   m_Antialiasing: 0
   m_AntialiasingQuality: 2
   m_StopNaN: 0
