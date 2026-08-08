@@ -53,9 +53,14 @@ namespace LockdownProtocol.Networking
                 return;
             }
 
-            // NetworkRunner는 NetworkObject가 아니라 일반 컴포넌트이므로 Instantiate()로 생성해도 무방하다.
-            // (Runner.Spawn()의 대상은 NetworkObject를 가진 프리팹뿐이며, Runner 자신은 그 규칙의 예외다.)
-            _runner = gameObject.AddComponent<NetworkRunner>();
+            // FusionVoiceClient에 [RequireComponent(typeof(NetworkRunner))]가 있어서,
+            // Voice 연동 컴포넌트를 붙이는 순간 에디터가 이미 NetworkRunner를 미리 추가해뒀을 수 있다.
+            // 그런 경우 AddComponent()로 또 추가하면 중복 컴포넌트 문제가 생기므로, 먼저 있는지 확인한다.
+            _runner = GetComponent<NetworkRunner>();
+            if (_runner == null)
+            {
+                _runner = gameObject.AddComponent<NetworkRunner>();
+            }
             _runner.ProvideInput = true; // 이 클라이언트가 입력을 Fusion에 제공하도록 설정 (다음 단계 PlayerInputHandler와 연결됨)
 
             var sceneManager = gameObject.AddComponent<NetworkSceneManagerDefault>();

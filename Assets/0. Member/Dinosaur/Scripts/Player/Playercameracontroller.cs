@@ -22,6 +22,14 @@ namespace LockdownProtocol.Networking
 
         private SimpleKCC _kcc;
 
+        /// <summary>
+        /// 이 클라이언트의 로컬 카메라 위치를 다른 시스템(음성 거리 감쇠 등)이 참조할 수 있게 노출.
+        /// static인 이유: "지금 이 클라이언트의 귀가 어디 있는가"는 오브젝트 하나당 값이 아니라
+        /// 클라이언트 전체에 딱 하나만 존재하는 값이라서다. 로컬 플레이어가 스폰될 때 설정되고,
+        /// 디스폰 시 정리한다.
+        /// </summary>
+        public static Transform LocalListenerTransform { get; private set; }
+
         public override void Spawned()
         {
             _kcc = GetComponent<SimpleKCC>();
@@ -36,6 +44,15 @@ namespace LockdownProtocol.Networking
             {
                 Cursor.lockState = CursorLockMode.Locked;
                 Cursor.visible = false;
+                LocalListenerTransform = playerCamera.transform;
+            }
+        }
+
+        public override void Despawned(NetworkRunner runner, bool hasState)
+        {
+            if (Object != null && Object.HasInputAuthority && LocalListenerTransform == playerCamera.transform)
+            {
+                LocalListenerTransform = null;
             }
         }
 
