@@ -38,12 +38,14 @@ public class PlayerMissionDetector : NetworkBehaviour
 
         MissionPrompt target = hit.collider.GetComponentInParent<MissionPrompt>();
         ValveMission valve = hit.collider.GetComponentInParent<ValveMission>();
+        GeneratorButton button = hit.collider.GetComponentInParent<GeneratorButton>();
 
         if (activeValve != null && activeValve != valve)
             StopValve();
 
         SetTarget(target);
 
+        // 밸브 - F키를 누르고 있는 동안 회전
         if (Input.GetKeyDown(KeyCode.F) && valve != null)
         {
             activeValve = valve;
@@ -52,6 +54,10 @@ public class PlayerMissionDetector : NetworkBehaviour
 
         if (Input.GetKeyUp(KeyCode.F))
             StopValve();
+
+        // 발전기 버튼 - 마우스 왼쪽 클릭
+        if (Input.GetMouseButtonDown(0) && button != null)
+            button.Press();
     }
 
     private void SetTarget(MissionPrompt newTarget)
