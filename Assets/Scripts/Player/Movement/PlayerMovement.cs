@@ -12,7 +12,7 @@ public class PlayerMovement : NetworkBehaviour
     [SerializeField] private float crouchSpeed = 2f;
 
     [Header("점프")]
-    [SerializeField] private float jumpImpulseForce = 3f;
+    [SerializeField] private float jumpImpulseForce = 5f;
 
     [Header("시점 회전")]
     [SerializeField] private float minimumPitch = -80f;

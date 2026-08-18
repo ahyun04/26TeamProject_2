@@ -33,6 +33,9 @@ public class LobbyNetworkManager : MonoBehaviour
 
         runner = GetComponent<NetworkRunner>();
         sceneManager = GetComponent<NetworkSceneManagerDefault>();
+
+        // 이 클라이언트가 Fusion에 입력을 전달하도록 설정
+        runner.ProvideInput = true;
     }
 
 
