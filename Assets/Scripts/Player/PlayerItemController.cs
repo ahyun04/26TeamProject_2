@@ -1,103 +1,354 @@
 using Fusion;
 using UnityEngine;
 
+/// <summary>
+/// 플레이어의 아이템 장착, 사용, 1인칭 언제 무엇을 보여줄지
+/// </summary>
 public class PlayerItemController : NetworkBehaviour
 {
-    [Header("감지")]
-    [SerializeField] private Camera playerCamera;
-    [SerializeField] private float pickupDistance = 2f;
-    [SerializeField] private LayerMask itemLayer;
+    [Header("참조")]
+    [SerializeField] private PlayerTargetDetector targetDetector;
+    [SerializeField] private PlayerFirstPersonItemView firstPersonItemView;
 
-    [Header("던지기")]
-    [SerializeField] private float throwForce = 8f;
+    [Header("서버 검증")]
+    [SerializeField] private float maxInteractDistance = 3f;
 
-    private void Update()
+    // 현재 플레이어가 장착하고 있는 네트워크 아이템
+    [Networked, OnChangedRender(nameof(OnCurrentItemChanged))]
+    public NetworkObject CurrentItemObject { get; private set; }
+
+    // 현재 아이템이 Target 변화에 반응하는 기능을 가지고 있을 경우 저장
+    private IItemTargetHandler targetHandler;
+
+
+    public override void Spawned()
     {
-        // 내 캐릭터만 마우스 입력 가능 
         if (!HasInputAuthority)
             return;
 
-        // 우클릭 = 잡기
-        if (Input.GetMouseButtonDown(1))
+        if (targetDetector == null)
+            targetDetector = GetComponent<PlayerTargetDetector>();
+
+        if (firstPersonItemView == null)
+            firstPersonItemView = GetComponent<PlayerFirstPersonItemView>();
+
+        if (targetDetector == null)
         {
-            TryPickup();
+            Debug.LogError("[PlayerItemController] PlayerTargetDetector가 없습니다.");
+            return;
         }
 
-        // 좌클릭 = 던지기
-        if (Input.GetMouseButtonDown(0))
+        targetDetector.TargetChanged += OnTargetChanged;
+
+        // Spawn 직후 현재 장착 상태를 직접 한 번 적용
+        RefreshCurrentItem();
+    }
+
+
+    public override void Despawned(NetworkRunner runner, bool hasState)
+    {
+        if (targetDetector != null)
+            targetDetector.TargetChanged -= OnTargetChanged;
+
+        targetHandler?.ClearLocalTarget();
+
+        firstPersonItemView?.Clear();
+
+        targetHandler = null;
+    }
+
+
+    private void Update()
+    {
+        if (!HasInputAuthority)
+            return;
+
+        HandleItemInput();
+    }
+
+
+    /// <summary>
+    /// 아이템 관련 로컬 입력 처리
+    /// </summary>
+    private void HandleItemInput()
+    {
+        bool leftDown = Input.GetMouseButtonDown(0);
+        bool rightDown = Input.GetMouseButtonDown(1);
+
+        // 아무것도 들고 있지 않을 때 좌클릭 = 장착
+        if (leftDown && CurrentItemObject == null)
         {
-            RPC_TryThrow(playerCamera.transform.forward);
+            TryEquipTargetItem();
+            return;
+        }
+
+        // 아이템을 들고 있을 때 우클릭 = 즉시 사용
+        if (rightDown && CurrentItemObject != null)
+        {
+            TryUseCurrentItem();
         }
     }
 
 
-    private void TryPickup()
+    /// <summary>
+    /// 현재 바라보고 있는 아이템 장착 시도
+    /// </summary>
+    private void TryEquipTargetItem()
     {
-        Ray ray = new Ray(
-            playerCamera.transform.position,
-            playerCamera.transform.forward
-        );
-
-        if (!Physics.Raycast(ray, out RaycastHit hit, pickupDistance, itemLayer))
+        if (targetDetector == null)
             return;
 
-
-        NetworkItem item =
-            hit.collider.GetComponentInParent<NetworkItem>();
-
-        if (item == null)
+        if (!(targetDetector.CurrentTarget is ItemBase item))
             return;
 
-        RPC_TryPickup(item.Object);
+        if (item.TargetObject == null)
+            return;
+
+        RequestEquipItem(item.TargetObject);
     }
 
 
-    // 플레이어 → 호스트에게 잡기 요청
-    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
-    private void RPC_TryPickup(NetworkObject itemObject)
+    /// <summary>
+    /// 아이템 장착을 Host에게 요청
+    /// </summary>
+    public void RequestEquipItem(NetworkObject itemObject)
     {
+        if (!HasInputAuthority)
+            return;
+
         if (itemObject == null)
             return;
 
-        NetworkItem item =
-            itemObject.GetComponent<NetworkItem>();
+        RPC_RequestEquipItem(itemObject.Id);
+    }
+
+
+    /// <summary>
+    /// 현재 아이템 장착 해제를 Host에게 요청
+    /// </summary>
+    public void RequestUnequipItem()
+    {
+        if (!HasInputAuthority)
+            return;
+
+        RPC_RequestUnequipItem();
+    }
+
+
+    /// <summary>
+    /// 현재 아이템 기능 사용 시도
+    /// </summary>
+    private void TryUseCurrentItem()
+    {
+        if (CurrentItemObject == null)
+            return;
+
+        if (!HasCurrentItemUseHandler())
+            return;
+
+        ITargetable target =
+            targetDetector != null
+                ? targetDetector.DetectNow()
+                : null;
+
+        NetworkId targetId = default;
+
+        if (target != null &&
+            target.TargetObject != null)
+        {
+            targetId = target.TargetObject.Id;
+        }
+
+        RPC_RequestUseItem(targetId);
+    }
+
+
+    /// <summary>
+    /// Host가 아이템 장착 요청 검증
+    /// </summary>
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    private void RPC_RequestEquipItem(NetworkId itemId)
+    {
+        if (CurrentItemObject != null)
+            return;
+
+        if (!Runner.TryFindObject(itemId, out NetworkObject itemObject))
+            return;
+
+        ItemBase item =
+            itemObject.GetComponentInChildren<ItemBase>(true);
 
         if (item == null)
             return;
 
-        // 이미 누군가 들고 있음
-        if (item.IsHeld)
+        if (!IsWithinInteractDistance(itemObject))
             return;
 
-        // 너무 먼 거리에서 해킹처럼 잡는 것 방지
-        float distance =
-            Vector3.Distance(
-                transform.position,
-                item.transform.position
-            );
-
-        if (distance > pickupDistance + 0.5f)
+        if (!item.TryEquip(Object))
             return;
 
-        item.Pickup(Object);
+        CurrentItemObject = itemObject;
     }
 
 
-    // 플레이어 → 호스트에게 던지기 요청
+    /// <summary>
+    /// Host가 장착 해제
+    /// </summary>
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
-    private void RPC_TryThrow(Vector3 direction)
+    private void RPC_RequestUnequipItem()
     {
-        NetworkItem[] items =
-            FindObjectsOfType<NetworkItem>();
+        if (CurrentItemObject == null)
+            return;
 
-        foreach (NetworkItem item in items)
+        ItemBase item =
+        CurrentItemObject.GetComponentInChildren<ItemBase>(true);
+
+        if (item != null)
+            item.Unequip();
+
+        CurrentItemObject = null;
+    }
+
+
+    /// <summary>
+    /// Host가 현재 아이템 사용 요청 검증 후 실행
+    /// </summary>
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority, TickAligned = false)]
+    private void RPC_RequestUseItem(NetworkId targetId)
+    {
+        if (CurrentItemObject == null)
+            return;
+
+        NetworkObject targetObject = null;
+
+        if (targetId != default)
         {
-            // 내가 들고 있는 물건 발견
-            if (item.Holder == Object)
-            {
-                item.Throw(direction, throwForce);
+            if (!Runner.TryFindObject(targetId, out targetObject))
                 return;
-            }
+
+            if (!IsWithinInteractDistance(targetObject))
+                return;
         }
+
+        IItemUseHandler useHandler =
+            FindInterface<IItemUseHandler>(CurrentItemObject.gameObject);
+
+        if (useHandler == null)
+            return;
+
+        useHandler.UseAsStateAuthority(targetObject);
+    }
+
+
+    /// <summary>
+    /// 현재 아이템에 우클릭 기능이 있는지 확인
+    /// </summary>
+    private bool HasCurrentItemUseHandler()
+    {
+        if (CurrentItemObject == null)
+            return false;
+
+        IItemUseHandler useHandler =
+            FindInterface<IItemUseHandler>(CurrentItemObject.gameObject);
+
+        return useHandler != null;
+    }
+
+
+    /// <summary>
+    /// CurrentItemObject가 변경되면 로컬 표현 갱신
+    /// </summary>
+    private void OnCurrentItemChanged()
+    {
+        if (!HasInputAuthority)
+            return;
+
+        RefreshCurrentItem();
+    }
+
+
+    /// <summary>
+    /// 현재 장착 아이템의 로컬 기능과 1인칭 모델 갱신
+    /// </summary>
+    private void RefreshCurrentItem()
+    {
+        // 이전 아이템의 Outline 같은 로컬 효과 제거
+        targetHandler?.ClearLocalTarget();
+
+        targetHandler = null;
+
+        // 이전 1인칭 아이템 제거
+        firstPersonItemView?.Clear();
+
+        if (CurrentItemObject == null)
+            return;
+
+        ItemBase item =
+            CurrentItemObject.GetComponentInChildren<ItemBase>(true);
+
+        if (item == null)
+            return;
+
+        // 내 화면에만 1인칭 아이템 표시
+        firstPersonItemView?.Show(item.Data);
+
+        // 현재 아이템이 Target 반응 기능을 가지고 있는지 확인
+        targetHandler =
+            FindInterface<IItemTargetHandler>(
+                CurrentItemObject.gameObject
+            );
+
+        if (targetDetector == null)
+            return;
+
+        // 이미 무언가를 보고 있다면 바로 현재 아이템에 전달
+        targetHandler?.SetLocalTarget(
+            targetDetector.CurrentTarget
+        );
+    }
+
+
+    /// <summary>
+    /// 바라보는 대상이 변경되면 현재 아이템에 전달
+    /// </summary>
+    private void OnTargetChanged(ITargetable target)
+    {
+        targetHandler?.SetLocalTarget(target);
+    }
+
+
+    /// <summary>
+    /// Host에서 플레이어와 대상 사이 거리 검증
+    /// </summary>
+    private bool IsWithinInteractDistance(NetworkObject targetObject)
+    {
+        if (targetObject == null)
+            return false;
+
+        float distance =
+            Vector3.Distance(
+                transform.position,
+                targetObject.transform.position
+            );
+
+        return distance <= maxInteractDistance;
+    }
+
+
+    /// <summary>
+    /// GameObject 내부에서 특정 인터페이스 구현체 검색
+    /// </summary>
+    private T FindInterface<T>(GameObject root) where T : class
+    {
+        MonoBehaviour[] behaviours =
+            root.GetComponentsInChildren<MonoBehaviour>(true);
+
+        foreach (MonoBehaviour behaviour in behaviours)
+        {
+            if (behaviour is T result)
+                return result;
+        }
+
+        return null;
     }
 }

@@ -16,9 +16,9 @@ GameObject:
   - component: {fileID: 6973550270493207715}
   - component: {fileID: 1574249280902531591}
   - component: {fileID: 8266630481436026970}
-  - component: {fileID: 573913746281326121}
   - component: {fileID: -2949138451040887277}
-  - component: {fileID: 1002456280809833624}
+  - component: {fileID: 4904234193367178779}
+  - component: {fileID: 1943323556666587649}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -64,9 +64,8 @@ MonoBehaviour:
   - {fileID: 6973550270493207715}
   - {fileID: 1574249280902531591}
   - {fileID: 8266630481436026970}
-  - {fileID: 573913746281326121}
   - {fileID: -2949138451040887277}
-  - {fileID: 1002456280809833624}
+  - {fileID: 4904234193367178779}
   ForceRemoteRenderTimeframe: 0
 --- !u!54 &5758612769849293622
 Rigidbody:
@@ -201,23 +200,6 @@ MonoBehaviour:
   playerCamera: {fileID: 5081197394923011804}
   audioListener: {fileID: 0}
   cameraPivot: {fileID: 8036499726057783225}
---- !u!114 &573913746281326121
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1265554726670306911}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 55bf76dff46b97f45b53b8cb7ef5528d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  playerCamera: {fileID: 5081197394923011804}
-  detectDistance: 2
-  missionLayer:
-    serializedVersion: 2
-    m_Bits: 64
 --- !u!114 &-2949138451040887277
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -230,13 +212,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 605daa5daa8779a4c9dcddd73d23449e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  playerCamera: {fileID: 5081197394923011804}
-  pickupDistance: 2
-  itemLayer:
-    serializedVersion: 2
-    m_Bits: 256
-  throwForce: 8
---- !u!114 &1002456280809833624
+  targetDetector: {fileID: 4904234193367178779}
+  firstPersonItemView: {fileID: 0}
+  maxInteractDistance: 5
+  _CurrentItemObject: {fileID: 0}
+--- !u!114 &4904234193367178779
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -245,10 +225,27 @@ MonoBehaviour:
   m_GameObject: {fileID: 1265554726670306911}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f5988126e43baa448b03e3a99f25bbe6, type: 3}
+  m_Script: {fileID: 11500000, guid: f327dc18cb4bd8841b30460d084e162e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  handPoint: {fileID: 3367974328868241516}
+  playerCamera: {fileID: 5081197394923011804}
+  detectDistance: 2
+  targetLayer:
+    serializedVersion: 2
+    m_Bits: 64
+--- !u!114 &1943323556666587649
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1265554726670306911}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dd3b2342630271946b6c0ead51111afe, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  holdPoint: {fileID: 3367974328868241516}
 --- !u!1 &7105434541691375249
 GameObject:
   m_ObjectHideFlags: 0
@@ -420,7 +417,7 @@ GameObject:
   m_Component:
   - component: {fileID: 3367974328868241516}
   m_Layer: 0
-  m_Name: HandPoint
+  m_Name: FirstPersonHoldPoint
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
