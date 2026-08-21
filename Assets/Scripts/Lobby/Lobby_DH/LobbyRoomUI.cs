@@ -38,12 +38,14 @@ namespace LockdownProtocol.Lobby
         [SerializeField] private Button readyButton;
         [SerializeField] private TMP_Text readyButtonLabel;
         [SerializeField] private Button startGameButton;
+        [SerializeField] private Button leaveRoomButton; // 기획서 목업에 상세패널 쪽에도 방나가기가 있어서 추가 - 실제 확인창은 LobbyMiniHudUI 걸 재사용
 
         [Header("Feedback")]
         [SerializeField] private TMP_Text startFailText;
 
         private readonly List<PlayerListEntryUI> _spawnedEntries = new List<PlayerListEntryUI>();
         private LobbyGameStartManager _gameStartManager;
+        private LobbyMiniHudUI _miniHud;
         private bool _isOpen;
 
         private void OnEnable()
@@ -54,8 +56,11 @@ namespace LockdownProtocol.Lobby
                 _gameStartManager.StartFailed += HandleStartFailed;
             }
 
+            _miniHud = FindFirstObjectByType<LobbyMiniHudUI>();
+
             readyButton.onClick.AddListener(OnReadyClicked);
             startGameButton.onClick.AddListener(OnStartGameClicked);
+            if (leaveRoomButton != null) leaveRoomButton.onClick.AddListener(OnLeaveClicked);
 
             if (startFailText != null) startFailText.text = string.Empty;
 
@@ -72,6 +77,7 @@ namespace LockdownProtocol.Lobby
 
             readyButton.onClick.RemoveListener(OnReadyClicked);
             startGameButton.onClick.RemoveListener(OnStartGameClicked);
+            if (leaveRoomButton != null) leaveRoomButton.onClick.RemoveListener(OnLeaveClicked);
         }
 
         private void Update()
@@ -201,6 +207,12 @@ namespace LockdownProtocol.Lobby
         private void OnStartGameClicked()
         {
             _gameStartManager?.RPC_RequestStartGame();
+        }
+
+        private void OnLeaveClicked()
+        {
+            // 확인창은 LobbyMiniHudUI가 들고 있는 걸 그대로 재사용 (하나만 있으면 됨)
+            _miniHud?.ShowLeaveConfirm();
         }
 
         private void HandleStartFailed(LobbyGameStartManager.StartFailReason reason)

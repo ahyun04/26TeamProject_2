@@ -34,6 +34,11 @@ namespace LockdownProtocol.Networking
         private NetworkRunner _runner;
         public NetworkRunner Runner => _runner;
 
+        // StartGame()이 끝나도 씬 전환(Scene 파라미터 로딩)까지 끝났다는 보장은 없다.
+        // 씬이 아직 안 끝난 상태에서 Spawn하면 옛 씬에 만들어졌다가 전환되며 같이 사라질 수 있으므로,
+        // 실제로 OnSceneLoadDone이 불릴 때까지 스폰을 미룬다.
+        private (string roomName, int maxPlayers, bool isPrivate)? _pendingRoomManagerSpawn;
+
         /// <summary>
         /// 다른 스크립트(예: PlayerSpawner, LobbyPlayerSpawner)가 구독해서
         /// 플레이어 스폰 등을 처리할 수 있도록 접속 이벤트를 외부로 노출한다.
@@ -57,7 +62,9 @@ namespace LockdownProtocol.Networking
 
             if (result.Ok)
             {
-                SpawnRoomManager(roomName, maxPlayers, isPrivate);
+                // 씬 전환이 끝난 뒤(OnSceneLoadDone)에 실제로 Spawn한다 - StartGame() 완료가
+                // 곧 씬 로딩 완료를 의미하지 않는다.
+                _pendingRoomManagerSpawn = (roomName, maxPlayers, isPrivate);
             }
 
             return result;
@@ -206,7 +213,16 @@ namespace LockdownProtocol.Networking
         public void OnHostMigration(NetworkRunner runner, HostMigrationToken hostMigrationToken) { }
         public void OnReliableDataReceived(NetworkRunner runner, PlayerRef player, ReliableKey key, ArraySegment<byte> data) { }
         public void OnReliableDataProgress(NetworkRunner runner, PlayerRef player, ReliableKey key, float progress) { }
-        public void OnSceneLoadDone(NetworkRunner runner) { }
+        public void OnSceneLoadDone(NetworkRunner runner)
+        {
+            if (_pendingRoomManagerSpawn == null) return;
+            if (!runner.IsServer) return; // 방장(Host)만 RoomManager를 Spawn한다
+
+            var (roomName, maxPlayers, isPrivate) = _pendingRoomManagerSpawn.Value;
+            _pendingRoomManagerSpawn = null;
+
+            SpawnRoomManager(roomName, maxPlayers, isPrivate);
+        }
         public void OnSceneLoadStart(NetworkRunner runner) { }
         public void OnObjectExitAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
         public void OnObjectEnterAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
