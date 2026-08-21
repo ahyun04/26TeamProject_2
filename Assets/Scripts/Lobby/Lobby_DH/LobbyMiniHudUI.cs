@@ -13,7 +13,10 @@ namespace LockdownProtocol.Lobby
     public class LobbyMiniHudUI : MonoBehaviour
     {
         [Header("Room Info")]
-        [SerializeField] private TMP_Text roomSummaryText; // 예: "Room: MyRoom  4/6"
+        [Tooltip("좌측: 방 이름만 표시")]
+        [SerializeField] private TMP_Text roomNameText;
+        [Tooltip("우상단: 인원수만 표시 (예: 1 / 6)")]
+        [SerializeField] private TMP_Text playerCountText;
 
         [Header("Mic")]
         [SerializeField] private Image micIcon;
@@ -43,17 +46,26 @@ namespace LockdownProtocol.Lobby
 
         private void Update()
         {
-            RefreshRoomSummary();
+            RefreshRoomInfo();
             RefreshMicIcon();
         }
 
-        private void RefreshRoomSummary()
+        private void RefreshRoomInfo()
         {
-            if (roomSummaryText == null || RoomManager.Instance == null) return;
+            if (RoomManager.Instance == null) return;
 
             var room = RoomManager.Instance;
-            var players = FindObjectsByType<LobbyPlayerController>(FindObjectsSortMode.None);
-            roomSummaryText.text = $"Room : {room.RoomName}  {players.Length} / {room.MaxPlayerCount}";
+
+            if (roomNameText != null)
+            {
+                roomNameText.text = $"Room : {room.RoomName}";
+            }
+
+            if (playerCountText != null)
+            {
+                var players = FindObjectsByType<LobbyPlayerController>(FindObjectsSortMode.None);
+                playerCountText.text = $"{players.Length} / {room.MaxPlayerCount}";
+            }
         }
 
         private void RefreshMicIcon()
@@ -83,8 +95,13 @@ namespace LockdownProtocol.Lobby
         }
 
         // ================== 방 나가기 ==================
+        // DetailPanel(LobbyRoomUI)의 나가기 버튼도 여기 있는 확인창을 그대로 재사용한다
+        // (같은 액션에 확인창을 두 벌 만들 필요 없음 - 기획서 목업엔 방나가기가 HUD와
+        // 상세패널 둘 다에 있지만, 확인창 로직은 하나만 있으면 됨).
 
-        private void OnLeaveClicked()
+        private void OnLeaveClicked() => ShowLeaveConfirm();
+
+        public void ShowLeaveConfirm()
         {
             if (leaveConfirmPanel != null)
             {
