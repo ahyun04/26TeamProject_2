@@ -1,6 +1,6 @@
 using Fusion;
 using UnityEngine;
-using HyunWoo;
+
 namespace LockdownProtocol.Networking
 {
     [RequireComponent(typeof(PlayerHealth))]
@@ -10,8 +10,9 @@ namespace LockdownProtocol.Networking
         [SerializeField] private float killRange = 2f;
         [SerializeField] private float killCooldownSeconds = 15f;
 
-        [Header("Dependencies")]
-        [SerializeField] private MissionSystem missionSystem;
+        // 현우가 주석처리함. 이유: MissionSystem 새로 만들기 위함
+        //[Header("Dependencies")]
+        //[SerializeField] private MissionSystem missionSystem;
 
         // 역할 배정 시스템 나오면 교체
         [Networked] public NetworkBool IsMurderer { get; set; }
