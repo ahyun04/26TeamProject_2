@@ -18,6 +18,7 @@ GameObject:
   - component: {fileID: 8266630481436026970}
   - component: {fileID: -2949138451040887277}
   - component: {fileID: 4904234193367178779}
+  - component: {fileID: 5913373588544668728}
   - component: {fileID: 1943323556666587649}
   m_Layer: 0
   m_Name: Player
@@ -66,6 +67,7 @@ MonoBehaviour:
   - {fileID: 8266630481436026970}
   - {fileID: -2949138451040887277}
   - {fileID: 4904234193367178779}
+  - {fileID: 5913373588544668728}
   ForceRemoteRenderTimeframe: 0
 --- !u!54 &5758612769849293622
 Rigidbody:
@@ -233,6 +235,19 @@ MonoBehaviour:
   targetLayer:
     serializedVersion: 2
     m_Bits: 64
+--- !u!114 &5913373588544668728
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1265554726670306911}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 30172dbd7894509469270aa4596852b1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  targetDetector: {fileID: 4904234193367178779}
 --- !u!114 &1943323556666587649
 MonoBehaviour:
   m_ObjectHideFlags: 0

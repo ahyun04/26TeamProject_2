@@ -765,7 +765,7 @@ PrefabInstance:
       addedObject: {fileID: 8985491007865158395}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 4f72e5f6c43962549955baddfa1c5829, type: 3}
       insertIndex: 3
-      addedObject: {fileID: 1108908074959203690}
+      addedObject: {fileID: 8609744635173849060}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 4f72e5f6c43962549955baddfa1c5829, type: 3}
       insertIndex: -1
       addedObject: {fileID: 5931687055528845079}
@@ -811,13 +811,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9b77861ff0dd212498cf6c35c59e34f5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  missionData: {fileID: 11400000, guid: de6652a23b5f22c48bc29e847a2135cc, type: 2}
   guideText: {fileID: 4825915133508130127}
   gaugeFill: {fileID: 6191191585597868387}
   completeText: {fileID: 1490942682217326442}
   fillDuration: 3
   waitingText: "\uBC1C\uC804\uAE30\uB97C \uC791\uB3D9\uC2DC\uD0A4\uC138\uC694."
   runningText: "\uBC1C\uC804\uAE30 \uC791\uB3D9 \uC911..."
---- !u!114 &1108908074959203690
+--- !u!114 &8609744635173849060
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -826,12 +827,12 @@ MonoBehaviour:
   m_GameObject: {fileID: 6342511335041983900}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b3731b9b038e46c4f843859f3f094869, type: 3}
+  m_Script: {fileID: 11500000, guid: a886173a8d6a3534ca2ee4644977f24f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   mission: {fileID: 8985491007865158395}
   buttonVisual: {fileID: 6003000164365680422}
-  pressedOffset: {x: 0, y: 0, z: 0.04}
+  pressedOffset: {x: 0, y: 0, z: -0.1}
   pressTime: 0.1
   returnTime: 0.1
 --- !u!65 &5931687055528845079

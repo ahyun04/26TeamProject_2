@@ -13,7 +13,7 @@ public class LobbyNetworkManager : MonoBehaviour
 
     // BuildSetting 에 씬 번호임 (변경하면 이것도 수정해야함)
     private int lobbySceneIndex = 1;
-    private int standBySceneIndex = 2;
+    private int standBySceneIndex = 5;
     
     private int maxPlayers = 8;
 

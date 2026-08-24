@@ -18,59 +18,68 @@ public class GeneratorMission : MissionMiniGameBase
     [Networked] private float Progress { get; set; }
     [Networked] private NetworkBool IsRunning { get; set; }
 
+
     public override void Spawned()
     {
-        if (completeText != null)
-            completeText.gameObject.SetActive(false);
-
         UpdateUI();
     }
 
+
     public override void FixedUpdateNetwork()
     {
-        if (!Object.HasStateAuthority)
-            return;
-
-        if (!IsRunning || IsCompleted)
+        if (!Object.HasStateAuthority || !IsRunning || IsCompleted)
             return;
 
         Progress += Runner.DeltaTime / fillDuration;
 
-        if (Progress >= 1f)
-        {
-            Progress = 1f;
-            IsRunning = false;
-            Complete();
-        }
+        if (Progress < 1f)
+            return;
+
+        Progress = 1f;
+        IsRunning = false;
+
+        RequestComplete();
     }
+
 
     public override void Render()
     {
         UpdateUI();
     }
 
+
     public override void StartMission()
     {
         if (IsCompleted || IsRunning)
             return;
 
-        RPC_StartGenerator();
+        if (Object.HasStateAuthority)
+        {
+            StartGenerator();
+            return;
+        }
+
+        RPC_RequestStart();
     }
 
-    public override void StopMission()
-    {
-    }
 
     [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
-    private void RPC_StartGenerator()
+    private void RPC_RequestStart()
     {
-        if (IsCompleted || IsRunning)
+        StartGenerator();
+    }
+
+
+    private void StartGenerator()
+    {
+        if (!Object.HasStateAuthority || IsCompleted || IsRunning)
             return;
 
         Progress = 0f;
         IsRunning = true;
     }
 
+   
     private void UpdateUI()
     {
         if (gaugeFill != null)
