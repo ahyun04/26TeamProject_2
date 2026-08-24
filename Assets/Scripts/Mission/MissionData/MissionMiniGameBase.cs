@@ -77,6 +77,8 @@ public abstract class MissionMiniGameBase : NetworkBehaviour
 
         // "미션 Id의 미니게임이 끝났다" 라고 외부에 알림
         OnCompleted?.Invoke(MissionId);
+
+        Debug.Log($" ID : {MissionId} 미션 완료");
     }
 
 
