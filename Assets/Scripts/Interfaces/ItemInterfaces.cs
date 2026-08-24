@@ -7,6 +7,12 @@ public interface ITargetable
     NetworkObject TargetObject { get; }
 }
 
+// 상호작용 할 수 있는 대상
+public interface IInteractable
+{
+    void Interact();
+}
+
 
 // 현재 아이템이 우클릭으로 사용 가능한 경우
 public interface IItemUseHandler
