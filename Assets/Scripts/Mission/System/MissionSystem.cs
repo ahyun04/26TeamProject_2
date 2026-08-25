@@ -232,10 +232,16 @@ public class MissionSystem : NetworkBehaviour
         {
             MissionState state = Missions[i];
 
-            bool isShared = state.MissionType == MissionType.Shared;
-            bool isCitizen = state.RoleTarget == MissionRoleTarget.Citizen;
+            // 단체미션과 시민 개인미션만 전체 진행도에 포함한다
+            bool isShared = state.RoleTarget == MissionRoleTarget.All &&
+                            state.MissionType == MissionType.Shared;
 
-            if (!isShared && !isCitizen)
+
+            bool isCitizenPersonal = state.RoleTarget == MissionRoleTarget.Citizen &&
+                                     state.MissionType == MissionType.Personal;
+
+            // 시민 전체 진행도에 포함하지 않는 미션은 건너뜀
+            if (!isShared && !isCitizenPersonal)
                 continue;
 
             hasCitizenMission = true;
