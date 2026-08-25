@@ -24,11 +24,15 @@ public class MissionData : ScriptableObject
     [SerializeField] private string Name;               
     [SerializeField] MissionRoleTarget roleTarget;
     [SerializeField] MissionType missionType;
+
+    [Min(1)] 
     [SerializeField] private int requiredCount = 1;
 
   
 
     public int Id => id;    // 어떤 미션인가?
+
+    public string MissionName => Name;
 
     public MissionRoleTarget RoleTarget => roleTarget;  // 누가 하는가?
 

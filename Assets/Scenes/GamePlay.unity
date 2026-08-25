@@ -4982,6 +4982,101 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 1532207785404551247, guid: 171c87b961a6f34408538e17fa9c1dc6, type: 3}
   m_PrefabInstance: {fileID: 93174695}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &93476056
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 93476059}
+  - component: {fileID: 93476058}
+  - component: {fileID: 93476060}
+  - component: {fileID: 93476061}
+  m_Layer: 0
+  m_Name: MissionSystem
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &93476058
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 93476056}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  SortKey: 1854372569
+  ObjectInterest: 1
+  Flags: 262145
+  NestedObjects: []
+  NetworkedBehaviours:
+  - {fileID: 93476060}
+  - {fileID: 93476061}
+  ForceRemoteRenderTimeframe: 0
+--- !u!4 &93476059
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 93476056}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &93476060
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 93476056}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b284beb15208fd84b848b08a503806af, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  missionPool:
+  - {fileID: 11400000, guid: de6652a23b5f22c48bc29e847a2135cc, type: 2}
+  - {fileID: 11400000, guid: 920cba6c14cfe744296d07d68f9ab5e2, type: 2}
+  - {fileID: 11400000, guid: c4e7c744e479c0e42b26eb4ae99c2622, type: 2}
+  sharedMissionCount: 3
+  citizenPersonalMissionCount: 2
+  citizenPersonalActionMissionCount: 1
+  killerPersonalMissionCount: 2
+  _MissionCount: 0
+  _Initialized:
+    _value: 0
+  _CitizenMissionsCompleted:
+    _value: 0
+--- !u!114 &93476061
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 93476056}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 979377be5912a354ebabe4b18f2bf763, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  killerCount: 1
+  missionSystem: {fileID: 93476060}
+  _Initialized:
+    _value: 0
 --- !u!1001 &94518787
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -101189,7 +101284,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2096457865}
   - component: {fileID: 2096457864}
-  - component: {fileID: 2096457863}
+  - component: {fileID: 2096457866}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -101197,14 +101292,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!81 &2096457863
-AudioListener:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2096457862}
-  m_Enabled: 1
 --- !u!20 &2096457864
 Camera:
   m_ObjectHideFlags: 0
@@ -101271,6 +101358,50 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2096457866
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2096457862}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a79441f348de89743a2939f4d699eac1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_RenderShadows: 1
+  m_RequiresDepthTextureOption: 2
+  m_RequiresOpaqueTextureOption: 2
+  m_CameraType: 0
+  m_Cameras: []
+  m_RendererIndex: -1
+  m_VolumeLayerMask:
+    serializedVersion: 2
+    m_Bits: 1
+  m_VolumeTrigger: {fileID: 0}
+  m_VolumeFrameworkUpdateModeOption: 2
+  m_RenderPostProcessing: 0
+  m_Antialiasing: 0
+  m_AntialiasingQuality: 2
+  m_StopNaN: 0
+  m_Dithering: 0
+  m_ClearDepth: 1
+  m_AllowXRRendering: 1
+  m_AllowHDROutput: 1
+  m_UseScreenCoordOverride: 0
+  m_ScreenSizeOverride: {x: 0, y: 0, z: 0, w: 0}
+  m_ScreenCoordScaleBias: {x: 0, y: 0, z: 0, w: 0}
+  m_RequiresDepthTexture: 0
+  m_RequiresColorTexture: 0
+  m_Version: 2
+  m_TaaSettings:
+    m_Quality: 3
+    m_FrameInfluence: 0.1
+    m_JitterScale: 1
+    m_MipBias: 0
+    m_VarianceClampScale: 0.9
+    m_ContrastAdaptiveSharpening: 0
 --- !u!1001 &2096921976
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -102862,3 +102993,4 @@ SceneRoots:
   - {fileID: 870523759}
   - {fileID: 1281743354}
   - {fileID: 532683039}
+  - {fileID: 93476059}

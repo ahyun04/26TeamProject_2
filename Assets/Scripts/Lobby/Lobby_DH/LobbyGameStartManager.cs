@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Fusion;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace LockdownProtocol.Lobby
 {
@@ -16,6 +17,10 @@ namespace LockdownProtocol.Lobby
         [SerializeField] private float startCountdownSeconds = 3f;
 
         [Networked] private TickTimer StartCountdown { get; set; }
+
+        // 현우 추가
+        // 게임플레이 씬 전환 때문에 추가
+        [SerializeField] private int gameplaySceneIndex = 3;
 
         public enum StartFailReason
         {
@@ -44,7 +49,7 @@ namespace LockdownProtocol.Lobby
         /// InputAuthority를 갖지 않는다. RpcSources.InputAuthority로는 애초에 아무도 이 RPC를
         /// 호출할 수 없었으므로(호출 권한이 있는 InputAuthority 자체가 없음), All로 열어두고
         /// 요청자 식별은 RpcInfo.Source로 한다.</summary>
-        [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
+        [Rpc(RpcSources.All, RpcTargets.StateAuthority, HostMode = RpcHostMode.SourceIsHostPlayer)]
         public void RPC_RequestStartGame(RpcInfo info = default)
         {
             if (RoomManager.Instance == null) return;
@@ -102,6 +107,10 @@ namespace LockdownProtocol.Lobby
             Debug.Log("[LobbyGameStartManager] 게임 씬 전환 요청 (미구현) - GameManager 연결 필요");
 
             RoomManager.Instance.SetRoomState(RoomManager.RoomState.Playing);
+
+            // 현우 추가
+            // 게임플레이 씬으로 이동
+            var loadOperation = Runner.LoadScene(SceneRef.FromIndex(gameplaySceneIndex), LoadSceneMode.Single);
         }
 
         private List<LobbyPlayerController> GetAllLobbyPlayers()

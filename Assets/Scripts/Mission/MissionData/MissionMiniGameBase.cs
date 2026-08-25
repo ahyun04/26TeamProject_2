@@ -26,7 +26,7 @@ public abstract class MissionMiniGameBase : NetworkBehaviour
 
 
     // 미션 완료됐다고 다른 시스템에 알려주는 이벤트
-    public event Action<int> OnCompleted;
+    public event Action<int, PlayerRef> OnCompleted;
 
 
     public virtual void StartMission() { }  // 미션 시작
@@ -48,7 +48,7 @@ public abstract class MissionMiniGameBase : NetworkBehaviour
         // Host라면 바로 완료 요청 보냄
         if (Object.HasStateAuthority)
         {
-            Complete();
+            Complete(Runner.LocalPlayer);
             return;
         }
 
@@ -58,16 +58,16 @@ public abstract class MissionMiniGameBase : NetworkBehaviour
 
 
     [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
-    private void RPC_RequestComplete()
+    private void RPC_RequestComplete(RpcInfo info = default)
     {
-        Complete();
+        Complete(info.Source);
     }
 
 
     /// <summary>
     /// Host가 미션 완료 확정
     /// </summary>
-    private void Complete()
+    private void Complete(PlayerRef player)
     {
         if (!Object.HasStateAuthority || MissionCompleted) return;
 
@@ -76,7 +76,7 @@ public abstract class MissionMiniGameBase : NetworkBehaviour
         FinishMission();
 
         // "미션 Id의 미니게임이 끝났다" 라고 외부에 알림
-        OnCompleted?.Invoke(MissionId);
+        OnCompleted?.Invoke(MissionId, player);
 
         Debug.Log($" ID : {MissionId} 미션 완료");
     }
