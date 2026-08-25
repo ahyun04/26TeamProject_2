@@ -206,6 +206,10 @@ namespace LockdownProtocol.Lobby
 
         private void OnStartGameClicked()
         {
+            // 현우 추가 (방어 코드)
+            if (_gameStartManager == null)
+                _gameStartManager = FindFirstObjectByType<LobbyGameStartManager>();
+
             _gameStartManager?.RPC_RequestStartGame();
         }
 
