@@ -1,5 +1,13 @@
 using Fusion;
 
+public enum MissionStatus
+{
+    InProgress,
+    Completed,
+    Failed
+}
+
+
 public struct MissionState : INetworkStruct
 {
     public int MissionId;
@@ -14,7 +22,11 @@ public struct MissionState : INetworkStruct
     public int Progress;
     public int RequiredCount;
 
-    public NetworkBool IsCompleted;
+    // 현재 미션 상태
+    public MissionStatus Status;
+
+    public bool IsCompleted => Status == MissionStatus.Completed;
+    public bool IsFailed => Status == MissionStatus.Failed;
 
 
     public MissionState(int missionId, PlayerRef owner, MissionRoleTarget roleTarget, MissionType missionType, int requiredCount)
@@ -25,16 +37,17 @@ public struct MissionState : INetworkStruct
         MissionType = missionType;
         Progress = 0;
         RequiredCount = requiredCount;
-        IsCompleted = false;
+        Status = MissionStatus.InProgress;
     }
 
 
     /// <summary>
     /// 미션 진행도를 1 증가
+    /// 이미 성공하거나 실패한 미션은 변경하지 않는다
     /// </summary>
     public void AddProgress()
     {
-        if (IsCompleted)
+        if (Status != MissionStatus.InProgress)
             return;
 
         Progress++;
@@ -42,7 +55,20 @@ public struct MissionState : INetworkStruct
         if (Progress >= RequiredCount)
         {
             Progress = RequiredCount;
-            IsCompleted = true;
+            Status = MissionStatus.Completed;
         }
+    }
+
+
+    /// <summary>
+    /// 미션을 실패 상태로 변경
+    /// 한 번 실패하면 다시 진행하거나 완료할 수 없다
+    /// </summary>
+    public void Fail()
+    {
+        if (Status != MissionStatus.InProgress)
+            return;
+
+        Status = MissionStatus.Failed;
     }
 }

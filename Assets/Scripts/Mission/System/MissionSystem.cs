@@ -173,19 +173,28 @@ public class MissionSystem : NetworkBehaviour
     /// <summary>
     /// MissionMiniGameBase가 완료됐을 때 호출
     /// </summary>
-    private void OnMiniGameCompleted(int missionId, PlayerRef player)
+    private bool OnMiniGameCompleteRequested(int missionId, PlayerRef player)
     {
-        AddProgress(missionId, player);
+        return AddProgress(missionId, player);
+    }
+
+
+    /// <summary>
+    /// MissionMiniGameBase에서 PersonalAction 실패 요청을 받음
+    /// </summary>
+    private bool OnMiniGameFailed(int missionId, PlayerRef player)
+    {
+        return FailPersonalAction(missionId, player);
     }
 
 
     /// <summary>
     /// 해당 플레이어가 수행한 미션 진행도 증가
     /// </summary>
-    private void AddProgress(int missionId, PlayerRef player)
+    private bool AddProgress(int missionId, PlayerRef player)
     {
         if (!HasStateAuthority || !Initialized)
-            return;
+            return false;
 
         for (int i = 0; i < MissionCount; i++)
         {
@@ -194,14 +203,13 @@ public class MissionSystem : NetworkBehaviour
             if (state.MissionId != missionId)
                 continue;
 
-
             // 개인 미션이라면 배정받은 플레이어만 진행 가능
             if (state.MissionType != MissionType.Shared && state.Owner != player)
                 continue;
 
 
-            if (state.IsCompleted)
-                return;
+            if (state.Status != MissionStatus.InProgress)
+                return false;
 
 
             state.AddProgress();
@@ -216,8 +224,10 @@ public class MissionSystem : NetworkBehaviour
 
             CheckCitizenMissionsCompleted();
 
-            return;
+            return true;
         }
+
+        return false;
     }
 
 
@@ -264,6 +274,80 @@ public class MissionSystem : NetworkBehaviour
 
 
     /// <summary>
+    /// 시민 개인행동 미션의 완료 여부를 확인
+    /// </summary>
+    public bool IsPersonalActionCompleted(PlayerRef player)
+    {
+        if (!Initialized)
+            return false;
+
+        bool hasPersonalAction = false;
+
+        for (int i = 0; i < MissionCount; i++)
+        {
+            MissionState state = Missions[i];
+
+            if (state.Owner != player)
+                continue;
+
+            if (state.RoleTarget != MissionRoleTarget.Citizen)
+                continue;
+
+            if (state.MissionType != MissionType.PersonalAction)
+                continue;
+
+            hasPersonalAction = true;
+
+            if (!state.IsCompleted)
+                return false;
+        }
+
+        return hasPersonalAction;
+    }
+
+
+    /// <summary>
+    /// 시민 개인 행동 미션이 실패했을 때
+    /// </summary>
+    private bool FailPersonalAction(int missionId, PlayerRef player)
+    {
+        if (!HasStateAuthority || !Initialized)
+            return false;
+
+        for (int i = 0; i < MissionCount; i++)
+        {
+            MissionState state = Missions[i];
+
+            if (state.MissionId != missionId)
+                continue;
+
+            if (state.Owner != player)
+                continue;
+
+            if (state.RoleTarget != MissionRoleTarget.Citizen)
+                continue;
+
+            if (state.MissionType != MissionType.PersonalAction)
+                continue;
+
+            // 이미 성공 또는 실패했다면 결과 변경 금지
+            if (state.Status != MissionStatus.InProgress)
+                return false;
+
+            state.Fail();
+
+            Missions.Set(i, state);
+
+            Debug.Log($"PersonalAction 실패 : {missionId} / Player : {player}");
+
+            return true;
+        }
+
+        return false;
+    }
+
+
+    /// <summary>
     /// Scene에 존재하는 미션 미니게임의 완료 이벤트 구독
     /// </summary>
     private void SubscribeMiniGames()
@@ -271,7 +355,11 @@ public class MissionSystem : NetworkBehaviour
         miniGames = FindObjectsOfType<MissionMiniGameBase>(true);
 
         foreach (MissionMiniGameBase miniGame in miniGames)
-            miniGame.OnCompleted += OnMiniGameCompleted;
+        {
+            miniGame.OnCompleteRequested += OnMiniGameCompleteRequested;
+            miniGame.OnFailRequested += OnMiniGameFailed;
+        }
+            
     }
 
 
@@ -285,8 +373,12 @@ public class MissionSystem : NetworkBehaviour
 
         foreach (MissionMiniGameBase miniGame in miniGames)
         {
-            if (miniGame != null)
-                miniGame.OnCompleted -= OnMiniGameCompleted;
+            if (miniGame == null)
+                continue;
+
+            miniGame.OnCompleteRequested -= OnMiniGameCompleteRequested;
+            miniGame.OnFailRequested -= OnMiniGameFailed;
         }
     }
+
 }

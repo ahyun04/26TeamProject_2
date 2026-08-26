@@ -6,7 +6,7 @@ using UnityEngine;
 /// [ 모든 미션 미니게임이 상속하는 부모 클래스 ] 
 /// 
 /// 모든 미션 미니게임이 공통으로 가져야 하는 실행 틀과
-/// 개별 미니게임 하나의 완료를 처리
+/// 개별 미니게임 하나의 완료/실패 요청을 처리
 /// </summary>
 public abstract class MissionMiniGameBase : NetworkBehaviour
 {
@@ -24,9 +24,13 @@ public abstract class MissionMiniGameBase : NetworkBehaviour
     // 외부에서 완료 여부 확인
     public bool IsCompleted => MissionCompleted;
 
+    private bool failRequested;
 
     // 미션 완료됐다고 다른 시스템에 알려주는 이벤트
-    public event Action<int, PlayerRef> OnCompleted;
+    public event Func<int, PlayerRef, bool> OnCompleteRequested;
+
+    // PersonalAction 실패 알림
+    public event Func<int, PlayerRef, bool> OnFailRequested;
 
 
     public virtual void StartMission() { }  // 미션 시작
@@ -43,7 +47,10 @@ public abstract class MissionMiniGameBase : NetworkBehaviour
     /// </summary>
     protected void RequestComplete()
     {
-        if (MissionCompleted) return;
+        bool isShared = missionData.RoleTarget == MissionRoleTarget.All &&
+                    missionData.MissionType == MissionType.Shared;
+
+        if (isShared && MissionCompleted) return;
 
         // Host라면 바로 완료 요청 보냄
         if (Object.HasStateAuthority)
@@ -57,10 +64,36 @@ public abstract class MissionMiniGameBase : NetworkBehaviour
     }
 
 
+    /// <summary>
+    /// 자식 미션이 실패 요청
+    /// </summary>
+    protected void RequestFail()
+    {
+        if (failRequested)
+            return;
+
+        if (Object.HasStateAuthority)
+        {
+            failRequested = Fail(Runner.LocalPlayer);
+            return;
+        }
+
+        failRequested = true;
+        RPC_RequestFail();
+    }
+
+
     [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
     private void RPC_RequestComplete(RpcInfo info = default)
     {
         Complete(info.Source);
+    }
+
+
+    [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
+    private void RPC_RequestFail(RpcInfo info = default)
+    {
+        Fail(info.Source);
     }
 
 
@@ -71,20 +104,46 @@ public abstract class MissionMiniGameBase : NetworkBehaviour
     {
         if (!Object.HasStateAuthority || MissionCompleted) return;
 
-        MissionCompleted = true;
+        bool accepted = OnCompleteRequested?.Invoke(MissionId, player) ?? false;
 
-        FinishMission();
+        if (!accepted)
+            return;
 
-        // "미션 Id의 미니게임이 끝났다" 라고 외부에 알림
-        OnCompleted?.Invoke(MissionId, player);
+        // Shared 미션만 월드 오브젝트 자체를 완료 상태로 만든다.
+        if (missionData.RoleTarget == MissionRoleTarget.All &&
+            missionData.MissionType == MissionType.Shared)
+        {
+            MissionCompleted = true;
+
+            FinishMission();
+        }
 
         Debug.Log($" ID : {MissionId} 미션 완료");
     }
 
 
     /// <summary>
-    /// 동기화된 미션 완료 상태가 변경됐을 때
-    /// Guest에서 완료 결과를 반영
+    /// Host가 실패 요청을 MissionSystem에 전달
+    /// 실제 실패 상태는 MissionState가 관리
+    /// </summary>
+    private bool Fail(PlayerRef player)
+    {
+        if (!Object.HasStateAuthority)
+            return false;
+
+        bool accepted = OnFailRequested?.Invoke(MissionId, player) ?? false;
+
+        if (!accepted)
+            return false;
+
+        Debug.Log($"ID : {MissionId} 미션 실패 요청 / Player : {player}");
+
+        return true;
+    }
+
+
+    /// <summary>
+    /// 동기화된 완료 상태 변경 시 Guest에서 결과 반영
     /// </summary>
     private void OnCompletedChanged()
     {
