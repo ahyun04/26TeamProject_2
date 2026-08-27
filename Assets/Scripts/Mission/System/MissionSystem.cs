@@ -171,6 +171,31 @@ public class MissionSystem : NetworkBehaviour
 
 
     /// <summary>
+    /// 해당 플레이어가 이 미션을 수행할 수 있는지 확인
+    /// </summary>
+    public bool HasMission(int missionId, PlayerRef player)
+    {
+        if (!Initialized)
+            return false;
+
+        for (int i = 0; i < MissionCount; i++)
+        {
+            MissionState state = Missions[i];
+
+            if (state.MissionId != missionId)
+                continue;
+
+            if (state.MissionType == MissionType.Shared)
+                return true;
+
+            return state.Owner == player;
+        }
+
+        return false;
+    }
+
+
+    /// <summary>
     /// MissionMiniGameBase가 완료됐을 때 호출
     /// </summary>
     private bool OnMiniGameCompleteRequested(int missionId, PlayerRef player)

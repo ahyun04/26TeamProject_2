@@ -5053,9 +5053,9 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 920cba6c14cfe744296d07d68f9ab5e2, type: 2}
   - {fileID: 11400000, guid: c4e7c744e479c0e42b26eb4ae99c2622, type: 2}
   sharedMissionCount: 3
-  citizenPersonalMissionCount: 2
+  citizenPersonalMissionCount: 1
   citizenPersonalActionMissionCount: 1
-  killerPersonalMissionCount: 2
+  killerPersonalMissionCount: 1
   _MissionCount: 0
   _Initialized:
     _value: 0
@@ -38975,6 +38975,71 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 1323328826255862078, guid: d142b6040510f7d4c8250a36e328f0b6, type: 3}
   m_PrefabInstance: {fileID: 777418271}
   m_PrefabAsset: {fileID: 0}
+--- !u!1001 &779098696
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 2528057483103763259, guid: 1ab05e81d57bb344e97482c75f547591, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2528057483103763259, guid: 1ab05e81d57bb344e97482c75f547591, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 1.254
+      objectReference: {fileID: 0}
+    - target: {fileID: 2528057483103763259, guid: 1ab05e81d57bb344e97482c75f547591, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -3.26
+      objectReference: {fileID: 0}
+    - target: {fileID: 2528057483103763259, guid: 1ab05e81d57bb344e97482c75f547591, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2528057483103763259, guid: 1ab05e81d57bb344e97482c75f547591, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2528057483103763259, guid: 1ab05e81d57bb344e97482c75f547591, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2528057483103763259, guid: 1ab05e81d57bb344e97482c75f547591, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2528057483103763259, guid: 1ab05e81d57bb344e97482c75f547591, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2528057483103763259, guid: 1ab05e81d57bb344e97482c75f547591, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2528057483103763259, guid: 1ab05e81d57bb344e97482c75f547591, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2975283008872026387, guid: 1ab05e81d57bb344e97482c75f547591, type: 3}
+      propertyPath: missionSystem
+      value: 
+      objectReference: {fileID: 93476060}
+    - target: {fileID: 6150394083414040225, guid: 1ab05e81d57bb344e97482c75f547591, type: 3}
+      propertyPath: m_Name
+      value: CircuitBreaker_Prefab
+      objectReference: {fileID: 0}
+    - target: {fileID: 9063272516522378394, guid: 1ab05e81d57bb344e97482c75f547591, type: 3}
+      propertyPath: SortKey
+      value: 2780280382
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 1ab05e81d57bb344e97482c75f547591, type: 3}
 --- !u!1001 &785533213
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -102994,3 +103059,4 @@ SceneRoots:
   - {fileID: 1281743354}
   - {fileID: 532683039}
   - {fileID: 93476059}
+  - {fileID: 779098696}

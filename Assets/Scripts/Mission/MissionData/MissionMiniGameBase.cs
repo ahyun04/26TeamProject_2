@@ -13,7 +13,16 @@ public abstract class MissionMiniGameBase : NetworkBehaviour
 
     [SerializeField] private MissionData missionData;
 
+
+    // 해당 미션을 받은 플레이어는 Collider On
+    // 받지 못하면 Collider Off 구현
+    [SerializeField] private MissionSystem missionSystem;
+    [SerializeField] private Collider[] interactionColliders;
+
+
     public int MissionId => missionData.Id;
+
+    private bool interactionInitialized;
 
 
     // 미션 완료 상태를 모든 플레이어에게 동기화
@@ -40,6 +49,45 @@ public abstract class MissionMiniGameBase : NetworkBehaviour
 
     
     protected virtual void FinishMission() { }  // 미션 성공 후 마무리
+
+
+    public override void Render()
+    {
+        if (interactionInitialized)
+            return;
+
+        if (missionSystem == null || !missionSystem.Initialized)
+            return;
+
+        RefreshLocalInteraction();
+
+        interactionInitialized = true;
+    }
+
+
+    /// <summary>
+    /// 현재 로컬 플레이어가 이 미션을 수행할 수 있는지 확인
+    /// </summary>
+    private void RefreshLocalInteraction()
+    {
+        bool canInteract = missionSystem.HasMission(MissionId, Runner.LocalPlayer);
+
+        SetInteractionEnabled(canInteract);
+    }
+
+
+    /// <summary>
+    /// 이 미션에 등록된 모든 상호작용 Collider의 활성 상태를 변경하고
+    /// true면 감지/클릭 가능, false면 감지 자체가 되지 않는다
+    /// </summary>
+    private void SetInteractionEnabled(bool enabled)
+    {
+        foreach (Collider interactionCollider in interactionColliders)
+        {
+            if (interactionCollider != null)
+                interactionCollider.enabled = enabled;
+        }
+    }
 
 
     /// <summary>
