@@ -1,23 +1,11 @@
 using System.Collections.Generic;
+using LockdownProtocol.Lobby.Invite;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 namespace LockdownProtocol.Lobby
 {
-    /// <summary>
-    /// 방 안 상세 UI(ESC로 여는 화면). 기획서 기준으로 "상세 로비 UI" 레이어에 해당 —
-    /// 플레이어 목록, Ready, 방장 전용 게임 시작 버튼만 담당한다.
-    /// 방 나가기/마이크/방 이름 요약 같은 상시 노출 요소는 LobbyMiniHudUI가 별도로 담당한다.
-    ///
-    /// 커서는 더 이상 이 스크립트가 건드리지 않는다 — LobbyMovementController가
-    /// "우클릭을 눌렀을 때만 카메라 회전" 방식으로 바뀌면서 커서를 잠글 필요가 없어졌다.
-    /// ESC는 순수하게 이 패널의 표시 여부만 토글한다.
-    ///
-    /// 방/플레이어 상태는 RoomManager, LobbyPlayerController를 매 프레임 폴링해서
-    /// 최소 동작만 확보했다 — Networked 값의 OnChangedRender로 이벤트 기반으로
-    /// 바꾸면 더 정교해지지만, 인원이 많지 않은 로비 특성상 우선 이 정도로 충분하다고 봄 (TODO).
-    /// </summary>
     public class LobbyRoomUI : MonoBehaviour
     {
         [Header("Panel Root")]
@@ -38,7 +26,11 @@ namespace LockdownProtocol.Lobby
         [SerializeField] private Button readyButton;
         [SerializeField] private TMP_Text readyButtonLabel;
         [SerializeField] private Button startGameButton;
-        [SerializeField] private Button leaveRoomButton; // 기획서 목업에 상세패널 쪽에도 방나가기가 있어서 추가 - 실제 확인창은 LobbyMiniHudUI 걸 재사용
+        [SerializeField] private Button leaveRoomButton;
+        [SerializeField] private Button inviteButton;
+
+        [Header("Invite")]
+        [SerializeField] private InviteListPanel inviteListPanel;
 
         [Header("Feedback")]
         [SerializeField] private TMP_Text startFailText;
@@ -47,6 +39,7 @@ namespace LockdownProtocol.Lobby
         private LobbyGameStartManager _gameStartManager;
         private LobbyMiniHudUI _miniHud;
         private bool _isOpen;
+
 
         private void OnEnable()
         {
@@ -61,10 +54,10 @@ namespace LockdownProtocol.Lobby
             readyButton.onClick.AddListener(OnReadyClicked);
             startGameButton.onClick.AddListener(OnStartGameClicked);
             if (leaveRoomButton != null) leaveRoomButton.onClick.AddListener(OnLeaveClicked);
+            if (inviteButton != null) inviteButton.onClick.AddListener(OnInviteClicked);
 
             if (startFailText != null) startFailText.text = string.Empty;
 
-            // 기획서: "ESC로 상세 로비 UI를 열 수 있다" - 시작은 닫힌 상태.
             SetOpen(false);
         }
 
@@ -78,6 +71,7 @@ namespace LockdownProtocol.Lobby
             readyButton.onClick.RemoveListener(OnReadyClicked);
             startGameButton.onClick.RemoveListener(OnStartGameClicked);
             if (leaveRoomButton != null) leaveRoomButton.onClick.RemoveListener(OnLeaveClicked);
+            if (inviteButton != null) inviteButton.onClick.RemoveListener(OnInviteClicked);
         }
 
         private void Update()
@@ -87,7 +81,7 @@ namespace LockdownProtocol.Lobby
                 SetOpen(!_isOpen);
             }
 
-            if (!_isOpen) return; // 패널 닫혀있으면 목록/버튼 갱신은 건너뛴다 (불필요한 연산 방지)
+            if (!_isOpen) return;
             if (RoomManager.Instance == null) return;
 
             RefreshRoomInfo();
@@ -100,10 +94,6 @@ namespace LockdownProtocol.Lobby
         private void SetOpen(bool open)
         {
             _isOpen = open;
-
-            // 현우 추가 (ESC키 눌려 UI창 열릴 때 커서 풀고, 닫으면 잠김)
-            Cursor.lockState = open ? CursorLockMode.None : CursorLockMode.Locked;
-            Cursor.visible = open;
 
             if (detailPanelRoot == null)
             {
@@ -178,8 +168,6 @@ namespace LockdownProtocol.Lobby
                 readyButtonLabel.text = localPlayer.IsReady ? "READY" : "READY?";
             }
 
-            // 기획서: "현재 인원 X, 준비 완료 Y" 기준으로 게임 시작 버튼 활성화 여부를 클라에서도 미리 판단
-            // (최종 판정은 어차피 LobbyGameStartManager가 서버에서 다시 함 - 여긴 UX용 예측 표시일 뿐)
             if (isHost)
             {
                 var players = FindObjectsByType<LobbyPlayerController>(FindObjectsSortMode.None);
@@ -210,17 +198,18 @@ namespace LockdownProtocol.Lobby
 
         private void OnStartGameClicked()
         {
-            // 현우 추가 (방어 코드)
-            if (_gameStartManager == null)
-                _gameStartManager = FindFirstObjectByType<LobbyGameStartManager>();
-
             _gameStartManager?.RPC_RequestStartGame();
         }
 
         private void OnLeaveClicked()
         {
-            // 확인창은 LobbyMiniHudUI가 들고 있는 걸 그대로 재사용 (하나만 있으면 됨)
+            // 확인창은 LobbyMiniHudUI가 들고 있는 걸 그대로 재사용 
             _miniHud?.ShowLeaveConfirm();
+        }
+
+        private void OnInviteClicked()
+        {
+            inviteListPanel?.Open();
         }
 
         private void HandleStartFailed(LobbyGameStartManager.StartFailReason reason)

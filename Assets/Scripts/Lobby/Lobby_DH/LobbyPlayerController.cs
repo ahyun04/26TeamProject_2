@@ -1,20 +1,16 @@
 using Fusion;
+using LockdownProtocol.Lobby.Invite;
 using UnityEngine;
 
 namespace LockdownProtocol.Lobby
 {
-    /// <summary>
-    /// 방에 참가한 플레이어 한 명을 표현하는 네트워크 오브젝트.
-    /// 닉네임, Ready 상태, 방장 여부, 입장 순서(방장 위임 판단용)를 들고 있다.
-    /// 실제 3D 캐릭터 이동/스폰은 LobbyMovementController(별도) 쪽에서 다룬다는 전제.
-    /// </summary>
     public class LobbyPlayerController : NetworkBehaviour
     {
         [Networked] public NetworkString<_16> Nickname { get; private set; }
         [Networked] public NetworkBool IsReady { get; private set; }
         [Networked] public NetworkBool IsHost { get; private set; }
-        [Networked] public NetworkBool IsTalking { get; private set; } // 음성 SDK 쪽에서 갱신
-        [Networked] public int JoinOrder { get; private set; } // 방장 위임 시 "입장 순서 가장 빠른 사람" 판단용
+        [Networked] public NetworkBool IsTalking { get; private set; } 
+        [Networked] public int JoinOrder { get; private set; }
 
         public event System.Action<bool> ReadyChanged;
 
@@ -22,8 +18,16 @@ namespace LockdownProtocol.Lobby
         {
             if (Object.HasInputAuthority)
             {
-                // 로컬 플레이어 초기 닉네임 세팅 (실제로는 프로필/로그인 시스템에서 가져와야 함)
+                // 로컬 플레이어 초기 닉네임 세팅
                 RPC_SetNickname($"Player_{Object.InputAuthority.PlayerId}");
+
+                string roomId = RoomManager.Instance != null ? RoomManager.Instance.RoomName.ToString() : null;
+                GlobalLobbyInviteTransport.Instance?.UpdateLocalRoomStatus(true, roomId, isInGame: false);
+
+                if (RoomManager.Instance != null)
+                {
+                    RoomManager.Instance.RoomStateChanged += HandleRoomStateChangedForPresence;
+                }
             }
 
             if (RoomManager.Instance != null)
@@ -36,9 +40,30 @@ namespace LockdownProtocol.Lobby
             }
         }
 
+        public override void Despawned(NetworkRunner runner, bool hasState)
+        {
+            if (Object != null && Object.HasInputAuthority)
+            {
+                GlobalLobbyInviteTransport.Instance?.UpdateLocalRoomStatus(false, null, isInGame: false);
+
+                if (RoomManager.Instance != null)
+                {
+                    RoomManager.Instance.RoomStateChanged -= HandleRoomStateChangedForPresence;
+                }
+            }
+        }
+
+        private void HandleRoomStateChangedForPresence(RoomManager.RoomState state)
+        {
+            if (!Object.HasInputAuthority) return;
+
+            bool isInGame = state == RoomManager.RoomState.Playing;
+            string roomId = RoomManager.Instance != null ? RoomManager.Instance.RoomName.ToString() : null;
+            GlobalLobbyInviteTransport.Instance?.UpdateLocalRoomStatus(true, roomId, isInGame);
+        }
+
         // ================== Ready ==================
 
-        /// <summary>Ready 버튼 클릭 -> 로컬 클라가 호출.</summary>
         public void ToggleReady()
         {
             if (!Object.HasInputAuthority) return;
@@ -48,7 +73,6 @@ namespace LockdownProtocol.Lobby
         [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
         private void RPC_SetReady(bool ready)
         {
-            // 게임 시작 확정(Starting) 이후에는 Ready 토글 무시
             if (RoomManager.Instance != null &&
                 RoomManager.Instance.CurrentRoomState != RoomManager.RoomState.Waiting)
             {
@@ -73,15 +97,13 @@ namespace LockdownProtocol.Lobby
             Nickname = nickname;
         }
 
-        // ================== 방장 지정 (RoomManager가 호출) ==================
+        // ================== 방장 지정 ==================
 
         public void SetHost(bool isHost)
         {
             if (!Object.HasStateAuthority) return;
             IsHost = isHost;
 
-            // 방장이 바뀌면 새 방장도 다시 Ready를 눌러야 하는 기획 반영
-            // (기획서: "방장도 일반 플레이어와 동일하게 Ready를 눌러야함")
             if (isHost)
             {
                 IsReady = false;

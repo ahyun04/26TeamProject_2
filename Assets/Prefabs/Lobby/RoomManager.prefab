@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 6169846194619057987}
   - component: {fileID: 5803960580216668326}
   - component: {fileID: 723824300164394688}
+  - component: {fileID: 4743024968754846497}
   m_Layer: 0
   m_Name: RoomManager
   m_TagString: Untagged
@@ -53,6 +54,7 @@ MonoBehaviour:
   NetworkedBehaviours:
   - {fileID: 5803960580216668326}
   - {fileID: 723824300164394688}
+  - {fileID: 4743024968754846497}
   ForceRemoteRenderTimeframe: 0
 --- !u!114 &5803960580216668326
 MonoBehaviour:
@@ -91,3 +93,17 @@ MonoBehaviour:
   minPlayerCount: 2
   startCountdownSeconds: 3
   gameplaySceneIndex: 3
+--- !u!114 &4743024968754846497
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2435903987395160148}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fc920aff2d0622642855eace99eec0e9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  inviteLifetimeSeconds: 300
+  expireCheckIntervalSeconds: 5
