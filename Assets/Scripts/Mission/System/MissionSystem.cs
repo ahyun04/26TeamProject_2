@@ -313,6 +313,44 @@ public class MissionSystem : NetworkBehaviour
 
 
     /// <summary>
+    /// 시민 승리 미션들의 전체 진행률을 0 ~ 1 값으로 반환
+    /// All + Shared, Citizen + Personal 미션만 포함
+    /// </summary>
+    public float GetCitizenMissionProgress()
+    {
+        if (Object == null || !Object.IsValid || !Initialized)
+            return 0f;
+
+        int currentProgress = 0;
+        int requiredProgress = 0;
+
+        for (int i = 0; i < MissionCount; i++)
+        {
+            MissionState state = Missions[i];
+
+            bool isShared =
+                state.RoleTarget == MissionRoleTarget.All &&
+                state.MissionType == MissionType.Shared;
+
+            bool isCitizenPersonal =
+                state.RoleTarget == MissionRoleTarget.Citizen &&
+                state.MissionType == MissionType.Personal;
+
+            if (!isShared && !isCitizenPersonal)
+                continue;
+
+            currentProgress += state.Progress;
+            requiredProgress += state.RequiredCount;
+        }
+
+        if (requiredProgress <= 0)
+            return 0f;
+
+        return Mathf.Clamp01((float)currentProgress / requiredProgress);
+    }
+
+
+    /// <summary>
     /// 시민 개인행동 미션의 완료 여부를 확인
     /// </summary>
     public bool IsPersonalActionCompleted(PlayerRef player)
