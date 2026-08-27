@@ -96,6 +96,8 @@ public class BreakerMission : MissionMiniGameBase
 
     public override void Render()
     {
+        base.Render();
+
         if (isReady)
             ApplyLeverStates(false);
     }

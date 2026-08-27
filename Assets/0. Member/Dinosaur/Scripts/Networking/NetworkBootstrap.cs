@@ -29,7 +29,7 @@ namespace LockdownProtocol.Networking
         [SerializeField] private NetworkObject roomManagerPrefab; // RoomManager + LobbyGameStartManager가 함께 붙은 프리팹
 
         [Header("Dependencies")]
-        [SerializeField] private PlayerInputHandler inputHandler;
+        [SerializeField] private PlayerInputProvider inputHandler;
 
         private NetworkRunner _runner;
         public NetworkRunner Runner => _runner;
@@ -198,14 +198,42 @@ namespace LockdownProtocol.Networking
         public void OnConnectRequest(NetworkRunner runner, NetworkRunnerCallbackArgs.ConnectRequest request, byte[] token) { }
         public void OnInput(NetworkRunner runner, NetworkInput input)
         {
-            if (inputHandler == null)
-            {
-                Debug.LogWarning("[NetworkBootstrap] PlayerInputHandler가 연결되지 않았습니다. Inspector에서 할당해주세요.");
-                return;
-            }
+            NetworkInputData data = new NetworkInputData();
 
-            input.Set(inputHandler.GatherInput());
+            // 이동
+            data.MoveDirection = new Vector2(
+                Input.GetAxisRaw("Horizontal"),
+                Input.GetAxisRaw("Vertical")
+            );
+
+            // 마우스 시점
+            data.LookRotation = new Vector2(
+            Input.GetAxis("Mouse X"),
+            Input.GetAxis("Mouse Y")
+            );
+
+            // 점프
+            data.Buttons.Set(
+                InputButton.Jump,
+                Input.GetKey(KeyCode.Space)
+            );
+
+            // 달리기
+            data.Buttons.Set(
+                InputButton.Sprint,
+                Input.GetKey(KeyCode.LeftShift)
+            );
+
+            // 앉기
+            data.Buttons.Set(
+                InputButton.Crouch,
+                Input.GetKey(KeyCode.LeftControl)
+            );
+
+            // Fusion에게 입력 전달
+            input.Set(data);
         }
+
         public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input) { }
         public void OnSimulationMessage(NetworkRunner runner, SimulationMessagePtr message) { }
         public void OnSessionListUpdated(NetworkRunner runner, List<SessionInfo> sessionList) { }

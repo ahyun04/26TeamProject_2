@@ -20,6 +20,7 @@ GameObject:
   - component: {fileID: 4904234193367178779}
   - component: {fileID: 5913373588544668728}
   - component: {fileID: 1943323556666587649}
+  - component: {fileID: -1655049468124361119}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -68,6 +69,7 @@ MonoBehaviour:
   - {fileID: -2949138451040887277}
   - {fileID: 4904234193367178779}
   - {fileID: 5913373588544668728}
+  - {fileID: -1655049468124361119}
   ForceRemoteRenderTimeframe: 0
 --- !u!54 &5758612769849293622
 Rigidbody:
@@ -261,6 +263,29 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   holdPoint: {fileID: 3367974328868241516}
+--- !u!114 &-1655049468124361119
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1265554726670306911}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3b5e0f0712979a34c9a45f1a5201e009, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _Nickname:
+    _length: 0
+    _data:
+      Data: 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+  _IsReady:
+    _value: 0
+  _IsHost:
+    _value: 0
+  _IsTalking:
+    _value: 0
+  _JoinOrder: 0
 --- !u!1 &7105434541691375249
 GameObject:
   m_ObjectHideFlags: 0
