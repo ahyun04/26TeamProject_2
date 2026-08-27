@@ -30,6 +30,10 @@ public abstract class MissionMiniGameBase : NetworkBehaviour
     private NetworkBool MissionCompleted { get; set; }
 
 
+    // 미션 수행하는 플레이어 확인
+    [Networked] protected PlayerRef ActivePlayer { get; private set; }
+
+
     // 외부에서 완료 여부 확인
     public bool IsCompleted => MissionCompleted;
 
@@ -56,12 +60,30 @@ public abstract class MissionMiniGameBase : NetworkBehaviour
         if (interactionInitialized)
             return;
 
-        if (missionSystem == null || !missionSystem.Initialized)
+        if (missionSystem == null)
+            return;
+
+        if (missionSystem.Object == null || !missionSystem.Object.IsValid)
+            return;
+
+        if (!missionSystem.Initialized)
             return;
 
         RefreshLocalInteraction();
 
         interactionInitialized = true;
+    }
+
+
+    /// <summary>
+    /// Host가 미션 수행자를 등록
+    /// </summary>
+    protected void SetActivePlayer(PlayerRef player)
+    {
+        if (!Object.HasStateAuthority)
+            return;
+
+        ActivePlayer = player;
     }
 
 
@@ -91,19 +113,37 @@ public abstract class MissionMiniGameBase : NetworkBehaviour
 
 
     /// <summary>
-    /// 자식 미션이 완료 요청
+    /// 저장된 미션 수행자로 완료 요청
+    /// Guest가 직접 호출하면 RPC Source를 통해 실제 수행자를 확인
     /// </summary>
     protected void RequestComplete()
     {
-        bool isShared = missionData.RoleTarget == MissionRoleTarget.All &&
-                    missionData.MissionType == MissionType.Shared;
+        if (MissionCompleted)
+            return;
 
-        if (isShared && MissionCompleted) return;
-
-        // Host라면 바로 완료 요청 보냄
         if (Object.HasStateAuthority)
         {
-            Complete(Runner.LocalPlayer);
+            PlayerRef player = ActivePlayer != PlayerRef.None ? ActivePlayer : Runner.LocalPlayer;
+            Complete(player);
+            return;
+        }
+
+        RPC_RequestComplete();
+    }
+
+
+    /// <summary>
+    /// 수행자를 직접 지정하여 완료 요청
+    /// </summary>
+    protected void RequestComplete(PlayerRef player)
+    {
+        if (MissionCompleted)
+            return;
+
+        if (Object.HasStateAuthority)
+        {
+            SetActivePlayer(player);
+            Complete(player);
             return;
         }
 
@@ -157,12 +197,12 @@ public abstract class MissionMiniGameBase : NetworkBehaviour
         if (!accepted)
             return;
 
-        // Shared 미션만 월드 오브젝트 자체를 완료 상태로 만든다.
-        if (missionData.RoleTarget == MissionRoleTarget.All &&
-            missionData.MissionType == MissionType.Shared)
+        bool shouldLock = missionData.MissionType == MissionType.Shared ||
+                  missionData.MissionType == MissionType.Personal;
+
+        if (shouldLock)
         {
             MissionCompleted = true;
-
             FinishMission();
         }
 

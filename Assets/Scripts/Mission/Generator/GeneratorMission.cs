@@ -18,6 +18,7 @@ public class GeneratorMission : MissionMiniGameBase
     [Networked] private float Progress { get; set; }
     [Networked] private NetworkBool IsRunning { get; set; }
 
+    [Networked] private PlayerRef RunningPlayer { get; set; }
 
     public override void Spawned()
     {
@@ -38,12 +39,13 @@ public class GeneratorMission : MissionMiniGameBase
         Progress = 1f;
         IsRunning = false;
 
-        RequestComplete();
+        RequestComplete(RunningPlayer);
     }
 
 
     public override void Render()
     {
+        base.Render();
         UpdateUI();
     }
 
@@ -55,7 +57,7 @@ public class GeneratorMission : MissionMiniGameBase
 
         if (Object.HasStateAuthority)
         {
-            StartGenerator();
+            StartGenerator(Runner.LocalPlayer);
             return;
         }
 
@@ -64,18 +66,19 @@ public class GeneratorMission : MissionMiniGameBase
 
 
     [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
-    private void RPC_RequestStart()
+    private void RPC_RequestStart(RpcInfo info = default)
     {
-        StartGenerator();
+        StartGenerator(info.Source);
     }
 
 
-    private void StartGenerator()
+    private void StartGenerator(PlayerRef player)
     {
         if (!Object.HasStateAuthority || IsCompleted || IsRunning)
             return;
 
         Progress = 0f;
+        RunningPlayer = player;
         IsRunning = true;
     }
 

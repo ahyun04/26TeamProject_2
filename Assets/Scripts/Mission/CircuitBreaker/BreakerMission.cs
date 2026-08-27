@@ -47,23 +47,24 @@ public class BreakerMission : MissionMiniGameBase
             return;
 
         if (Object.HasStateAuthority)
-            ToggleLever(index);
+            ToggleLever(index, Runner.LocalPlayer);
+
         else
             RPC_RequestToggle(index);
     }
 
 
     [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
-    private void RPC_RequestToggle(int index)
+    private void RPC_RequestToggle(int index, RpcInfo info = default)
     {
-        ToggleLever(index);
+        ToggleLever(index, info.Source);
     }
 
 
     /// <summary>
     /// Host가 실제 Networked 레버 상태를 변경
     /// </summary>
-    private void ToggleLever(int index)
+    private void ToggleLever(int index, PlayerRef player)
     {
         if (!Object.HasStateAuthority || !IsValidIndex(index) || IsCompleted)
             return;
@@ -72,7 +73,7 @@ public class BreakerMission : MissionMiniGameBase
         LeverStates.Set(index, !LeverStates.Get(index));
 
         // 변경 후 6개가 모두 On인지 확인
-        CheckCompleted();
+        CheckCompleted(player);
     }
 
 
@@ -81,7 +82,7 @@ public class BreakerMission : MissionMiniGameBase
     /// 하나라도 false이면 아직 완료하지 않고,
     /// 모두 true이면 부모 클래스에 완료 요청
     /// </summary>
-    private void CheckCompleted()
+    private void CheckCompleted(PlayerRef player)
     {
         for (int i = 0; i < LeverCount; i++)
         {
@@ -90,7 +91,7 @@ public class BreakerMission : MissionMiniGameBase
         }
 
         // MissionMiniGameBase가 실제 미션 완료를 처리
-        RequestComplete();
+        RequestComplete(player);
     }
 
 

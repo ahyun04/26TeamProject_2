@@ -170,6 +170,20 @@ public class MissionSystem : NetworkBehaviour
     }
 
 
+    public MissionData GetMissionData(int missionId)
+    {
+        if (missionPool == null)
+            return null;
+
+        foreach (MissionData mission in missionPool)
+        {
+            if (mission != null && mission.Id == missionId)
+                return mission;
+        }
+
+        return null;
+    }
+
     /// <summary>
     /// 해당 플레이어가 이 미션을 수행할 수 있는지 확인
     /// </summary>
