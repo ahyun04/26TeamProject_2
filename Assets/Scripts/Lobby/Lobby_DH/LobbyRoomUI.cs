@@ -95,6 +95,12 @@ namespace LockdownProtocol.Lobby
         {
             _isOpen = open;
 
+
+            // 현우 추가 (ESC키 눌려 UI창 열릴 때 커서 풀고, 닫으면 잠김)
+            Cursor.lockState = open ? CursorLockMode.None : CursorLockMode.Locked;
+            Cursor.visible = open;
+
+
             if (detailPanelRoot == null)
             {
                 Debug.LogWarning("[LobbyRoomUI] Detail Panel Root가 할당되지 않았습니다.");
@@ -198,6 +204,9 @@ namespace LockdownProtocol.Lobby
 
         private void OnStartGameClicked()
         {
+            if (_gameStartManager == null)
+                _gameStartManager = FindFirstObjectByType<LobbyGameStartManager>();
+
             _gameStartManager?.RPC_RequestStartGame();
         }
 

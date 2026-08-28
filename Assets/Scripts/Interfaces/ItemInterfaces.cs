@@ -7,10 +7,19 @@ public interface ITargetable
     NetworkObject TargetObject { get; }
 }
 
-// 상호작용 할 수 있는 대상
+
+// 한 번 눌러서 상호작용하는 대상
 public interface IInteractable
 {
     void Interact();
+}
+
+
+// 누르고 있는 동안 상호작용하는 대상
+public interface IHoldInteractable
+{
+    void BeginHold();
+    void EndHold();
 }
 
 
@@ -19,7 +28,6 @@ public interface IItemUseHandler
 {
     void UseAsStateAuthority(NetworkObject target);
 }
-
 
 
 // 현재 바라보는 대상에 따라 로컬 표시가 필요한 아이템
