@@ -18,7 +18,6 @@ public class GeneratorMission : MissionMiniGameBase
     [Networked] private float Progress { get; set; }
     [Networked] private NetworkBool IsRunning { get; set; }
 
-    [Networked] private PlayerRef RunningPlayer { get; set; }
 
     public override void Spawned()
     {
@@ -31,7 +30,7 @@ public class GeneratorMission : MissionMiniGameBase
         if (!Object.HasStateAuthority || !IsRunning || IsCompleted)
             return;
 
-        Progress += Runner.DeltaTime / fillDuration;
+        Progress += Runner.DeltaTime / Mathf.Max(fillDuration, 0.01f);
 
         if (Progress < 1f)
             return;
@@ -39,7 +38,7 @@ public class GeneratorMission : MissionMiniGameBase
         Progress = 1f;
         IsRunning = false;
 
-        RequestComplete(RunningPlayer);
+        RequestComplete();
     }
 
 
@@ -77,8 +76,9 @@ public class GeneratorMission : MissionMiniGameBase
         if (!Object.HasStateAuthority || IsCompleted || IsRunning)
             return;
 
+        SetActivePlayer(player);
+
         Progress = 0f;
-        RunningPlayer = player;
         IsRunning = true;
     }
 
@@ -92,8 +92,10 @@ public class GeneratorMission : MissionMiniGameBase
         {
             if (IsCompleted)
                 guideText.text = "";
+
             else if (IsRunning)
                 guideText.text = runningText;
+
             else
                 guideText.text = waitingText;
         }
