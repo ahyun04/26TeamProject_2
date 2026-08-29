@@ -11,6 +11,8 @@ public class PlayerInteraction : NetworkBehaviour
 
     private IHoldInteractable activeHoldTarget;
 
+    private IDragInteractable activeDragTarget;
+
 
     public override void Spawned()
     {
@@ -31,22 +33,67 @@ public class PlayerInteraction : NetworkBehaviour
 
     private void Update()
     {
-        HandleClickInteraction();
+        HandleLeftMouseInteraction();
+
+        UpdateDragInteraction();
 
         HandleHoldInteraction();
-
     }
 
-    /// <summary>
-    /// 좌클릭 한 번으로 사용하는 상호작용 처리
-    /// </summary>
-    private void HandleClickInteraction()
+
+    private void HandleLeftMouseInteraction()
     {
+        if (activeDragTarget != null)
+        {
+            if (Input.GetMouseButtonUp(0))
+                EndDragInteraction();
+
+            return;
+        }
+
         if (!Input.GetMouseButtonDown(0))
             return;
 
+        if (targetDetector.CurrentTarget is IDragInteractable dragInteractable)
+        {
+            activeDragTarget = dragInteractable;
+            activeDragTarget.BeginDrag();
+            return;
+        }
+
         if (targetDetector.CurrentTarget is IInteractable interactable)
             interactable.Interact();
+    }
+
+
+    private void UpdateDragInteraction()
+    {
+        if (activeDragTarget == null || !Input.GetMouseButton(0))
+            return;
+
+        if (targetDetector.TryGetAimRay(out Ray aimRay))
+            activeDragTarget.UpdateDrag(aimRay);
+    }
+
+
+    private void EndDragInteraction()
+    {
+        if (activeDragTarget == null)
+            return;
+
+        ITargetable releaseTarget = targetDetector.DetectNow();
+
+        activeDragTarget.EndDrag(releaseTarget);
+        activeDragTarget = null;
+    }
+
+    private void CancelDragInteraction()
+    {
+        if (activeDragTarget == null)
+            return;
+
+        activeDragTarget.EndDrag(null);
+        activeDragTarget = null;
     }
 
 
@@ -91,6 +138,7 @@ public class PlayerInteraction : NetworkBehaviour
 
     private void OnDisable()
     {
+        CancelDragInteraction();
         EndHoldInteraction();
     }
 }

@@ -49,10 +49,8 @@ public class PlayerTargetDetector : NetworkBehaviour
         if (playerCamera == null)
             return null;
 
-        Ray ray = new Ray(
-            playerCamera.transform.position,
-            playerCamera.transform.forward
-        );
+        if (!TryGetAimRay(out Ray ray))
+            return null;
 
         if (Physics.Raycast(
             ray,
@@ -118,5 +116,19 @@ public class PlayerTargetDetector : NetworkBehaviour
         lastCollider = null;
 
         lastResolvedTarget = null;
+    }
+
+
+    public bool TryGetAimRay(out Ray ray)
+    {
+        if (playerCamera == null)
+        {
+            ray = default;
+            return false;
+        }
+
+        ray = new Ray(playerCamera.transform.position, playerCamera.transform.forward);
+
+        return true;
     }
 }

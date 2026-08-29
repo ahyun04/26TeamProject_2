@@ -1,4 +1,5 @@
 using Fusion;
+using UnityEngine;
 
 
 // 플레이어가 바라볼 수 있는 대상
@@ -20,6 +21,15 @@ public interface IHoldInteractable
 {
     void BeginHold();
     void EndHold();
+}
+
+
+// 마우스를 누른 채 끌어서 사용하는 대상
+public interface IDragInteractable
+{
+    void BeginDrag();
+    void UpdateDrag(Ray aimRay);
+    void EndDrag(ITargetable releaseTarget);
 }
 
 
