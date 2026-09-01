@@ -78,10 +78,18 @@ public class VacuumItem : ItemBase, IItemUseHandler, IItemTargetHandler
         if (dust == null)
             return;
 
+        if (HolderObject == null)
+            return;
+
+        PlayerRef player = HolderObject.InputAuthority;
+
+        if (player == PlayerRef.None)
+            return;
 
         dust.TryBeginSuction(
             Object,
-            suctionDuration
+            suctionDuration,
+            player
         );
     }
 

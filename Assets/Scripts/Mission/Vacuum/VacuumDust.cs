@@ -1,4 +1,5 @@
 using Fusion;
+using System;
 using UnityEngine;
 
 /// <summary>
@@ -31,20 +32,35 @@ public class VacuumDust : NetworkBehaviour, ITargetable
     [Networked]
     private float SuctionDuration { get; set; }
 
+    // Host에서 현재 이 먼지를 청소 중인 플레이어
+    private PlayerRef suctionPlayer;
+
+    // 먼지가 완전히 청소됐을 때 알림
+    public event Action<PlayerRef> Collected;
+
+
+
+    private Vector3 startLocalPosition;
 
     private Vector3 startScale;
 
     private NetworkObject cachedVacuumObject;
+
     private VacuumItem cachedVacuum;
 
-
     public NetworkObject TargetObject => Object;
+
+    public bool IsCleaned => IsCollected;
 
 
     public override void Spawned()
     {
         if (visualRoot != null)
+        {
+            startLocalPosition = visualRoot.transform.localPosition;
             startScale = visualRoot.transform.localScale;
+        }
+            
 
         ApplyState();
     }
@@ -77,9 +93,12 @@ public class VacuumDust : NetworkBehaviour, ITargetable
     /// <summary>
     /// Host가 먼지 흡입을 시작함
     /// </summary>
-    public bool TryBeginSuction(NetworkObject vacuumObject, float duration)
+    public bool TryBeginSuction(NetworkObject vacuumObject, float duration, PlayerRef player)
     {
         if (!HasStateAuthority)
+            return false;
+
+        if (player == PlayerRef.None)
             return false;
 
         if (IsSucking || IsCollected)
@@ -88,6 +107,8 @@ public class VacuumDust : NetworkBehaviour, ITargetable
         if (vacuumObject == null)
             return false;
 
+        if (visualRoot == null)
+            return false;
 
         VacuumItem vacuum =
             vacuumObject.GetComponentInChildren<VacuumItem>(true);
@@ -99,7 +120,9 @@ public class VacuumDust : NetworkBehaviour, ITargetable
 
         SuctionItemObject = vacuumObject;
 
-        SuctionStartPosition = transform.position;
+        suctionPlayer = player;
+
+        SuctionStartPosition = visualRoot.transform.position;
 
         SuctionDuration = Mathf.Max(0.05f, duration);
 
@@ -147,6 +170,10 @@ public class VacuumDust : NetworkBehaviour, ITargetable
         IsCollected = true;
 
         SuctionItemObject = null;
+
+        Collected?.Invoke(suctionPlayer);
+
+        suctionPlayer = PlayerRef.None;
     }
 
 
@@ -222,17 +249,21 @@ public class VacuumDust : NetworkBehaviour, ITargetable
         }
 
 
-        if (dustCollider != null)
+        if (dustCollider != null && IsCollected)
         {
-            dustCollider.enabled =
-                !IsSucking &&
-                !IsCollected;
+            dustCollider.enabled = false;
         }
 
 
         if (visualRoot != null)
         {
             visualRoot.SetActive(!IsCollected);
+        }
+
+        if (visualRoot != null && !IsSucking && !IsCollected)
+        {
+            visualRoot.transform.localPosition = startLocalPosition;
+            visualRoot.transform.localScale = startScale;
         }
     }
 
@@ -241,5 +272,10 @@ public class VacuumDust : NetworkBehaviour, ITargetable
         IsSucking = false;
         SuctionProgress = 0f;
         SuctionItemObject = null;
+
+        suctionPlayer = PlayerRef.None;
+
+        cachedVacuumObject = null;
+        cachedVacuum = null;
     }
 }

@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: 1322883421831851676}
   - component: {fileID: 7882415327211723019}
   - component: {fileID: 7097743171642741645}
-  - component: {fileID: 6205579606856051407}
+  - component: {fileID: 5061118026694754026}
   m_Layer: 8
   m_Name: Cleaner_obj
   m_TagString: Untagged
@@ -55,7 +55,7 @@ MonoBehaviour:
   NestedObjects: []
   NetworkedBehaviours:
   - {fileID: 7882415327211723019}
-  - {fileID: 6205579606856051407}
+  - {fileID: 5061118026694754026}
   ForceRemoteRenderTimeframe: 0
 --- !u!54 &1322883421831851676
 Rigidbody:
@@ -128,7 +128,7 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.2, y: 0.4, z: 0.8}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &6205579606856051407
+--- !u!114 &5061118026694754026
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -137,11 +137,13 @@ MonoBehaviour:
   m_GameObject: {fileID: 6175020079073598570}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b7938759df1cefd42b8e311af3595923, type: 3}
+  m_Script: {fileID: 11500000, guid: 15070b70d209d2842abb3edcf592fbdd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  visualRoot: {fileID: 4241466125999125822}
-  _Holder: {fileID: 2867661893753394835}
+  data: {fileID: 11400000, guid: 4f3d1713fab25614e9136f464131a8ea, type: 2}
+  _HolderObject: {fileID: 0}
+  mouth: {fileID: 8159499443756640584}
+  suctionDuration: 0.6
 --- !u!1 &9191020853252264066
 GameObject:
   m_ObjectHideFlags: 0
