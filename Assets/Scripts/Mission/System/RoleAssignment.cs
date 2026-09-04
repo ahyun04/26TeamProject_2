@@ -30,6 +30,8 @@ public class RoleAssignment : NetworkBehaviour
     // Host만 가지고 있는 실제 역할 정보
     private readonly Dictionary<PlayerRef, PlayerRole> roles = new();
 
+    public event System.Action OnRolesAssigned;
+
 
     public override void Spawned()
     {
@@ -113,6 +115,8 @@ public class RoleAssignment : NetworkBehaviour
         missionSystem.InitializeMissions(citizens, killers);
 
         Initialized = true;
+
+        OnRolesAssigned?.Invoke();
 
         Debug.Log(
             $"[RoleAssignment] 역할 배정 완료 / " +

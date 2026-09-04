@@ -53,6 +53,7 @@ public class PlayerHealth : NetworkBehaviour
         if (CurrentHealth <= 0f)
         {
             IsDead = true;
+            Died?.Invoke();
         }
     }
 
@@ -71,7 +72,7 @@ public class PlayerHealth : NetworkBehaviour
 
     private void HandleDeathStateChanged()
     {
-        if (IsDead)
+        if (IsDead && !Object.HasStateAuthority)
         {
             Died?.Invoke();
         }
@@ -79,7 +80,7 @@ public class PlayerHealth : NetworkBehaviour
 
     private void HandleEscapeStateChanged()
     {
-        if (IsEscaped)
+        if (IsEscaped && !Object.HasStateAuthority)
         {
             Escaped?.Invoke();
         }
@@ -93,6 +94,7 @@ public class PlayerHealth : NetworkBehaviour
 
         CurrentHealth = 0f;
         IsDead = true;
+        Died?.Invoke();
     }
 
     /// <summary>
@@ -107,6 +109,7 @@ public class PlayerHealth : NetworkBehaviour
         if (IsDead || IsEscaped) return;
 
         IsEscaped = true;
+        Escaped?.Invoke();
     }
 
     // 테스트용, 나중에 삭제

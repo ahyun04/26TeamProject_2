@@ -5072,6 +5072,8 @@ GameObject:
   - component: {fileID: 93476058}
   - component: {fileID: 93476060}
   - component: {fileID: 93476061}
+  - component: {fileID: 93476062}
+  - component: {fileID: 93476063}
   m_Layer: 0
   m_Name: MissionSystem
   m_TagString: Untagged
@@ -5098,6 +5100,8 @@ MonoBehaviour:
   NetworkedBehaviours:
   - {fileID: 93476060}
   - {fileID: 93476061}
+  - {fileID: 93476062}
+  - {fileID: 93476063}
   ForceRemoteRenderTimeframe: 0
 --- !u!4 &93476059
 Transform:
@@ -5154,6 +5158,34 @@ MonoBehaviour:
   missionSystem: {fileID: 93476060}
   _Initialized:
     _value: 0
+--- !u!114 &93476062
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 93476056}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a939e516612b439a86a95204f0930c48, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  gameDurationSeconds: 600
+--- !u!114 &93476063
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 93476056}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c30be021f3ca4f13b97e98db78b9c8de, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  missionSystem: {fileID: 93476060}
+  roleAssignment: {fileID: 93476061}
+  gameTimer: {fileID: 93476062}
 --- !u!1001 &94518787
 PrefabInstance:
   m_ObjectHideFlags: 0
