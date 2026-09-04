@@ -16,7 +16,8 @@ public class GameEndSystem : NetworkBehaviour
 
     [Networked] public NetworkBool ResultsInitialized { get; private set; }
     [Networked] public NetworkBool HasCitizenEscaped { get; private set; }
-    [Networked] public NetworkBool IsGameEnded { get; private set; }
+    [Networked, OnChangedRender(nameof(HandleGameEndedChanged))]
+    public NetworkBool IsGameEnded { get; private set; }
 
     public event Action<PlayerRef, PlayerResult> OnPlayerResultDecided;
     public event Action OnGameEnded;
@@ -27,7 +28,12 @@ public class GameEndSystem : NetworkBehaviour
     public override void Spawned()
     {
         if (!HasStateAuthority)
+        {
+            if (IsGameEnded)
+                OnGameEnded?.Invoke();
+
             return;
+        }
 
         FindDependencies();
         SubscribeEvents();
@@ -286,5 +292,11 @@ public class GameEndSystem : NetworkBehaviour
 
         IsGameEnded = true;
         OnGameEnded?.Invoke();
+    }
+
+    private void HandleGameEndedChanged()
+    {
+        if (IsGameEnded && !HasStateAuthority)
+            OnGameEnded?.Invoke();
     }
 }

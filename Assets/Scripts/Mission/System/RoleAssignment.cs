@@ -16,6 +16,7 @@ public enum PlayerRole
 public class RoleAssignment : NetworkBehaviour
 {
     private const int MinPlayerCount = 2;
+    private const int MaxPlayerCount = 10;
 
     [Header("역할 설정")]
     [SerializeField, Min(1)] private int killerCount = 1;
@@ -27,8 +28,8 @@ public class RoleAssignment : NetworkBehaviour
     [Networked]
     public NetworkBool Initialized { get; private set; }
 
-    // Host만 가지고 있는 실제 역할 정보
-    private readonly Dictionary<PlayerRef, PlayerRole> roles = new();
+    [Networked, Capacity(MaxPlayerCount)]
+    public NetworkDictionary<PlayerRef, PlayerRole> Roles => default;
 
     public event System.Action OnRolesAssigned;
 
@@ -59,11 +60,11 @@ public class RoleAssignment : NetworkBehaviour
 
 
     /// <summary>
-    /// Host가 특정 플레이어의 역할을 확인할 때 사용
+    /// 특정 플레이어의 역할을 확인할 때 사용
     /// </summary>
     public bool TryGetRole(PlayerRef player, out PlayerRole role)
     {
-        return roles.TryGetValue(player, out role);
+        return Roles.TryGet(player, out role);
     }
 
 
@@ -89,7 +90,7 @@ public class RoleAssignment : NetworkBehaviour
         List<PlayerRef> citizens = new();
         List<PlayerRef> killers = new();
 
-        roles.Clear();
+        Roles.Clear();
 
         for (int i = 0; i < players.Count; i++)
         {
@@ -98,14 +99,14 @@ public class RoleAssignment : NetworkBehaviour
             if (i < currentKillerCount)
             {
                 killers.Add(player);
-                roles.Add(player, PlayerRole.Killer);
+                Roles.Add(player, PlayerRole.Killer);
 
                 Debug.Log($"[역할 배정] {player} → Killer");
             }
             else
             {
                 citizens.Add(player);
-                roles.Add(player, PlayerRole.Citizen);
+                Roles.Add(player, PlayerRole.Citizen);
 
                 Debug.Log($"[역할 배정] {player} → Citizen");
             }

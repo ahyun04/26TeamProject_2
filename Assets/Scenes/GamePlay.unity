@@ -5158,6 +5158,8 @@ MonoBehaviour:
   missionSystem: {fileID: 93476060}
   _Initialized:
     _value: 0
+  _Roles:
+    _items: []
 --- !u!114 &93476062
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5168,9 +5170,14 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a939e516612b439a86a95204f0930c48, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
-  gameDurationSeconds: 600
+  m_Name: 
+  m_EditorClassIdentifier: 
+  gameDurationSeconds: 100
+  roleAssignment: {fileID: 93476061}
+  _IsStarted:
+    _value: 0
+  _IsTimeUp:
+    _value: 0
 --- !u!114 &93476063
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5181,11 +5188,19 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c30be021f3ca4f13b97e98db78b9c8de, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
+  m_Name: 
+  m_EditorClassIdentifier: 
   missionSystem: {fileID: 93476060}
   roleAssignment: {fileID: 93476061}
   gameTimer: {fileID: 93476062}
+  _PlayerResults:
+    _items: []
+  _ResultsInitialized:
+    _value: 0
+  _HasCitizenEscaped:
+    _value: 0
+  _IsGameEnded:
+    _value: 0
 --- !u!1001 &94518787
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -103850,6 +103865,7 @@ RectTransform:
   m_Children:
   - {fileID: 1288599707}
   - {fileID: 1086970596}
+  - {fileID: 800000000000000002}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -104474,6 +104490,36 @@ PrefabInstance:
 Transform:
   m_CorrespondingSourceObject: {fileID: 4017612300814079817, guid: 02b477a6b2282784ba00063d5786cc0e, type: 3}
   m_PrefabInstance: {fileID: 2145630159}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1001 &800000000000000001
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 2131156471}
+    m_Modifications:
+    - target: {fileID: 600000000000000003, guid: 4607f22fe65e4d29a7213db67e220534, type: 3}
+      propertyPath: gameEndSystem
+      value: 
+      objectReference: {fileID: 93476063}
+    - target: {fileID: 600000000000000003, guid: 4607f22fe65e4d29a7213db67e220534, type: 3}
+      propertyPath: roleAssignment
+      value: 
+      objectReference: {fileID: 93476061}
+    - target: {fileID: 600000000000000021, guid: 4607f22fe65e4d29a7213db67e220534, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 4607f22fe65e4d29a7213db67e220534, type: 3}
+--- !u!224 &800000000000000002 stripped
+RectTransform:
+  m_CorrespondingSourceObject: {fileID: 600000000000000002, guid: 4607f22fe65e4d29a7213db67e220534, type: 3}
+  m_PrefabInstance: {fileID: 800000000000000001}
   m_PrefabAsset: {fileID: 0}
 --- !u!1001 &2049779197248438429
 PrefabInstance:
