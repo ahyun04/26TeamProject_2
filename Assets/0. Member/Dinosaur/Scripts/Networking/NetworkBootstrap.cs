@@ -1,266 +1,185 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading.Tasks;
 using Fusion;
 using Fusion.Sockets;
 using LockdownProtocol.Lobby;
+using Photon.Voice.Fusion;
+using Photon.Voice.Unity;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-namespace LockdownProtocol.Networking
+/// <summary>
+/// 게임의 네트워크 진입점(Entry Point).
+/// NetworkRunner를 생성하고 Host/Client로 세션을 시작하는 것만 책임진다.
+///
+/// LobbyMenuUI, RoomManager, LobbyPlayerSpawner가 이 클래스를 전제로 작성되어 있다 -
+/// CreateRoom()/JoinRoom()/LeaveRoom() 및 static OnPlayerJoinedEvent/OnPlayerLeftEvent.
+///
+/// NetworkRunner는 이 오브젝트가 아니라 매번 새로 만드는 별도의 자식 오브젝트에 둔다.
+/// Fusion은 StartGame() 실패 시 NetworkRunner가 붙은 GameObject를 파괴하므로,
+/// 이 오브젝트 자신과 분리해둬야 실패 후에도 재시도가 가능하다.
+/// </summary>
+public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
 {
-    /// <summary>
-    /// 게임의 네트워크 진입점(Entry Point).
-    /// NetworkRunner를 생성하고 Host 또는 Client로 세션을 시작하는 것만 책임진다.
-    /// 플레이어 스폰, 게임 로직은 이 클래스가 담당하지 않는다 (SRP).
-    ///
-    /// 로비 시스템 연동을 위해 방 이름/최대 인원/공개여부를 받는 CreateRoom/JoinRoom을
-    /// 추가하고, 세션이 실제로 씬을 넘어가도록 대기방 씬 인덱스를 명시했다.
-    /// 씬 전환에도 살아남아야 하므로 DontDestroyOnLoad를 건다.
-    /// </summary>
-    public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
+    [Header("Scene Settings")]
+    [Tooltip("방 생성/참가 성공 시 이동할 씬 이름 (RoomManager가 존재하는 씬)")]
+    [SerializeField] private string roomSceneName = "Room";
+
+    [Tooltip("LeaveRoom() 호출 시 돌아갈 씬 이름")]
+    [SerializeField] private string lobbySceneName = "Lobby";
+
+    [Header("Voice")]
+    [Tooltip("로비 씬에 미리 배치된 Recorder(내 마이크)")]
+    [SerializeField] private Recorder primaryRecorder;
+
+    private NetworkRunner _runner;
+    private GameObject _runnerObject;
+
+    public static event Action<NetworkRunner, PlayerRef> OnPlayerJoinedEvent;
+    public static event Action<NetworkRunner, PlayerRef> OnPlayerLeftEvent;
+
+    private void Awake()
     {
-        [Header("Session Settings")]
-        [SerializeField] private string defaultRoomName = "LockdownProtocol_TestRoom";
-        [SerializeField] private int waitingRoomSceneIndex = 2; // 대기방(로비 룸) 씬 빌드 인덱스
-        [SerializeField] private int lobbyMenuSceneIndex = 1;   // 방 목록/방 만들기 메뉴 씬 빌드 인덱스
-
-        [Header("Lobby")]
-        [SerializeField] private NetworkObject roomManagerPrefab; // RoomManager + LobbyGameStartManager가 함께 붙은 프리팹
-
-        [Header("Dependencies")]
-        [SerializeField] private PlayerInputProvider inputHandler;
-
-        private NetworkRunner _runner;
-        public NetworkRunner Runner => _runner;
-
-        // StartGame()이 끝나도 씬 전환(Scene 파라미터 로딩)까지 끝났다는 보장은 없다.
-        // 씬이 아직 안 끝난 상태에서 Spawn하면 옛 씬에 만들어졌다가 전환되며 같이 사라질 수 있으므로,
-        // 실제로 OnSceneLoadDone이 불릴 때까지 스폰을 미룬다.
-        private (string roomName, int maxPlayers, bool isPrivate)? _pendingRoomManagerSpawn;
-
-        /// <summary>
-        /// 다른 스크립트(예: PlayerSpawner, LobbyPlayerSpawner)가 구독해서
-        /// 플레이어 스폰 등을 처리할 수 있도록 접속 이벤트를 외부로 노출한다.
-        /// 이 클래스는 "무엇을 할지"는 모르고 "일어났다"는 사실만 알린다.
-        /// </summary>
-        public static event Action<NetworkRunner, PlayerRef> OnPlayerJoinedEvent;
-        public static event Action<NetworkRunner, PlayerRef> OnPlayerLeftEvent;
-
-        private void Awake()
-        {
-            // 로비 -> 대기방 -> 게임 씬 전환에도 NetworkRunner(및 Photon 연결)가 유지되도록.
-            DontDestroyOnLoad(gameObject);
-        }
-
-        // ================== 방 생성 / 참가 (로비 시스템 진입점) ==================
-
-        /// <summary>방 만들기 -> 로비 UI가 이 메서드를 호출한다.</summary>
-        public async Task<StartGameResult> CreateRoom(string roomName, int maxPlayers, bool isPrivate)
-        {
-            var result = await StartSession(GameMode.Host, roomName, maxPlayers, isPrivate);
-
-            if (result.Ok)
-            {
-                // 씬 전환이 끝난 뒤(OnSceneLoadDone)에 실제로 Spawn한다 - StartGame() 완료가
-                // 곧 씬 로딩 완료를 의미하지 않는다.
-                _pendingRoomManagerSpawn = (roomName, maxPlayers, isPrivate);
-            }
-
-            return result;
-        }
-
-        /// <summary>방 참가 -> 로비 UI가 이 메서드를 호출한다.</summary>
-        public async Task<StartGameResult> JoinRoom(string roomName)
-        {
-            return await StartSession(GameMode.Client, roomName, maxPlayers: 0, isPrivate: false);
-        }
-
-        /// <summary>방 나가기 -> 세션 종료 후 로비 메뉴 씬으로 복귀.</summary>
-        public async void LeaveRoom()
-        {
-            if (_runner == null) return;
-
-            await _runner.Shutdown();
-            _runner = null;
-            SceneManager.LoadScene(lobbyMenuSceneIndex);
-        }
-
-        private async Task<StartGameResult> StartSession(GameMode mode, string roomName, int maxPlayers, bool isPrivate)
-        {
-            if (_runner != null)
-            {
-                Debug.LogWarning("[NetworkBootstrap] Runner가 이미 존재합니다. 중복 시작을 무시합니다.");
-                return default;
-            }
-
-            // FusionVoiceClient에 [RequireComponent(typeof(NetworkRunner))]가 있어서,
-            // Voice 연동 컴포넌트를 붙이는 순간 에디터가 이미 NetworkRunner를 미리 추가해뒀을 수 있다.
-            // 그런 경우 AddComponent()로 또 추가하면 중복 컴포넌트 문제가 생기므로, 먼저 있는지 확인한다.
-            _runner = GetComponent<NetworkRunner>();
-            if (_runner == null)
-            {
-                _runner = gameObject.AddComponent<NetworkRunner>();
-            }
-            // 로비 세션(LobbyMovementController)은 RPC로 직접 위치를 보내는 방식이라
-            // Fusion의 GetInput<T>() 입력 폴링이 필요 없다. InputHandler가 없는 상태에서
-            // ProvideInput만 켜두면 매 틱 OnInput이 불려서 경고가 계속 찍히므로,
-            // 핸들러가 실제로 할당된 경우(=게임 씬 등 인풋이 필요한 세션)에만 켠다.
-            _runner.ProvideInput = inputHandler != null;
-
-            var sceneManager = gameObject.GetComponent<NetworkSceneManagerDefault>();
-            if (sceneManager == null)
-            {
-                sceneManager = gameObject.AddComponent<NetworkSceneManagerDefault>();
-            }
-
-            var args = new StartGameArgs
-            {
-                GameMode = mode,
-                SessionName = string.IsNullOrEmpty(roomName) ? defaultRoomName : roomName,
-                Scene = SceneRef.FromIndex(waitingRoomSceneIndex),
-                SceneManager = sceneManager,
-                IsVisible = !isPrivate,
-                // 클라이언트가 존재하지 않는 방에 접속하려고 했을 때 새 방을 만들지 못하게 함
-                EnableClientSessionCreation = mode == GameMode.Host
-            };
-
-            if (mode == GameMode.Host)
-            {
-                args.PlayerCount = maxPlayers > 0 ? maxPlayers : 10;
-            }
-
-            var result = await _runner.StartGame(args);
-
-            if (result.Ok)
-            {
-                Debug.Log($"[NetworkBootstrap] 세션 시작 성공. Mode: {mode}, Room: {roomName}");
-            }
-            else
-            {
-                Debug.LogError($"[NetworkBootstrap] 세션 시작 실패: {result.ShutdownReason}");
-                Destroy(_runner);
-                _runner = null;
-            }
-
-            return result;
-        }
-
-        private void SpawnRoomManager(string roomName, int maxPlayers, bool isPrivate)
-        {
-            if (roomManagerPrefab == null)
-            {
-                Debug.LogError("[NetworkBootstrap] RoomManager Prefab이 할당되지 않았습니다.");
-                return;
-            }
-
-            // roomManagerPrefab 하나에 RoomManager와 LobbyGameStartManager를 함께 붙여서
-            // 한 번의 Spawn으로 둘 다 살아나게 한다 (방 단위 싱글턴이 두 개로 나뉘어 있을 이유가 없음).
-            NetworkObject spawned = _runner.Spawn(roomManagerPrefab, inputAuthority: PlayerRef.None);
-
-            var roomManager = spawned.GetComponent<RoomManager>();
-            if (roomManager == null)
-            {
-                Debug.LogError("[NetworkBootstrap] RoomManager Prefab에 RoomManager 컴포넌트가 없습니다.");
-                return;
-            }
-            roomManager.InitializeRoom(roomName, maxPlayers, isPrivate, _runner.LocalPlayer);
-
-            if (spawned.GetComponent<LobbyGameStartManager>() == null)
-            {
-                Debug.LogWarning("[NetworkBootstrap] RoomManager Prefab에 LobbyGameStartManager 컴포넌트가 없습니다. " +
-                                  "게임 시작 버튼이 동작하지 않습니다 - 프리팹에 컴포넌트를 추가하세요.");
-            }
-        }
-
-        #region INetworkRunnerCallbacks
-
-        public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
-        {
-            Debug.Log($"[NetworkBootstrap] 플레이어 접속: {player}");
-            OnPlayerJoinedEvent?.Invoke(runner, player);
-        }
-
-        public void OnPlayerLeft(NetworkRunner runner, PlayerRef player)
-        {
-            Debug.Log($"[NetworkBootstrap] 플레이어 퇴장: {player}");
-            OnPlayerLeftEvent?.Invoke(runner, player);
-        }
-
-        public void OnShutdown(NetworkRunner runner, ShutdownReason shutdownReason)
-        {
-            Debug.Log($"[NetworkBootstrap] 세션 종료: {shutdownReason}");
-        }
-
-        public void OnConnectedToServer(NetworkRunner runner) { }
-        public void OnDisconnectedFromServer(NetworkRunner runner, NetDisconnectReason reason) { }
-        public void OnConnectFailed(NetworkRunner runner, NetAddress remoteAddress, NetConnectFailedReason reason) { }
-        public void OnConnectRequest(NetworkRunner runner, NetworkRunnerCallbackArgs.ConnectRequest request, byte[] token) { }
-        public void OnInput(NetworkRunner runner, NetworkInput input)
-        {
-            NetworkInputData data = new NetworkInputData();
-
-            // 이동
-            data.MoveDirection = new Vector2(
-                Input.GetAxisRaw("Horizontal"),
-                Input.GetAxisRaw("Vertical")
-            );
-
-            // 마우스 시점
-            data.LookRotation = new Vector2(
-            Input.GetAxis("Mouse X"),
-            Input.GetAxis("Mouse Y")
-            );
-
-            // 점프
-            data.Buttons.Set(
-                InputButton.Jump,
-                Input.GetKey(KeyCode.Space)
-            );
-
-            // 달리기
-            data.Buttons.Set(
-                InputButton.Sprint,
-                Input.GetKey(KeyCode.LeftShift)
-            );
-
-            // 앉기
-            data.Buttons.Set(
-                InputButton.Crouch,
-                Input.GetKey(KeyCode.LeftControl)
-            );
-
-            // Fusion에게 입력 전달
-            input.Set(data);
-        }
-
-        public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input) { }
-        public void OnSimulationMessage(NetworkRunner runner, SimulationMessagePtr message) { }
-        public void OnSessionListUpdated(NetworkRunner runner, List<SessionInfo> sessionList) { }
-        public void OnCustomAuthenticationResponse(NetworkRunner runner, Dictionary<string, object> data) { }
-        public void OnHostMigration(NetworkRunner runner, HostMigrationToken hostMigrationToken) { }
-        public void OnReliableDataReceived(NetworkRunner runner, PlayerRef player, ReliableKey key, ArraySegment<byte> data) { }
-        public void OnReliableDataProgress(NetworkRunner runner, PlayerRef player, ReliableKey key, float progress) { }
-        public void OnSceneLoadDone(NetworkRunner runner)
-        {
-            if (_pendingRoomManagerSpawn == null) return;
-            if (!runner.IsServer) return; // 방장(Host)만 RoomManager를 Spawn한다
-
-            var (roomName, maxPlayers, isPrivate) = _pendingRoomManagerSpawn.Value;
-            _pendingRoomManagerSpawn = null;
-
-            SpawnRoomManager(roomName, maxPlayers, isPrivate);
-        }
-        public void OnSceneLoadStart(NetworkRunner runner) { }
-        public void OnObjectExitAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
-        public void OnObjectEnterAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
-        public void OnUserSimulationMessage(NetworkRunner runner, SimulationMessagePtr message) { }
-
-        #endregion
-
-        // ===== 임시 테스트 코드 블록은 제거함 =====
-        // 로비 시스템(RoomManager + LobbyUI)이 이제 생겼으므로, 기존 OnGUI Start Host/Client
-        // 버튼은 삭제. 테스트가 다시 필요하면 로비 UI를 통해 CreateRoom/JoinRoom을 호출할 것.
+        DontDestroyOnLoad(gameObject);
     }
-}
 
+    /// <summary>방 생성 (Host). 성공 시 RoomManager를 초기화한다.</summary>
+    public async Task<StartGameResult> CreateRoom(string roomName, int maxPlayers, bool isPrivate)
+    {
+        StartGameResult result = await StartSession(GameMode.Host, roomName, maxPlayers);
+
+        if (result.Ok)
+        {
+            RoomManager.Instance?.InitializeRoom(roomName, maxPlayers, isPrivate, _runner.LocalPlayer);
+        }
+
+        return result;
+    }
+
+    /// <summary>기존 방에 참가 (Client).</summary>
+    public async Task<StartGameResult> JoinRoom(string roomName)
+    {
+        return await StartSession(GameMode.Client, roomName, 0);
+    }
+
+    /// <summary>세션 종료 후 로비 씬으로 복귀.</summary>
+    public async void LeaveRoom()
+    {
+        if (_runner != null)
+        {
+            await _runner.Shutdown();
+        }
+
+        SceneManager.LoadScene(lobbySceneName);
+    }
+
+    private async Task<StartGameResult> StartSession(GameMode mode, string roomName, int maxPlayers)
+    {
+        PrepareRunner();
+
+        var args = new StartGameArgs
+        {
+            GameMode = mode,
+            SessionName = roomName,
+            Scene = GetSceneRefByName(roomSceneName),
+            SceneManager = _runnerObject.GetComponent<NetworkSceneManagerDefault>(),
+            EnableClientSessionCreation = false
+        };
+
+        if (mode == GameMode.Host && maxPlayers > 0)
+        {
+            args.PlayerCount = maxPlayers;
+        }
+
+        return await _runner.StartGame(args);
+    }
+
+    /// <summary>NetworkRunner와 연동 컴포넌트를 담을 새 자식 오브젝트를 매 시도마다 새로 만든다.</summary>
+    private void PrepareRunner()
+    {
+        if (_runnerObject != null)
+        {
+            Destroy(_runnerObject);
+        }
+
+        _runnerObject = new GameObject("NetworkRunner (Dynamic)");
+        _runnerObject.transform.SetParent(transform);
+
+        _runner = _runnerObject.AddComponent<NetworkRunner>();
+        _runnerObject.AddComponent<NetworkSceneManagerDefault>();
+
+        var voiceClient = _runnerObject.AddComponent<FusionVoiceClient>();
+        voiceClient.PrimaryRecorder = primaryRecorder;
+        // UsePrimaryRecorder는 읽기 전용이라 코드로 못 바꾼다. AddComponent로 새로 만들면
+        // bool 기본값이 false라 원하는 상태(꺼짐) 그대로다 - VoiceNetworkObject가 스폰 시점에 바인딩한다.
+
+        _runner.ProvideInput = true;
+
+        // NetworkRunner가 이 오브젝트와 다른 GameObject에 있어 자동 콜백 탐색 대상이 아니므로 수동 등록한다.
+        _runner.AddCallbacks(this);
+
+        // PlayerInputProvider(실제 입력을 채워 넣는 스크립트)도 같은 이유로 수동 등록이 필요하다.
+        // 씬 어딘가에 배치되어 있다고 가정하고 찾는다.
+        var inputProvider = FindObjectOfType<PlayerInputProvider>();
+        if (inputProvider != null)
+        {
+            _runner.AddCallbacks(inputProvider);
+        }
+        else
+        {
+            Debug.LogWarning("[NetworkBootstrap] PlayerInputProvider를 씬에서 찾을 수 없습니다. 입력이 전달되지 않습니다.");
+        }
+    }
+
+    /// <summary>빌드 인덱스 대신 이름으로 씬을 찾는다 (인덱스는 자주 바뀌어 불안정하다).</summary>
+    private static SceneRef GetSceneRefByName(string sceneName)
+    {
+        for (int i = 0; i < SceneManager.sceneCountInBuildSettings; i++)
+        {
+            string path = SceneUtility.GetScenePathByBuildIndex(i);
+            string name = Path.GetFileNameWithoutExtension(path);
+            if (name == sceneName)
+            {
+                return SceneRef.FromIndex(i);
+            }
+        }
+
+        Debug.LogError($"[NetworkBootstrap] 씬 '{sceneName}'을 Build Settings에서 찾을 수 없습니다.");
+        return default;
+    }
+
+    #region INetworkRunnerCallbacks
+
+    public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
+    {
+        OnPlayerJoinedEvent?.Invoke(runner, player);
+    }
+
+    public void OnPlayerLeft(NetworkRunner runner, PlayerRef player)
+    {
+        OnPlayerLeftEvent?.Invoke(runner, player);
+    }
+
+    public void OnShutdown(NetworkRunner runner, ShutdownReason shutdownReason) { }
+    public void OnConnectedToServer(NetworkRunner runner) { }
+    public void OnDisconnectedFromServer(NetworkRunner runner, NetDisconnectReason reason) { }
+    public void OnConnectFailed(NetworkRunner runner, NetAddress remoteAddress, NetConnectFailedReason reason) { }
+    public void OnConnectRequest(NetworkRunner runner, NetworkRunnerCallbackArgs.ConnectRequest request, byte[] token) { }
+    public void OnInput(NetworkRunner runner, NetworkInput input) { }
+    public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input) { }
+    public void OnSimulationMessage(NetworkRunner runner, SimulationMessagePtr message) { }
+    public void OnSessionListUpdated(NetworkRunner runner, List<SessionInfo> sessionList) { }
+    public void OnCustomAuthenticationResponse(NetworkRunner runner, Dictionary<string, object> data) { }
+    public void OnHostMigration(NetworkRunner runner, HostMigrationToken hostMigrationToken) { }
+    public void OnReliableDataReceived(NetworkRunner runner, PlayerRef player, ReliableKey key, ArraySegment<byte> data) { }
+    public void OnReliableDataProgress(NetworkRunner runner, PlayerRef player, ReliableKey key, float progress) { }
+    public void OnSceneLoadDone(NetworkRunner runner) { }
+    public void OnSceneLoadStart(NetworkRunner runner) { }
+    public void OnObjectExitAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
+    public void OnObjectEnterAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
+    public void OnUserSimulationMessage(NetworkRunner runner, SimulationMessagePtr message) { }
+
+    #endregion
+}

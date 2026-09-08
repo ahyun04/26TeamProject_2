@@ -414,11 +414,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0a6a679cab8f3474b8c13bcb1e4546ff, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  defaultRoomName: LockdownProtocol_TestRoom
-  waitingRoomSceneIndex: 2
-  lobbyMenuSceneIndex: 1
-  roomManagerPrefab: {fileID: 6169846194619057987, guid: 4446aa45b83118047b15386e21232661, type: 3}
-  inputHandler: {fileID: 222041418}
+  roomSceneName: StandBy_Test
+  lobbySceneName: Lobby_Test
+  primaryRecorder: {fileID: 0}
 --- !u!4 &222041417
 Transform:
   m_ObjectHideFlags: 0
