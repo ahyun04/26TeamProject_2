@@ -43,9 +43,9 @@ public class PlayerCameraController : NetworkBehaviour
 
         if (isLocalPlayer)
         {
-            bool isLobby = LobbyRoomUI.Instance != null;
-            Cursor.lockState = isLobby ? CursorLockMode.None : CursorLockMode.Locked;
-            Cursor.visible = isLobby;
+            bool isMenuOpen = LobbyRoomUI.Instance != null && LobbyRoomUI.Instance.BlocksPlayerInput;
+            Cursor.lockState = isMenuOpen ? CursorLockMode.None : CursorLockMode.Locked;
+            Cursor.visible = isMenuOpen;
             LocalListenerTransform = playerCamera.transform;
         }
     }

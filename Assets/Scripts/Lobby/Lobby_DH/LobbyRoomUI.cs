@@ -44,8 +44,7 @@ namespace LockdownProtocol.Lobby
         internal static LobbyRoomUI Instance { get; private set; }
         internal bool BlocksPlayerInput => _isOpen ||
             (_miniHud != null && _miniHud.IsLeaveConfirmationOpen) ||
-            (inviteListPanel != null && inviteListPanel.IsOpen) ||
-            (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject());
+            (inviteListPanel != null && inviteListPanel.isActiveAndEnabled && inviteListPanel.IsOpen);
 
 
         private void OnEnable()
@@ -96,6 +95,8 @@ namespace LockdownProtocol.Lobby
                 SetOpen(!_isOpen);
             }
 
+            RefreshCursorState();
+
             if (!_isOpen) return;
             if (RoomManager.Instance == null || RoomManager.Instance.Object == null || !RoomManager.Instance.Object.IsValid) return;
 
@@ -110,12 +111,6 @@ namespace LockdownProtocol.Lobby
         {
             _isOpen = open;
 
-
-            // 미니 HUD도 클릭할 수 있도록 대기실에서는 커서를 유지한다.
-            Cursor.lockState = CursorLockMode.None;
-            Cursor.visible = true;
-
-
             if (detailPanelRoot == null)
             {
                 Debug.LogWarning("[LobbyRoomUI] Detail Panel Root가 할당되지 않았습니다.");
@@ -129,6 +124,21 @@ namespace LockdownProtocol.Lobby
             {
                 detailPanelRoot.SetActive(open);
             }
+
+            RefreshCursorState();
+        }
+
+        private void RefreshCursorState()
+        {
+            bool showCursor = BlocksPlayerInput;
+            CursorLockMode lockMode = showCursor ? CursorLockMode.None : CursorLockMode.Locked;
+            if (Cursor.lockState != lockMode)
+            {
+                Cursor.lockState = lockMode;
+                if (!showCursor && EventSystem.current != null)
+                    EventSystem.current.SetSelectedGameObject(null);
+            }
+            Cursor.visible = showCursor;
         }
 
         // ================== 방 정보 ==================

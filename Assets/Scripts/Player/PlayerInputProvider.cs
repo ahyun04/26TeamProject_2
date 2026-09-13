@@ -18,9 +18,7 @@ public class PlayerInputProvider : MonoBehaviour, INetworkRunnerCallbacks
             jumpPressed = false;
             return;
         }
-        // 대기실은 커서를 유지하고 우클릭 중에만 시점을 회전한다.
-        if (lobbyUI == null || Input.GetMouseButton(1))
-            accumulatedLook += new Vector2(Input.GetAxis("Mouse X"), Input.GetAxis("Mouse Y"));
+        accumulatedLook += new Vector2(Input.GetAxis("Mouse X"), Input.GetAxis("Mouse Y"));
         jumpPressed |= Input.GetKeyDown(KeyCode.Space);
     }
 
