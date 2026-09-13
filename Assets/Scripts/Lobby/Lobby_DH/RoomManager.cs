@@ -84,6 +84,7 @@ namespace LockdownProtocol.Lobby
         {
             NetworkBootstrap.OnPlayerJoinedEvent -= HandlePlayerJoined;
             NetworkBootstrap.OnPlayerLeftEvent -= HandlePlayerLeft;
+            if (Instance == this) Instance = null;
         }
 
         public override void FixedUpdateNetwork()
@@ -111,6 +112,7 @@ namespace LockdownProtocol.Lobby
             IsPrivate = isPrivate;
             HostPlayerId = hostPlayer;
             CurrentRoomState = RoomState.Waiting;
+            FindFirstObjectByType<LobbyPlayerSpawner>()?.RefreshHostFlag(hostPlayer);
         }
 
         // ================== 방 나가기 ==================
@@ -141,6 +143,7 @@ namespace LockdownProtocol.Lobby
             {
                 if (player == HostPlayerId) continue;
                 HostPlayerId = player;
+                FindFirstObjectByType<LobbyPlayerSpawner>()?.RefreshHostFlag(player);
                 RPC_NotifyHostChanged(player);
                 return;
             }
@@ -165,6 +168,7 @@ namespace LockdownProtocol.Lobby
         {
             if (!Object.HasStateAuthority) return;
             CurrentRoomState = state;
+            Runner.SessionInfo.IsOpen = state == RoomState.Waiting;
         }
 
         // ================== NetworkBootstrap 이벤트 핸들러 ==================
@@ -173,6 +177,7 @@ namespace LockdownProtocol.Lobby
 
         private void HandlePlayerJoined(NetworkRunner runner, PlayerRef player)
         {
+            if (runner != Runner) return;
             if (!Object.HasStateAuthority) return;
 
             if (CurrentRoomState != RoomState.Waiting)
@@ -190,6 +195,7 @@ namespace LockdownProtocol.Lobby
 
         private void HandlePlayerLeft(NetworkRunner runner, PlayerRef player)
         {
+            if (runner != Runner) return;
             if (!Object.HasStateAuthority) return;
 
             bool wasHost = player == HostPlayerId;

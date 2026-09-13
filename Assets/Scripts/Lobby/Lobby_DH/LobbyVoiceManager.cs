@@ -28,6 +28,7 @@ namespace LockdownProtocol.Lobby
         private Recorder _recorder;
         private LobbyGameStartManager _gameStartManager;
         private bool _channelClosed;
+        private bool _wasTransmitting;
 
         public override void Spawned()
         {
@@ -43,6 +44,7 @@ namespace LockdownProtocol.Lobby
             if (_gameStartManager != null)
             {
                 _gameStartManager.CountdownStarted += HandleGameStarting;
+                _gameStartManager.CountdownCancelled += HandleGameCancelled;
             }
         }
 
@@ -51,12 +53,23 @@ namespace LockdownProtocol.Lobby
             if (_gameStartManager != null)
             {
                 _gameStartManager.CountdownStarted -= HandleGameStarting;
+                _gameStartManager.CountdownCancelled -= HandleGameCancelled;
             }
         }
 
         private void Update()
         {
-            if (_channelClosed) return;
+            if (_channelClosed || _audioSource == null) return;
+
+            if (_gameStartManager == null)
+            {
+                _gameStartManager = FindFirstObjectByType<LobbyGameStartManager>();
+                if (_gameStartManager != null)
+                {
+                    _gameStartManager.CountdownStarted += HandleGameStarting;
+                    _gameStartManager.CountdownCancelled += HandleGameCancelled;
+                }
+            }
 
             // 자기 자신의 스피커는 자기 목소리를 재생하지 않는다
             if (Object != null && Object.HasInputAuthority) return;
@@ -96,8 +109,16 @@ namespace LockdownProtocol.Lobby
 
             if (Object != null && Object.HasInputAuthority)
             {
+                _wasTransmitting = _recorder.TransmitEnabled;
                 _recorder.TransmitEnabled = false;
             }
+        }
+
+        private void HandleGameCancelled()
+        {
+            _channelClosed = false;
+            if (Object != null && Object.HasInputAuthority)
+                _recorder.TransmitEnabled = _wasTransmitting;
         }
     }
 }

@@ -1,4 +1,5 @@
 using Fusion;
+using LockdownProtocol.Lobby;
 using UnityEngine;
 
 /// <summary>
@@ -19,10 +20,17 @@ public class PlayerItemController : NetworkBehaviour
 
     // 현재 아이템이 Target 변화에 반응하는 기능을 가지고 있을 경우 저장
     private IItemTargetHandler targetHandler;
+    private PlayerHealth health;
 
 
     public override void Spawned()
     {
+        health = GetComponent<PlayerHealth>();
+        if (HasStateAuthority && health != null)
+        {
+            health.Died += DropCurrentItem;
+            health.Escaped += DropCurrentItem;
+        }
         if (!HasInputAuthority)
             return;
 
@@ -47,6 +55,11 @@ public class PlayerItemController : NetworkBehaviour
 
     public override void Despawned(NetworkRunner runner, bool hasState)
     {
+        if (health != null)
+        {
+            health.Died -= DropCurrentItem;
+            health.Escaped -= DropCurrentItem;
+        }
         if (targetDetector != null)
             targetDetector.TargetChanged -= OnTargetChanged;
 
@@ -60,7 +73,8 @@ public class PlayerItemController : NetworkBehaviour
 
     private void Update()
     {
-        if (!HasInputAuthority)
+        if (Object == null || !Object.IsValid || !HasInputAuthority || (health != null && !health.CanAct) ||
+            (LobbyRoomUI.Instance != null && LobbyRoomUI.Instance.BlocksPlayerInput))
             return;
 
         HandleItemInput();
@@ -74,6 +88,11 @@ public class PlayerItemController : NetworkBehaviour
     {
         bool leftDown = Input.GetMouseButtonDown(0);
         bool rightDown = Input.GetMouseButtonDown(1);
+        if (Input.GetKeyDown(KeyCode.G) && CurrentItemObject != null)
+        {
+            RequestUnequipItem();
+            return;
+        }
 
         // 아무것도 들고 있지 않을 때 좌클릭 = 장착
         if (leftDown && CurrentItemObject == null)
@@ -169,6 +188,7 @@ public class PlayerItemController : NetworkBehaviour
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
     private void RPC_RequestEquipItem(NetworkId itemId)
     {
+        if (health != null && !health.CanAct) return;
         if (CurrentItemObject != null)
             return;
 
@@ -197,6 +217,13 @@ public class PlayerItemController : NetworkBehaviour
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
     private void RPC_RequestUnequipItem()
     {
+        if (health != null && !health.CanAct) return;
+        DropCurrentItem();
+    }
+
+    internal void DropCurrentItem()
+    {
+        if (!HasStateAuthority) return;
         if (CurrentItemObject == null)
             return;
 
@@ -216,6 +243,7 @@ public class PlayerItemController : NetworkBehaviour
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority, TickAligned = false)]
     private void RPC_RequestUseItem(NetworkId targetId)
     {
+        if (health != null && !health.CanAct) return;
         if (CurrentItemObject == null)
             return;
 

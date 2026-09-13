@@ -13,6 +13,14 @@ public class GameplayPlayerSpawner : NetworkBehaviour
         if (!HasStateAuthority)
             return;
 
+        if (playerPrefab == null || spawnPoints == null || spawnPoints.Length == 0 ||
+            System.Array.Exists(spawnPoints, point => point == null))
+        {
+            Debug.LogError("[GameplayPlayerSpawner] Player Prefab 또는 Spawn Points가 올바르게 연결되지 않았습니다.");
+            return;
+        }
+        NetworkBootstrap.OnPlayerLeftEvent += HandlePlayerLeft;
+
         int index = 0;
 
         foreach (PlayerRef player in Runner.ActivePlayers)
@@ -30,5 +38,19 @@ public class GameplayPlayerSpawner : NetworkBehaviour
 
             index++;
         }
+    }
+
+    public override void Despawned(NetworkRunner runner, bool hasState)
+    {
+        NetworkBootstrap.OnPlayerLeftEvent -= HandlePlayerLeft;
+    }
+
+    private void HandlePlayerLeft(NetworkRunner runner, PlayerRef player)
+    {
+        if (runner != Runner || !HasStateAuthority) return;
+        NetworkObject playerObject = runner.GetPlayerObject(player);
+        if (playerObject == null || !playerObject.IsValid) return;
+        playerObject.GetComponent<PlayerItemController>()?.DropCurrentItem();
+        runner.Despawn(playerObject);
     }
 }

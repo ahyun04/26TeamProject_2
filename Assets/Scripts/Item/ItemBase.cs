@@ -10,6 +10,8 @@ public abstract class ItemBase : NetworkBehaviour, ITargetable
 
     [Networked, OnChangedRender(nameof(OnHolderChanged))]
     public NetworkObject HolderObject { get; private set; }
+    [Networked, OnChangedRender(nameof(OnHolderChanged))]
+    private Vector3 WorldPosition { get; set; }
 
 
     public ItemData Data => data;
@@ -21,6 +23,7 @@ public abstract class ItemBase : NetworkBehaviour, ITargetable
 
     public override void Spawned()
     {
+        if (HasStateAuthority) WorldPosition = transform.position;
         worldView = GetComponent<ItemWorldView>();
 
         if (worldView == null)
@@ -54,6 +57,8 @@ public abstract class ItemBase : NetworkBehaviour, ITargetable
         if (!HasStateAuthority)
             return;
 
+        if (HolderObject != null)
+            WorldPosition = HolderObject.transform.position + Vector3.up * 0.3f;
         HolderObject = null;
 
         ApplyHeldState();
@@ -68,6 +73,7 @@ public abstract class ItemBase : NetworkBehaviour, ITargetable
 
     private void ApplyHeldState()
     {
+        if (!IsHeld) transform.position = WorldPosition;
         if (worldView == null)
             worldView = GetComponent<ItemWorldView>();
 

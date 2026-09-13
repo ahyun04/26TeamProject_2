@@ -54,20 +54,17 @@ namespace LockdownProtocol.Networking
             var targetObj = Runner.GetPlayerObject(CurrentSpectateTarget);
             var targetHealth = targetObj != null ? targetObj.GetComponent<PlayerHealth>() : null;
 
-            if (targetHealth != null && !targetHealth.IsDead) return;
+            if (targetHealth != null && !targetHealth.IsDead && !targetHealth.IsEscaped) return;
 
             var living = GetLivingPlayers();
             CurrentSpectateTarget = living.Count > 0 ? living[0] : PlayerRef.None;
 
-            if (living.Count == 0)
-            {
-                Debug.Log($"[SpectatorManager] {name} 관전 대상 전멸 - 결과 화면 전환 필요 (미구현)");
-            }
         }
 
         [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
         public void RPC_ChangeSpectator(bool next)
         {
+            if (!HasStateAuthority || !IsSpectator) return;
             var living = GetLivingPlayers();
             if (living.Count == 0) return;
 
@@ -90,7 +87,7 @@ namespace LockdownProtocol.Networking
                 if (playerObj == null) continue;
 
                 var health = playerObj.GetComponent<PlayerHealth>();
-                if (health != null && !health.IsDead)
+                if (health != null && !health.IsDead && !health.IsEscaped)
                     living.Add(player);
             }
             return living;

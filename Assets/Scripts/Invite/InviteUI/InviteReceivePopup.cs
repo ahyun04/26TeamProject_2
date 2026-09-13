@@ -19,17 +19,37 @@ namespace LockdownProtocol.Lobby.Invite
         private readonly Queue<InviteData> _pendingQueue = new Queue<InviteData>();
         private InviteData _current;
         private bool _responseSent;
+        private InviteClientManager _client;
+
+        private void Awake()
+        {
+            DontDestroyOnLoad(transform.root.gameObject);
+        }
+
+        private void HookClient()
+        {
+            if (_client == InviteClientManager.Instance && _client != null) return;
+            UnhookClient();
+            _client = InviteClientManager.Instance;
+            if (_client == null) return;
+            _client.InviteReceived += HandleInviteReceived;
+            _client.MyResponseResult += HandleMyResponseResult;
+        }
+
+        private void UnhookClient()
+        {
+            if (_client == null) return;
+            _client.InviteReceived -= HandleInviteReceived;
+            _client.MyResponseResult -= HandleMyResponseResult;
+            _client = null;
+        }
 
         private void OnEnable()
         {
             acceptButton.onClick.AddListener(OnAcceptClicked);
             declineButton.onClick.AddListener(OnDeclineClicked);
 
-            if (InviteClientManager.Instance != null)
-            {
-                InviteClientManager.Instance.InviteReceived += HandleInviteReceived;
-                InviteClientManager.Instance.MyResponseResult += HandleMyResponseResult;
-            }
+            HookClient();
 
             SetOpen(false);
         }
@@ -39,21 +59,19 @@ namespace LockdownProtocol.Lobby.Invite
             acceptButton.onClick.RemoveListener(OnAcceptClicked);
             declineButton.onClick.RemoveListener(OnDeclineClicked);
 
-            if (InviteClientManager.Instance != null)
-            {
-                InviteClientManager.Instance.InviteReceived -= HandleInviteReceived;
-                InviteClientManager.Instance.MyResponseResult -= HandleMyResponseResult;
-            }
+            UnhookClient();
         }
 
         private void Update()
         {
+            HookClient();
             if (_current == null) return;
 
             var remaining = _current.ExpireTime - DateTime.UtcNow;
             if (remaining <= TimeSpan.Zero)
             {
-                if (expireTimerText != null) expireTimerText.text = "초대 만료까지 0분 0초";
+                _current = null;
+                TryShowNext();
                 return;
             }
 
@@ -74,6 +92,8 @@ namespace LockdownProtocol.Lobby.Invite
         private void TryShowNext()
         {
             if (_current != null) return;
+            while (_pendingQueue.Count > 0 && _pendingQueue.Peek().IsExpired(DateTime.UtcNow))
+                _pendingQueue.Dequeue();
             if (_pendingQueue.Count == 0)
             {
                 SetOpen(false);
@@ -121,6 +141,12 @@ namespace LockdownProtocol.Lobby.Invite
 
         private void HandleMyResponseResult(string inviteId, InviteState state, string message)
         {
+            int queuedCount = _pendingQueue.Count;
+            for (int i = 0; i < queuedCount; i++)
+            {
+                InviteData queued = _pendingQueue.Dequeue();
+                if (queued.InviteId != inviteId) _pendingQueue.Enqueue(queued);
+            }
             if (_current == null || _current.InviteId != inviteId) return;
 
             if (state != InviteState.Accepted && !string.IsNullOrEmpty(message))

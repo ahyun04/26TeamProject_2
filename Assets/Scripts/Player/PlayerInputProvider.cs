@@ -1,13 +1,46 @@
 using Fusion;
 using Fusion.Sockets;
 using LockdownProtocol.Networking;
+using LockdownProtocol.Lobby;
 using UnityEngine;
 
 public class PlayerInputProvider : MonoBehaviour, INetworkRunnerCallbacks
 {
+    private Vector2 accumulatedLook;
+    private bool jumpPressed;
+
+    private void Update()
+    {
+        LobbyRoomUI lobbyUI = LobbyRoomUI.Instance;
+        if (lobbyUI != null && (lobbyUI.BlocksPlayerInput || Input.GetKeyDown(KeyCode.Escape)))
+        {
+            accumulatedLook = Vector2.zero;
+            jumpPressed = false;
+            return;
+        }
+        // 대기실은 커서를 유지하고 우클릭 중에만 시점을 회전한다.
+        if (lobbyUI == null || Input.GetMouseButton(1))
+            accumulatedLook += new Vector2(Input.GetAxis("Mouse X"), Input.GetAxis("Mouse Y"));
+        jumpPressed |= Input.GetKeyDown(KeyCode.Space);
+    }
+
+    private void OnDisable()
+    {
+        accumulatedLook = Vector2.zero;
+        jumpPressed = false;
+    }
+
     public void OnInput(NetworkRunner runner, NetworkInput input)
     {
         NetworkInputData data = new NetworkInputData();
+        if (LobbyRoomUI.Instance != null &&
+            (LobbyRoomUI.Instance.BlocksPlayerInput || Input.GetKeyDown(KeyCode.Escape)))
+        {
+            accumulatedLook = Vector2.zero;
+            jumpPressed = false;
+            input.Set(data);
+            return;
+        }
 
         // 이동
         data.MoveDirection = new Vector2(
@@ -16,16 +49,15 @@ public class PlayerInputProvider : MonoBehaviour, INetworkRunnerCallbacks
         );
 
         // 마우스 시점
-        data.LookRotation = new Vector2(
-            Input.GetAxis("Mouse X"),
-            Input.GetAxis("Mouse Y")
-        );
+        data.LookRotation = accumulatedLook;
+        accumulatedLook = Vector2.zero;
 
         // 점프
         data.Buttons.Set(
             InputButton.Jump,
-            Input.GetKey(KeyCode.Space)
+            jumpPressed
         );
+        jumpPressed = false;
 
         // 달리기
         data.Buttons.Set(

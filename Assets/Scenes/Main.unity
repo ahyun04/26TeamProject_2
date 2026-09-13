@@ -956,6 +956,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1365418784}
   - component: {fileID: 1365418783}
+  - component: {fileID: 1365418785}
   m_Layer: 0
   m_Name: GlobalLobbyInviteTransport
   m_TagString: Untagged
@@ -1797,3 +1798,15 @@ SceneRoots:
   - {fileID: 1365418784}
   - {fileID: 450778642}
   - {fileID: 483093974}
+--- !u!114 &1365418785
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1365418782}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: af17cfaf145afef409084f7b8014931a, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:

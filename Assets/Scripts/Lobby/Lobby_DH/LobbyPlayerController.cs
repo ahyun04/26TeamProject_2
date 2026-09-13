@@ -22,7 +22,8 @@ namespace LockdownProtocol.Lobby
                 RPC_SetNickname($"Player_{Object.InputAuthority.PlayerId}");
 
                 string roomId = RoomManager.Instance != null ? RoomManager.Instance.RoomName.ToString() : null;
-                GlobalLobbyInviteTransport.Instance?.UpdateLocalRoomStatus(true, roomId, isInGame: false);
+                bool isInGame = RoomManager.Instance != null && RoomManager.Instance.CurrentRoomState == RoomManager.RoomState.Playing;
+                GlobalLobbyInviteTransport.Instance?.UpdateLocalRoomStatus(true, roomId, isInGame);
 
                 if (RoomManager.Instance != null)
                 {
@@ -44,7 +45,9 @@ namespace LockdownProtocol.Lobby
         {
             if (Object != null && Object.HasInputAuthority)
             {
-                GlobalLobbyInviteTransport.Instance?.UpdateLocalRoomStatus(false, null, isInGame: false);
+                bool isInGame = RoomManager.Instance != null && RoomManager.Instance.CurrentRoomState == RoomManager.RoomState.Playing;
+                GlobalLobbyInviteTransport.Instance?.UpdateLocalRoomStatus(isInGame,
+                    isInGame ? RoomManager.Instance.RoomName.ToString() : null, isInGame);
 
                 if (RoomManager.Instance != null)
                 {
@@ -102,6 +105,7 @@ namespace LockdownProtocol.Lobby
         public void SetHost(bool isHost)
         {
             if (!Object.HasStateAuthority) return;
+            if (IsHost == isHost) return;
             IsHost = isHost;
 
             if (isHost)

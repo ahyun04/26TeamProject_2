@@ -27,6 +27,17 @@ public class PlayerHealth : NetworkBehaviour
     public NetworkBool IsEscaped { get; private set; }
 
     public float MaxHealth => maxHealth;
+    private GameEndSystem gameEndSystem;
+
+    internal bool CanAct
+    {
+        get
+        {
+            if (Object == null || !Object.IsValid || IsDead || IsEscaped) return false;
+            if (gameEndSystem == null) gameEndSystem = FindFirstObjectByType<GameEndSystem>();
+            return gameEndSystem == null || gameEndSystem.Object == null || !gameEndSystem.Object.IsValid || !gameEndSystem.IsGameEnded;
+        }
+    }
 
     /// <summary>UI, 사운드, 이펙트 등 외부 시스템이 구독해 체력 변화에 반응할 수 있도록 노출.</summary>
     public event Action<float, float> HealthChanged; // (current, max)
@@ -40,6 +51,7 @@ public class PlayerHealth : NetworkBehaviour
         {
             CurrentHealth = maxHealth;
             IsDead = false;
+            IsEscaped = false;
         }
     }
 
@@ -112,13 +124,4 @@ public class PlayerHealth : NetworkBehaviour
         Escaped?.Invoke();
     }
 
-    // 테스트용, 나중에 삭제
-    private void Update()
-    {
-        if (Object == null || !Object.IsValid) return;
-        if (Object.HasStateAuthority && Input.GetKeyDown(KeyCode.K))
-        {
-            Kill();
-        }
-    }
 }

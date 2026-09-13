@@ -31,17 +31,26 @@ namespace LockdownProtocol.Lobby
 
         private VoiceMuteController _localMuteController;
 
+        internal bool IsLeaveConfirmationOpen => leaveConfirmPanel != null && leaveConfirmPanel.activeInHierarchy;
+
         private void OnEnable()
         {
             leaveRoomButton.onClick.AddListener(OnLeaveClicked);
             if (leaveConfirmYes != null) leaveConfirmYes.onClick.AddListener(OnLeaveConfirmed);
-            if (leaveConfirmNo != null) leaveConfirmNo.onClick.AddListener(() => leaveConfirmPanel.SetActive(false));
+            if (leaveConfirmNo != null) leaveConfirmNo.onClick.AddListener(HideLeaveConfirm);
             if (leaveConfirmPanel != null) leaveConfirmPanel.SetActive(false);
         }
 
         private void OnDisable()
         {
             leaveRoomButton.onClick.RemoveListener(OnLeaveClicked);
+            if (leaveConfirmYes != null) leaveConfirmYes.onClick.RemoveListener(OnLeaveConfirmed);
+            if (leaveConfirmNo != null) leaveConfirmNo.onClick.RemoveListener(HideLeaveConfirm);
+        }
+
+        private void HideLeaveConfirm()
+        {
+            if (leaveConfirmPanel != null) leaveConfirmPanel.SetActive(false);
         }
 
         private void Update()
@@ -52,7 +61,7 @@ namespace LockdownProtocol.Lobby
 
         private void RefreshRoomInfo()
         {
-            if (RoomManager.Instance == null) return;
+            if (RoomManager.Instance == null || RoomManager.Instance.Object == null || !RoomManager.Instance.Object.IsValid) return;
 
             var room = RoomManager.Instance;
 

@@ -78,7 +78,7 @@ public class WiringMission : MissionMiniGameBase
 
         if (HasStateAuthority)
         {
-            TryConnect(startIndex, endIndex);
+            TryConnect(startIndex, endIndex, Runner.LocalPlayer);
             return;
         }
 
@@ -100,9 +100,9 @@ public class WiringMission : MissionMiniGameBase
     }
 
     [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
-    private void RPC_RequestConnect(int startIndex, int endIndex)
+    private void RPC_RequestConnect(int startIndex, int endIndex, RpcInfo info = default)
     {
-        TryConnect(startIndex, endIndex);
+        TryConnect(startIndex, endIndex, info.Source);
     }
 
     [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
@@ -139,8 +139,9 @@ public class WiringMission : MissionMiniGameBase
         SetupCompleted = true;
     }
 
-    private void TryConnect(int startIndex, int endIndex)
+    private void TryConnect(int startIndex, int endIndex, PlayerRef player)
     {
+        if (!CanPlayerInteract(player)) return;
         if (!HasStateAuthority || IsCompleted || !SetupCompleted)
             return;
 

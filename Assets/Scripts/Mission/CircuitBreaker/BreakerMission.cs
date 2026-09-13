@@ -66,6 +66,7 @@ public class BreakerMission : MissionMiniGameBase
     /// </summary>
     private void ToggleLever(int index, PlayerRef player)
     {
+        if (!CanPlayerInteract(player)) return;
         if (!Object.HasStateAuthority || !IsValidIndex(index) || IsCompleted)
             return;
 

@@ -1,6 +1,7 @@
 using Fusion;
 using Fusion.Addons.SimpleKCC;
 using LockdownProtocol.Networking;
+using LockdownProtocol.Lobby;
 using UnityEngine;
 
 [RequireComponent(typeof(SimpleKCC))]
@@ -20,6 +21,7 @@ public class PlayerMovement : NetworkBehaviour
 
     private SimpleKCC simpleKCC;
     private PlayerStamina stamina;
+    private PlayerHealth health;
 
     public bool IsGrounded => simpleKCC != null && simpleKCC.IsGrounded;
 
@@ -39,10 +41,19 @@ public class PlayerMovement : NetworkBehaviour
     {
         simpleKCC = GetComponent<SimpleKCC>();
         stamina = GetComponent<PlayerStamina>();
+        health = GetComponent<PlayerHealth>();
     }
 
     public override void FixedUpdateNetwork()
     {
+        RoomManager room = RoomManager.Instance;
+        bool isStarting = room != null && room.Object != null && room.Object.IsValid &&
+                          room.Runner == Runner && room.CurrentRoomState == RoomManager.RoomState.Starting;
+        if (isStarting || (health != null && !health.CanAct))
+        {
+            if (HasStateAuthority || HasInputAuthority) simpleKCC.Move();
+            return;
+        }
         if (!GetInput(out NetworkInputData input))
         {
             // Host가 특정 틱의 입력을 받지 못한 경우에도 중력과 접지를 처리한다.

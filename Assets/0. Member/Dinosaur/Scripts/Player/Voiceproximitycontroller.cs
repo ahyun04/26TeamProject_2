@@ -1,4 +1,5 @@
 using Fusion;
+using LockdownProtocol.Lobby;
 using Photon.Voice.Unity;
 using UnityEngine;
 
@@ -25,6 +26,7 @@ public class VoiceProximityController : NetworkBehaviour
     [SerializeField] private LayerMask obstacleMask;
 
     private AudioSource _audioSource;
+    private bool _isLobbyPlayer;
 
     private void Awake()
     {
@@ -34,10 +36,29 @@ public class VoiceProximityController : NetworkBehaviour
         _audioSource.rolloffMode = AudioRolloffMode.Logarithmic; // 자연스러운 감쇠 곡선
         _audioSource.minDistance = fullVolumeDistance;
         _audioSource.maxDistance = maxAudibleDistance;
+        _audioSource.dopplerLevel = 0f;
+        _audioSource.volume = 0f;
+    }
+
+    public override void Spawned()
+    {
+        _isLobbyPlayer = LobbyRoomUI.Instance != null;
+        if (!_isLobbyPlayer) return;
+
+        _audioSource.rolloffMode = AudioRolloffMode.Custom;
+        var curve = new AnimationCurve();
+        curve.AddKey(0f, 1f);
+        curve.AddKey(3f / maxAudibleDistance, 1f);
+        curve.AddKey(7f / maxAudibleDistance, 0.7f);
+        curve.AddKey(12f / maxAudibleDistance, 0.4f);
+        curve.AddKey(1f, 0f);
+        for (int i = 0; i < curve.length; i++) curve.SmoothTangents(i, 0f);
+        _audioSource.SetCustomCurve(AudioSourceCurveType.CustomRolloff, curve);
     }
 
     private void Update()
     {
+        if (Object == null || !Object.IsValid) return;
         Transform listener = PlayerCameraController.LocalListenerTransform;
         if (listener == null)
         {
@@ -48,10 +69,15 @@ public class VoiceProximityController : NetworkBehaviour
         // 자기 자신(내 캐릭터)의 스피커는 자기 목소리를 재생하지 않으므로 계산할 필요 없다.
         if (Object != null && Object.HasInputAuthority)
         {
+            _audioSource.volume = 0f;
             return;
         }
 
-        bool blocked = IsBlockedByObstacle(listener.position);
+        RoomManager room = RoomManager.Instance;
+        bool lobbyClosed = _isLobbyPlayer && (room == null || room.Object == null || !room.Object.IsValid ||
+            room.CurrentRoomState != RoomManager.RoomState.Waiting);
+        bool blocked = lobbyClosed || Vector3.Distance(transform.position, listener.position) >= maxAudibleDistance ||
+            (!_isLobbyPlayer && IsBlockedByObstacle(listener.position));
         _audioSource.volume = blocked ? 0f : 1f;
     }
 
@@ -61,6 +87,12 @@ public class VoiceProximityController : NetworkBehaviour
         Vector3 direction = listenerPosition - origin;
         float distance = direction.magnitude;
 
-        return Physics.Raycast(origin, direction.normalized, distance, obstacleMask);
+        foreach (RaycastHit hit in Physics.RaycastAll(origin, direction.normalized, distance,
+                     obstacleMask, QueryTriggerInteraction.Ignore))
+        {
+            // 플레이어의 몸은 벽으로 취급하지 않는다.
+            if (hit.collider.GetComponentInParent<PlayerHealth>() == null) return true;
+        }
+        return false;
     }
 }

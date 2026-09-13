@@ -9,7 +9,6 @@ public class MissionUI : MonoBehaviour
     [SerializeField] private Transform personalRoot;
 
     private int lastStateHash = int.MinValue;
-    private bool wasInitialized;
 
     private void Update()
     {

@@ -26,17 +26,30 @@ namespace LockdownProtocol.Lobby
         {
             NetworkBootstrap.OnPlayerJoinedEvent += HandlePlayerJoined;
             NetworkBootstrap.OnPlayerLeftEvent += HandlePlayerLeft;
+            NetworkBootstrap.OnSceneLoadDoneEvent += HandleSceneLoadDone;
         }
 
         private void OnDisable()
         {
             NetworkBootstrap.OnPlayerJoinedEvent -= HandlePlayerJoined;
             NetworkBootstrap.OnPlayerLeftEvent -= HandlePlayerLeft;
+            NetworkBootstrap.OnSceneLoadDoneEvent -= HandleSceneLoadDone;
+        }
+
+        private void HandleSceneLoadDone(NetworkRunner runner)
+        {
+            if (!runner.IsServer) return;
+            foreach (PlayerRef player in runner.ActivePlayers)
+                HandlePlayerJoined(runner, player);
+            if (RoomManager.Instance != null)
+                RefreshHostFlag(RoomManager.Instance.HostPlayerId);
         }
 
         private void HandlePlayerJoined(NetworkRunner runner, PlayerRef player)
         {
             if (!runner.IsServer) return;
+            if (_spawnedPlayers.TryGetValue(player, out var existing) && existing != null && existing.IsValid)
+                return;
 
             if (lobbyPlayerPrefab == null)
             {
@@ -47,6 +60,7 @@ namespace LockdownProtocol.Lobby
             Vector3 spawnPosition = GetSpawnPosition(player);
             NetworkObject spawnedObject = runner.Spawn(lobbyPlayerPrefab, spawnPosition, Quaternion.identity, player);
             _spawnedPlayers[player] = spawnedObject;
+            runner.SetPlayerObject(player, spawnedObject);
 
             var controller = spawnedObject.GetComponent<LobbyPlayerController>();
             if (controller != null)
@@ -66,7 +80,8 @@ namespace LockdownProtocol.Lobby
 
             if (_spawnedPlayers.TryGetValue(player, out NetworkObject spawnedObject))
             {
-                runner.Despawn(spawnedObject);
+                if (spawnedObject != null && spawnedObject.IsValid)
+                    runner.Despawn(spawnedObject);
                 _spawnedPlayers.Remove(player);
                 Debug.Log($"[LobbyPlayerSpawner] Lobby Player {player} 오브젝트 제거 완료");
             }
@@ -77,6 +92,7 @@ namespace LockdownProtocol.Lobby
         {
             foreach (var kvp in _spawnedPlayers)
             {
+                if (kvp.Value == null || !kvp.Value.IsValid) continue;
                 var controller = kvp.Value.GetComponent<LobbyPlayerController>();
                 if (controller == null) continue;
                 controller.SetHost(kvp.Key == newHost);

@@ -1,10 +1,12 @@
 using Fusion;
+using LockdownProtocol.Lobby;
+using Photon.Realtime;
 using Photon.Voice.Fusion;
 using Photon.Voice.Unity;
 using UnityEngine;
 
 /// <summary>
-/// 생존/관전/탈출 음성 채널 분리. Photon Voice의 Interest Group 기능을 사용한다.
+/// 공용 플레이어의 생존/관전/탈출 음성 채널과 대기실 송신 상태를 관리한다.
 ///
 /// 생존: 생존자 그룹에만 방송(InterestGroup), 생존자 그룹만 청취.
 /// 사망/관전: 관전자 그룹에 방송, 생존자+관전자 그룹 둘 다 청취.
@@ -16,6 +18,9 @@ using UnityEngine;
 /// 이 로직은 오직 "나 자신의 송수신 설정"을 바꾸는 것이라 로컬 플레이어에서만 실행한다.
 /// </summary>
 [RequireComponent(typeof(PlayerHealth))]
+[RequireComponent(typeof(VoiceNetworkObject))]
+[RequireComponent(typeof(Recorder))]
+[RequireComponent(typeof(VoiceMuteController))]
 public class PlayerVoiceChannelController : NetworkBehaviour
 {
     private enum VoiceChannelState { Survivor, Spectator, Escaped }
@@ -26,6 +31,9 @@ public class PlayerVoiceChannelController : NetworkBehaviour
     private PlayerHealth _health;
     private Recorder _recorder;
     private FusionVoiceClient _voiceClient;
+    private VoiceNetworkObject _voiceObject;
+    private VoiceMuteController _muteController;
+    private bool _isLobbyPlayer;
 
     // null이면 "아직 한 번도 채널을 적용 안 함", 그 이후로는 실제 상태 변화가 있을 때만 재적용한다.
     // OpChangeGroups는 호출할 때마다 서버에 네트워크 요청을 보내므로, 매 프레임 호출하면 낭비다.
@@ -33,11 +41,16 @@ public class PlayerVoiceChannelController : NetworkBehaviour
 
     public override void Spawned()
     {
+        _recorder = GetComponent<Recorder>();
+        _recorder.RecordingEnabled = false;
         if (!Object.HasInputAuthority) return;
 
         _health = GetComponent<PlayerHealth>();
-        _recorder = FindObjectOfType<Recorder>();
-        _voiceClient = FindObjectOfType<FusionVoiceClient>();
+        _voiceObject = GetComponent<VoiceNetworkObject>();
+        _muteController = GetComponent<VoiceMuteController>();
+        _muteController.SetTransmissionAllowed(false);
+        _voiceClient = Runner.GetComponent<FusionVoiceClient>();
+        _isLobbyPlayer = LobbyRoomUI.Instance != null;
 
         if (_recorder == null || _voiceClient == null)
         {
@@ -47,23 +60,39 @@ public class PlayerVoiceChannelController : NetworkBehaviour
 
     private void Update()
     {
-        if (!Object.HasInputAuthority) return;
-        if (_recorder == null || _voiceClient == null) return;
+        if (Object == null || !Object.IsValid || !Object.HasInputAuthority) return;
+        if (_recorder == null || _voiceClient == null || _muteController == null) return;
+        if (_voiceObject.RecorderInUse != _recorder || _voiceClient.Client.State != ClientState.Joined)
+        {
+            _muteController.SetTransmissionAllowed(false);
+            _lastAppliedState = null;
+            return;
+        }
 
         VoiceChannelState currentState = DetermineState();
 
         if (!_lastAppliedState.HasValue || _lastAppliedState.Value != currentState)
         {
-            ApplyChannel(currentState);
+            if (!ApplyChannel(currentState))
+            {
+                _muteController.SetTransmissionAllowed(false);
+                return;
+            }
             _lastAppliedState = currentState;
         }
 
-        // 탈출 상태에서는 VoiceMuteController(V키)가 송신을 다시 켜더라도 매 프레임 강제로 차단한다.
-        // 탈출한 플레이어는 어떤 경우에도 생존자에게 목소리가 들리면 안 되기 때문이다.
-        if (currentState == VoiceChannelState.Escaped)
-        {
-            _recorder.TransmitEnabled = false;
-        }
+        RoomManager room = RoomManager.Instance;
+        bool lobbyWaiting = !_isLobbyPlayer || (room != null && room.Object != null && room.Object.IsValid &&
+            room.Runner == Runner && room.CurrentRoomState == RoomManager.RoomState.Waiting);
+        _muteController.SetTransmissionAllowed(lobbyWaiting && currentState != VoiceChannelState.Escaped);
+        if (!_recorder.RecordingEnabled) _recorder.RecordingEnabled = true;
+    }
+
+    public override void Despawned(NetworkRunner runner, bool hasState)
+    {
+        if (_muteController != null) _muteController.SetTransmissionAllowed(false);
+        if (_recorder != null) _recorder.RecordingEnabled = false;
+        _lastAppliedState = null;
     }
 
     private VoiceChannelState DetermineState()
@@ -73,28 +102,29 @@ public class PlayerVoiceChannelController : NetworkBehaviour
         return VoiceChannelState.Survivor;
     }
 
-    private void ApplyChannel(VoiceChannelState state)
+    private bool ApplyChannel(VoiceChannelState state)
     {
+        bool accepted;
         switch (state)
         {
             case VoiceChannelState.Survivor:
-                _recorder.TransmitEnabled = true;
                 _recorder.InterestGroup = SurvivorGroup;
-                _voiceClient.Client.OpChangeGroups(new byte[] { SpectatorGroup }, new byte[] { SurvivorGroup });
+                accepted = _voiceClient.Client.OpChangeGroups(new byte[] { SpectatorGroup }, new byte[] { SurvivorGroup });
                 break;
 
             case VoiceChannelState.Spectator:
-                _recorder.TransmitEnabled = true;
                 _recorder.InterestGroup = SpectatorGroup;
-                _voiceClient.Client.OpChangeGroups(null, new byte[] { SurvivorGroup, SpectatorGroup });
+                accepted = _voiceClient.Client.OpChangeGroups(null, new byte[] { SurvivorGroup, SpectatorGroup });
                 break;
 
             case VoiceChannelState.Escaped:
-                _recorder.TransmitEnabled = false;
-                _voiceClient.Client.OpChangeGroups(new byte[] { SpectatorGroup }, new byte[] { SurvivorGroup });
+                accepted = _voiceClient.Client.OpChangeGroups(new byte[] { SpectatorGroup }, new byte[] { SurvivorGroup });
                 break;
+            default:
+                return false;
         }
 
-        Debug.Log($"[PlayerVoiceChannelController] 음성 채널 전환: {state}");
+        if (accepted) Debug.Log($"[PlayerVoiceChannelController] 음성 채널 전환: {state}");
+        return accepted;
     }
 }

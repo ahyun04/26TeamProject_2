@@ -1,4 +1,5 @@
 using Fusion;
+using LockdownProtocol.Lobby;
 using UnityEngine;
 
 /// <summary>
@@ -12,10 +13,12 @@ public class PlayerInteraction : NetworkBehaviour
     private IHoldInteractable activeHoldTarget;
 
     private IDragInteractable activeDragTarget;
+    private PlayerHealth health;
 
 
     public override void Spawned()
     {
+        health = GetComponent<PlayerHealth>();
         enabled = HasInputAuthority;
 
         if (!enabled)
@@ -33,6 +36,13 @@ public class PlayerInteraction : NetworkBehaviour
 
     private void Update()
     {
+        if (Object == null || !Object.IsValid || !HasInputAuthority || (health != null && !health.CanAct) ||
+            (LobbyRoomUI.Instance != null && LobbyRoomUI.Instance.BlocksPlayerInput))
+        {
+            CancelDragInteraction();
+            EndHoldInteraction();
+            return;
+        }
         HandleLeftMouseInteraction();
 
         UpdateDragInteraction();

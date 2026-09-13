@@ -39,16 +39,10 @@ public class FilterCleaningMission : MissionMiniGameBase
         if (!HasStateAuthority || IsCompleted)
             return;
 
-        if (ActivePlayer == PlayerRef.None)
-            SetActivePlayer(player);
-
-        if (ActivePlayer != player)
-            return;
-
         if (!AreAllDustsCleaned())
             return;
 
-        RequestComplete();
+        RequestComplete(player);
     }
 
 

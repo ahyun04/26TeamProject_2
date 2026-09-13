@@ -10,26 +10,29 @@ namespace LockdownProtocol.Networking
         [SerializeField] private float killRange = 2f;
         [SerializeField] private float killCooldownSeconds = 15f;
 
-        // 현우가 주석처리함. 이유: MissionSystem 새로 만들기 위함
-        //[Header("Dependencies")]
-        //[SerializeField] private MissionSystem missionSystem;
-
-        // 역할 배정 시스템 나오면 교체
         [Networked] public NetworkBool IsMurderer { get; set; }
 
         [Networked] private TickTimer CooldownTimer { get; set; }
         [Networked] public NetworkBool CanKill { get; private set; } = true;
 
         private PlayerHealth _health;
+        private RoleAssignment _roles;
+        private MissionSystem _missions;
+        private Camera _camera;
 
         public override void Spawned()
         {
             _health = GetComponent<PlayerHealth>();
+            _roles = FindFirstObjectByType<RoleAssignment>();
+            _missions = FindFirstObjectByType<MissionSystem>();
+            _camera = GetComponentInChildren<Camera>(true);
         }
 
         public override void FixedUpdateNetwork()
         {
             if (!Object.HasStateAuthority) return;
+            IsMurderer = _roles != null && _roles.Object != null && _roles.Object.IsValid &&
+                         _roles.TryGetRole(Object.InputAuthority, out PlayerRole role) && role == PlayerRole.Killer;
 
             // 쿨타임 종료 시 공격 가능 상태로 복귀
             if (!CanKill && CooldownTimer.Expired(Runner))
@@ -54,14 +57,14 @@ namespace LockdownProtocol.Networking
             if (!Object.HasStateAuthority) return;
 
             // 1. 역할 확인
-            if (!IsMurderer)
+            if (_roles == null || !_roles.TryGetRole(Object.InputAuthority, out PlayerRole role) || role != PlayerRole.Killer)
             {
                 RPC_KillFailed(Object.InputAuthority, "역할 아님");
                 return;
             }
 
             // 2. 살인자 본인 생존 확인
-            if (_health.IsDead)
+            if (_health == null || !_health.CanAct)
             {
                 RPC_KillFailed(Object.InputAuthority, "본인 사망 상태");
                 return;
@@ -82,7 +85,7 @@ namespace LockdownProtocol.Networking
             }
 
             var targetHealth = targetObj.GetComponent<PlayerHealth>();
-            if (targetHealth == null || targetHealth.IsDead)
+            if (targetObj == Object || targetHealth == null || !targetHealth.CanAct)
             {
                 RPC_KillFailed(Object.InputAuthority, "대상 이미 사망");
                 return;
@@ -96,13 +99,11 @@ namespace LockdownProtocol.Networking
                 return;
             }
 
-            // 6. 미션 완료 확인
-            // 현우가 미션 시스템 재구성 사유로 주석 처리했음
-            //if (missionSystem != null && !missionSystem.IsPersonalMissionComplete(Object.InputAuthority))
-            //{
-            //    RPC_KillFailed(Object.InputAuthority, "미션 미완료");
-            //    return;
-            //}
+            if (_missions == null || !_missions.IsPersonalMissionCompleted(Object.InputAuthority))
+            {
+                RPC_KillFailed(Object.InputAuthority, "개인 미션 미완료");
+                return;
+            }
 
             // ---- 살인 승인 ----
             targetHealth.Kill(Object.InputAuthority);
@@ -135,22 +136,16 @@ namespace LockdownProtocol.Networking
             // 실패 UI/효과음 나오면 여기서 로컬 재생
         }
 
-        // ================== 테스트용, 나중에 삭제 ==================
         private void Update()
         {
             if (Object == null || !Object.IsValid) return;
-            if (!Object.HasStateAuthority) return;
-
-            if (Input.GetKeyDown(KeyCode.M))
-            {
-                IsMurderer = !IsMurderer;
-                Debug.Log($"[KillManager] IsMurderer = {IsMurderer}");
-            }
-
-            if (Input.GetKeyDown(KeyCode.L))
-            {
-                ProcessKillRequest(Object.Id);
-            }
+            if (!HasInputAuthority || _health == null || !_health.CanAct || _camera == null) return;
+            if (!Input.GetMouseButtonDown(0) || !IsMurderer) return;
+            if (!Physics.Raycast(_camera.transform.position, _camera.transform.forward,
+                    out RaycastHit hit, killRange, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore)) return;
+            PlayerHealth target = hit.collider.GetComponentInParent<PlayerHealth>();
+            if (target != null && target != _health && target.Object != null && target.Object.IsValid)
+                RPC_RequestKill(target.Object.Id);
         }
     }
 }

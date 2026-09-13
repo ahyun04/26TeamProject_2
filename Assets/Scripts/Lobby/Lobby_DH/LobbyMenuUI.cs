@@ -59,20 +59,27 @@ namespace LockdownProtocol.Lobby
             int maxPlayers = 6;
             if (maxPlayersInput != null && int.TryParse(maxPlayersInput.text, out int parsed))
             {
-                maxPlayers = Mathf.Clamp(parsed, 2, 20);
+                maxPlayers = Mathf.Clamp(parsed, 2, 10);
             }
 
             _isBusy = true;
             SetInteractable(false);
 
-            var result = await bootstrap.CreateRoom(roomName, maxPlayers, isPrivateToggle != null && isPrivateToggle.isOn);
-
-            _isBusy = false;
-            SetInteractable(true);
-
-            if (!result.Ok)
+            try
             {
-                ShowFeedback($"방 생성 실패: {result.ShutdownReason}");
+                var result = await bootstrap.CreateRoom(roomName, maxPlayers, isPrivateToggle != null && isPrivateToggle.isOn);
+                if (this != null && !result.Ok)
+                    ShowFeedback($"방 생성 실패: {result.ShutdownReason}");
+            }
+            catch (System.Exception exception)
+            {
+                if (this != null) ShowFeedback(exception.Message);
+                Debug.LogException(exception);
+            }
+            finally
+            {
+                _isBusy = false;
+                if (this != null) SetInteractable(true);
             }
             // 성공 시 씬 전환은 NetworkBootstrap의 SceneManager가 자동 처리
         }
@@ -91,29 +98,41 @@ namespace LockdownProtocol.Lobby
             _isBusy = true;
             SetInteractable(false);
 
-            var result = await bootstrap.JoinRoom(roomName);
-            var mapped = RoomManager.MapJoinResult(result);
-
-            _isBusy = false;
-            SetInteractable(true);
-
-            switch (mapped)
+            try
             {
-                case RoomManager.JoinRoomResult.RoomFull:
-                    ShowFeedback("방이 가득 찼습니다");
-                    break;
-                case RoomManager.JoinRoomResult.NotFound:
-                    ShowFeedback("존재하지 않는 방입니다");
-                    break;
-                case RoomManager.JoinRoomResult.GameStarted:
-                    ShowFeedback("이미 게임이 시작되었습니다");
-                    break;
-                case RoomManager.JoinRoomResult.ConnectionError:
-                    ShowFeedback("접속 오류가 발생했습니다");
-                    break;
-                case RoomManager.JoinRoomResult.Success:
-                    // 씬 전환은 자동
-                    break;
+                var result = await bootstrap.JoinRoom(roomName);
+                if (this == null) return;
+                var mapped = RoomManager.MapJoinResult(result);
+
+
+                switch (mapped)
+                {
+                    case RoomManager.JoinRoomResult.RoomFull:
+                        ShowFeedback("방이 가득 찼습니다");
+                        break;
+                    case RoomManager.JoinRoomResult.NotFound:
+                        ShowFeedback("존재하지 않는 방입니다");
+                        break;
+                    case RoomManager.JoinRoomResult.GameStarted:
+                        ShowFeedback("이미 게임이 시작되었습니다");
+                        break;
+                    case RoomManager.JoinRoomResult.ConnectionError:
+                        ShowFeedback("접속 오류가 발생했습니다");
+                        break;
+                    case RoomManager.JoinRoomResult.Success:
+                        // 씬 전환은 자동
+                        break;
+                }
+            }
+            catch (System.Exception exception)
+            {
+                if (this != null) ShowFeedback(exception.Message);
+                Debug.LogException(exception);
+            }
+            finally
+            {
+                _isBusy = false;
+                if (this != null) SetInteractable(true);
             }
         }
 

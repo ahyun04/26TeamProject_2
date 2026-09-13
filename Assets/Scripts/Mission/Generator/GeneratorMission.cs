@@ -29,6 +29,11 @@ public class GeneratorMission : MissionMiniGameBase
     {
         if (!Object.HasStateAuthority || !IsRunning || IsCompleted)
             return;
+        if (!CanPlayerInteract(ActivePlayer))
+        {
+            IsRunning = false;
+            return;
+        }
 
         Progress += Runner.DeltaTime / Mathf.Max(fillDuration, 0.01f);
 
@@ -73,6 +78,7 @@ public class GeneratorMission : MissionMiniGameBase
 
     private void StartGenerator(PlayerRef player)
     {
+        if (!CanPlayerInteract(player)) return;
         if (!Object.HasStateAuthority || IsCompleted || IsRunning)
             return;
 

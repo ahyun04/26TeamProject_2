@@ -49,14 +49,21 @@ namespace LockdownProtocol.Lobby
         private CharacterController _controller;
         private Vector3 _velocity;
         private float _cameraPitch;
-        private Vector3 _lastReportedPosition;
         private float _reportTimer;
+        private float _lastAcceptedReportTime;
+        private MovementState _localState;
 
         private const float ReportIntervalSeconds = 0.05f; // 20Hz 정도로 위치 보고
 
         public override void Spawned()
         {
             _controller = GetComponent<CharacterController>();
+            if (HasStateAuthority)
+            {
+                NetworkedPosition = transform.position;
+                NetworkedYRotation = transform.eulerAngles.y;
+                _lastAcceptedReportTime = Time.time;
+            }
 
             if (Object.HasInputAuthority && cameraPivot != null)
             {
@@ -86,14 +93,14 @@ namespace LockdownProtocol.Lobby
 
         public override void FixedUpdateNetwork()
         {
-            if (!Object.HasInputAuthority) return;
+            if (Object == null || !Object.IsValid || !Object.HasInputAuthority) return;
 
             HandleLocalMovement();
         }
 
         private void Update()
         {
-            if (!Object.HasInputAuthority) return;
+            if (Object == null || !Object.IsValid || !Object.HasInputAuthority) return;
 
             HandleCameraLook();
             ReportPositionIfNeeded();
@@ -103,6 +110,8 @@ namespace LockdownProtocol.Lobby
 
         private void HandleLocalMovement()
         {
+            if (RoomManager.Instance != null && RoomManager.Instance.CurrentRoomState != RoomManager.RoomState.Waiting)
+                return;
             float h = Input.GetAxisRaw("Horizontal");
             float v = Input.GetAxisRaw("Vertical");
             bool isRunning = Input.GetKey(KeyCode.LeftShift);
@@ -140,8 +149,9 @@ namespace LockdownProtocol.Lobby
 
         private void SetState(MovementState state)
         {
-            if (CurrentState == state) return;
-            CurrentState = state;
+            if (_localState == state) return;
+            _localState = state;
+            if (HasStateAuthority) CurrentState = state;
             PlayMovementAnimation(state);
         }
 
@@ -173,27 +183,45 @@ namespace LockdownProtocol.Lobby
             if (_reportTimer < ReportIntervalSeconds) return;
             _reportTimer = 0f;
 
-            if (Vector3.Distance(_lastReportedPosition, transform.position) < 0.01f) return;
-
-            _lastReportedPosition = transform.position;
-            RPC_ReportPosition(transform.position, transform.eulerAngles.y);
+            RPC_ReportPosition(transform.position, transform.eulerAngles.y, _localState);
         }
 
         [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
-        private void RPC_ReportPosition(Vector3 position, float yRotation)
+        private void RPC_ReportPosition(Vector3 position, float yRotation, MovementState state)
         {
+            if (RoomManager.Instance != null && RoomManager.Instance.CurrentRoomState != RoomManager.RoomState.Waiting)
+                return;
+            if (float.IsNaN(position.x) || float.IsInfinity(position.x) ||
+                float.IsNaN(position.y) || float.IsInfinity(position.y) ||
+                float.IsNaN(position.z) || float.IsInfinity(position.z) ||
+                float.IsNaN(yRotation) || float.IsInfinity(yRotation)) return;
             // 최소한의 유효성 검사: 한 번에 비정상적으로 멀리 이동했는지만 체크.
             // (텔레포트/스피드핵 방지 목적이며, 로비는 전투가 없어 엄격한 리컨실리에이션까지는 불필요)
-            float maxDeltaPerReport = runSpeed * maxAllowedSpeedMultiplier * ReportIntervalSeconds * 2f;
+            float elapsed = Mathf.Max(ReportIntervalSeconds * 2f, Time.time - _lastAcceptedReportTime);
+            float maxDeltaPerReport = runSpeed * maxAllowedSpeedMultiplier * elapsed;
             if (NetworkedPosition != Vector3.zero &&
                 Vector3.Distance(NetworkedPosition, position) > maxDeltaPerReport)
             {
                 Debug.LogWarning($"[LobbyMovementController] {Object.InputAuthority} 비정상 이동 감지 - 위치 무시");
+                RPC_CorrectPosition(NetworkedPosition, NetworkedYRotation);
+                _lastAcceptedReportTime = Time.time;
                 return;
             }
 
             NetworkedPosition = position;
             NetworkedYRotation = yRotation;
+            _lastAcceptedReportTime = Time.time;
+            if (state >= MovementState.Idle && state <= MovementState.Jump)
+                CurrentState = state;
+        }
+
+        [Rpc(RpcSources.StateAuthority, RpcTargets.InputAuthority)]
+        private void RPC_CorrectPosition(Vector3 position, float yRotation)
+        {
+            _controller.enabled = false;
+            transform.SetPositionAndRotation(position, Quaternion.Euler(0f, yRotation, 0f));
+            _controller.enabled = true;
+            _velocity = Vector3.zero;
         }
 
         // ================== 리모트 캐릭터 반영 ==================

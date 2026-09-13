@@ -88,6 +88,11 @@ public class AntennaMission : MissionMiniGameBase, ITargetable, IHoldInteractabl
 
         if (RotatingPlayer == PlayerRef.None)
             return;
+        if (!CanPlayerInteract(RotatingPlayer))
+        {
+            RotatingPlayer = PlayerRef.None;
+            return;
+        }
 
         // 현재 누적 회전량 증가
         CurrentAngle += rotationSpeed * Runner.DeltaTime;
@@ -193,6 +198,7 @@ public class AntennaMission : MissionMiniGameBase, ITargetable, IHoldInteractabl
     /// </summary>
     private void BeginRotate(PlayerRef player)
     {
+        if (!CanPlayerInteract(player)) return;
         if (!Object.HasStateAuthority || IsCompleted || IsReady)
             return;
 

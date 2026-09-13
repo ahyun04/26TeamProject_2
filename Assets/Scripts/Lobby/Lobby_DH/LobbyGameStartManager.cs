@@ -32,10 +32,25 @@ namespace LockdownProtocol.Lobby
 
         public event System.Action<StartFailReason> StartFailed;
         public event System.Action CountdownStarted;
+        public event System.Action CountdownCancelled;
 
         public override void FixedUpdateNetwork()
         {
             if (!Object.HasStateAuthority) return;
+
+            if (!StartCountdown.IsRunning) return;
+            var room = RoomManager.Instance;
+            var players = GetAllLobbyPlayers();
+            bool canStart = room != null && room.CurrentRoomState == RoomManager.RoomState.Starting &&
+                            players.Count >= minPlayerCount && players.TrueForAll(player => player.IsReady);
+            if (!canStart)
+            {
+                StartCountdown = TickTimer.None;
+                if (room != null && room.CurrentRoomState == RoomManager.RoomState.Starting)
+                    room.SetRoomState(RoomManager.RoomState.Waiting);
+                RPC_NotifyStartCancelled();
+                return;
+            }
 
             if (StartCountdown.IsRunning && StartCountdown.Expired(Runner))
             {
@@ -103,10 +118,10 @@ namespace LockdownProtocol.Lobby
             // 로비 이동/Ready 입력 제한 + 음성 채널 종료는 각 클라에서
             // RPC_NotifyStartApproved 수신 시점에 이미 처리되어 있어야 함
 
-            // TODO: GameManager 쪽 게임 세션 생성 요청 연결 (미구현)
-            Debug.Log("[LobbyGameStartManager] 게임 씬 전환 요청 (미구현) - GameManager 연결 필요");
-
             RoomManager.Instance.SetRoomState(RoomManager.RoomState.Playing);
+
+            foreach (var player in GetAllLobbyPlayers())
+                Runner.Despawn(player.Object);
 
             // 현우 추가
             // 게임플레이 씬으로 이동
@@ -120,7 +135,8 @@ namespace LockdownProtocol.Lobby
             var result = new List<LobbyPlayerController>();
             foreach (var p in FindObjectsByType<LobbyPlayerController>(FindObjectsSortMode.None))
             {
-                result.Add(p);
+                if (p.Object != null && p.Object.IsValid && p.Runner == Runner)
+                    result.Add(p);
             }
             return result;
         }
@@ -131,6 +147,12 @@ namespace LockdownProtocol.Lobby
             Debug.Log("[LobbyGameStartManager] 게임 시작 승인");
             CountdownStarted?.Invoke();
             // 클라: 로비 이동/Ready 입력 제한, 음성 채널 종료, 카운트다운 UI 재생은 이 이벤트 구독해서 처리
+        }
+
+        [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+        private void RPC_NotifyStartCancelled()
+        {
+            CountdownCancelled?.Invoke();
         }
 
         [Rpc(RpcSources.StateAuthority, RpcTargets.All)]

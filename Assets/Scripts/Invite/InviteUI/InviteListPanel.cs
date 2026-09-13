@@ -14,6 +14,8 @@ namespace LockdownProtocol.Lobby.Invite
         private readonly List<InviteListEntryUI> _spawnedEntries = new List<InviteListEntryUI>();
         private bool _isOpen;
 
+        internal bool IsOpen => _isOpen;
+
         private void OnEnable()
         {
             if (closeButton != null) closeButton.onClick.AddListener(Close);

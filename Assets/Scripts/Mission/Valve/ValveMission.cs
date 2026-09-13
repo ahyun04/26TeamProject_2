@@ -36,6 +36,11 @@ public class ValveMission : MissionMiniGameBase, ITargetable, IHoldInteractable
     {
         if (!HasStateAuthority || IsCompleted || User == PlayerRef.None)
             return;
+        if (!CanPlayerInteract(User))
+        {
+            User = PlayerRef.None;
+            return;
+        }
 
         Angle = Mathf.Min(Angle + rotationSpeed * Runner.DeltaTime, TargetAngle);
 
@@ -82,6 +87,7 @@ public class ValveMission : MissionMiniGameBase, ITargetable, IHoldInteractable
 
         if (turning)
         {
+            if (!CanPlayerInteract(info.Source)) return;
             if (User == PlayerRef.None || User == info.Source)
                 User = info.Source;
 

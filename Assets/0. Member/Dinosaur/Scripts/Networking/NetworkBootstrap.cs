@@ -30,15 +30,23 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
     [Tooltip("LeaveRoom() 호출 시 돌아갈 씬 이름")]
     [SerializeField] private string lobbySceneName = "Lobby";
 
+    [SerializeField] private NetworkObject roomManagerPrefab;
+
     [Header("Voice")]
     [Tooltip("로비 씬에 미리 배치된 Recorder(내 마이크)")]
     [SerializeField] private Recorder primaryRecorder;
 
     private NetworkRunner _runner;
     private GameObject _runnerObject;
+    private bool _sessionBusy;
+    private bool _leaving;
+    private string _roomName;
+    private int _maxPlayers;
+    private bool _isPrivate;
 
     public static event Action<NetworkRunner, PlayerRef> OnPlayerJoinedEvent;
     public static event Action<NetworkRunner, PlayerRef> OnPlayerLeftEvent;
+    public static event Action<NetworkRunner> OnSceneLoadDoneEvent;
 
     private void Awake()
     {
@@ -48,14 +56,7 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
     /// <summary>방 생성 (Host). 성공 시 RoomManager를 초기화한다.</summary>
     public async Task<StartGameResult> CreateRoom(string roomName, int maxPlayers, bool isPrivate)
     {
-        StartGameResult result = await StartSession(GameMode.Host, roomName, maxPlayers);
-
-        if (result.Ok)
-        {
-            RoomManager.Instance?.InitializeRoom(roomName, maxPlayers, isPrivate, _runner.LocalPlayer);
-        }
-
-        return result;
+        return await StartSession(GameMode.Host, roomName, maxPlayers, isPrivate);
     }
 
     /// <summary>기존 방에 참가 (Client).</summary>
@@ -67,33 +68,61 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
     /// <summary>세션 종료 후 로비 씬으로 복귀.</summary>
     public async void LeaveRoom()
     {
-        if (_runner != null)
+        if (_leaving) return;
+        _leaving = true;
+        try
         {
-            await _runner.Shutdown();
-        }
+            if (_runner != null)
+                await _runner.Shutdown();
 
-        SceneManager.LoadScene(lobbySceneName);
+            LockdownProtocol.Lobby.Invite.GlobalLobbyInviteTransport.Instance?.UpdateLocalRoomStatus(false, null, false);
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+            SceneManager.LoadScene(lobbySceneName);
+            Destroy(gameObject);
+        }
+        catch (Exception exception)
+        {
+            _leaving = false;
+            Debug.LogException(exception);
+        }
     }
 
-    private async Task<StartGameResult> StartSession(GameMode mode, string roomName, int maxPlayers)
+    private async Task<StartGameResult> StartSession(GameMode mode, string roomName, int maxPlayers, bool isPrivate = false)
     {
-        PrepareRunner();
+        if (_sessionBusy || (_runner != null && _runner.IsRunning))
+            throw new InvalidOperationException("이미 방에 연결 중이거나 참가 중입니다.");
+        if (mode == GameMode.Host && roomManagerPrefab == null)
+            throw new InvalidOperationException("RoomManager Prefab이 연결되지 않았습니다.");
 
-        var args = new StartGameArgs
+        _sessionBusy = true;
+        _roomName = roomName;
+        _maxPlayers = Mathf.Clamp(maxPlayers, 2, 10);
+        _isPrivate = isPrivate;
+        try
         {
-            GameMode = mode,
-            SessionName = roomName,
-            Scene = GetSceneRefByName(roomSceneName),
-            SceneManager = _runnerObject.GetComponent<NetworkSceneManagerDefault>(),
-            EnableClientSessionCreation = false
-        };
+            PrepareRunner();
 
-        if (mode == GameMode.Host && maxPlayers > 0)
-        {
-            args.PlayerCount = maxPlayers;
+            var args = new StartGameArgs
+            {
+                GameMode = mode,
+                SessionName = roomName,
+                Scene = GetSceneRefByName(roomSceneName),
+                SceneManager = _runnerObject.GetComponent<NetworkSceneManagerDefault>(),
+                EnableClientSessionCreation = false
+            };
+
+            if (mode == GameMode.Host && maxPlayers > 0)
+            {
+                args.PlayerCount = _maxPlayers;
+            }
+
+            return await _runner.StartGame(args);
         }
-
-        return await _runner.StartGame(args);
+        finally
+        {
+            _sessionBusy = false;
+        }
     }
 
     /// <summary>NetworkRunner와 연동 컴포넌트를 담을 새 자식 오브젝트를 매 시도마다 새로 만든다.</summary>
@@ -175,7 +204,24 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
     public void OnHostMigration(NetworkRunner runner, HostMigrationToken hostMigrationToken) { }
     public void OnReliableDataReceived(NetworkRunner runner, PlayerRef player, ReliableKey key, ArraySegment<byte> data) { }
     public void OnReliableDataProgress(NetworkRunner runner, PlayerRef player, ReliableKey key, float progress) { }
-    public void OnSceneLoadDone(NetworkRunner runner) { }
+    public void OnSceneLoadDone(NetworkRunner runner)
+    {
+        if (runner.IsServer && SceneManager.GetSceneByName(roomSceneName).isLoaded)
+        {
+            var room = RoomManager.Instance;
+            if (room == null || room.Runner != runner)
+            {
+                if (roomManagerPrefab == null)
+                {
+                    Debug.LogError("RoomManager Prefab이 연결되지 않았습니다.");
+                    return;
+                }
+                room = runner.Spawn(roomManagerPrefab).GetComponent<RoomManager>();
+            }
+            room.InitializeRoom(_roomName, _maxPlayers, _isPrivate, runner.LocalPlayer);
+        }
+        OnSceneLoadDoneEvent?.Invoke(runner);
+    }
     public void OnSceneLoadStart(NetworkRunner runner) { }
     public void OnObjectExitAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
     public void OnObjectEnterAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }

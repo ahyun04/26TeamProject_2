@@ -24,6 +24,20 @@ public abstract class MissionMiniGameBase : NetworkBehaviour
 
     private bool interactionInitialized;
 
+    internal bool CanPlayerInteract(PlayerRef player)
+    {
+        if (player == PlayerRef.None || Object == null || !Object.IsValid || MissionCompleted)
+            return false;
+        if (missionSystem == null)
+            missionSystem = FindFirstObjectByType<MissionSystem>();
+        if (missionSystem == null || missionSystem.Object == null || !missionSystem.Object.IsValid ||
+            !missionSystem.HasMission(MissionId, player)) return false;
+        NetworkObject playerObject = Runner.GetPlayerObject(player);
+        PlayerHealth health = playerObject != null ? playerObject.GetComponent<PlayerHealth>() : null;
+        if (health == null || !health.CanAct) return false;
+        return true;
+    }
+
 
     // 미션 완료 상태를 모든 플레이어에게 동기화
     [Networked, OnChangedRender(nameof(OnCompletedChanged))]
@@ -190,7 +204,7 @@ public abstract class MissionMiniGameBase : NetworkBehaviour
     /// </summary>
     private void Complete(PlayerRef player)
     {
-        if (!Object.HasStateAuthority || MissionCompleted) return;
+        if (!Object.HasStateAuthority || !CanPlayerInteract(player)) return;
 
         bool accepted = OnCompleteRequested?.Invoke(MissionId, player) ?? false;
 
@@ -216,7 +230,7 @@ public abstract class MissionMiniGameBase : NetworkBehaviour
     /// </summary>
     private bool Fail(PlayerRef player)
     {
-        if (!Object.HasStateAuthority)
+        if (!Object.HasStateAuthority || !CanPlayerInteract(player))
             return false;
 
         bool accepted = OnFailRequested?.Invoke(MissionId, player) ?? false;

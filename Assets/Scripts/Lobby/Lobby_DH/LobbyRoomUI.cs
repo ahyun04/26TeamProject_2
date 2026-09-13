@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using LockdownProtocol.Lobby.Invite;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace LockdownProtocol.Lobby
@@ -40,9 +41,16 @@ namespace LockdownProtocol.Lobby
         private LobbyMiniHudUI _miniHud;
         private bool _isOpen;
 
+        internal static LobbyRoomUI Instance { get; private set; }
+        internal bool BlocksPlayerInput => _isOpen ||
+            (_miniHud != null && _miniHud.IsLeaveConfirmationOpen) ||
+            (inviteListPanel != null && inviteListPanel.IsOpen) ||
+            (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject());
+
 
         private void OnEnable()
         {
+            Instance = this;
             _gameStartManager = FindFirstObjectByType<LobbyGameStartManager>();
             if (_gameStartManager != null)
             {
@@ -63,6 +71,7 @@ namespace LockdownProtocol.Lobby
 
         private void OnDisable()
         {
+            if (Instance == this) Instance = null;
             if (_gameStartManager != null)
             {
                 _gameStartManager.StartFailed -= HandleStartFailed;
@@ -76,13 +85,19 @@ namespace LockdownProtocol.Lobby
 
         private void Update()
         {
+            if (_gameStartManager == null)
+            {
+                _gameStartManager = FindFirstObjectByType<LobbyGameStartManager>();
+                if (_gameStartManager != null)
+                    _gameStartManager.StartFailed += HandleStartFailed;
+            }
             if (Input.GetKeyDown(KeyCode.Escape))
             {
                 SetOpen(!_isOpen);
             }
 
             if (!_isOpen) return;
-            if (RoomManager.Instance == null) return;
+            if (RoomManager.Instance == null || RoomManager.Instance.Object == null || !RoomManager.Instance.Object.IsValid) return;
 
             RefreshRoomInfo();
             RefreshPlayerList();
@@ -96,9 +111,9 @@ namespace LockdownProtocol.Lobby
             _isOpen = open;
 
 
-            // 현우 추가 (ESC키 눌려 UI창 열릴 때 커서 풀고, 닫으면 잠김)
-            Cursor.lockState = open ? CursorLockMode.None : CursorLockMode.Locked;
-            Cursor.visible = open;
+            // 미니 HUD도 클릭할 수 있도록 대기실에서는 커서를 유지한다.
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
 
 
             if (detailPanelRoot == null)
@@ -135,6 +150,7 @@ namespace LockdownProtocol.Lobby
         private void RefreshPlayerList()
         {
             var players = FindObjectsByType<LobbyPlayerController>(FindObjectsSortMode.None);
+            System.Array.Sort(players, (left, right) => left.JoinOrder.CompareTo(right.JoinOrder));
 
             EnsureEntryCount(players.Length);
 

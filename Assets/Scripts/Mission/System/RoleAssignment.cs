@@ -79,6 +79,13 @@ public class RoleAssignment : NetworkBehaviour
         if (players.Count < MinPlayerCount)
             return;
 
+        foreach (PlayerRef player in players)
+        {
+            NetworkObject playerObject = Runner.GetPlayerObject(player);
+            if (playerObject == null || !playerObject.IsValid || playerObject.GetComponent<PlayerHealth>() == null)
+                return;
+        }
+
         int currentKillerCount = Mathf.Clamp(
             killerCount,
             1,

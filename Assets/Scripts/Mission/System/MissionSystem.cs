@@ -202,7 +202,8 @@ public class MissionSystem : NetworkBehaviour
             if (state.MissionType == MissionType.Shared)
                 return true;
 
-            return state.Owner == player;
+            if (state.Owner == player)
+                return true;
         }
 
         return false;
@@ -232,9 +233,10 @@ public class MissionSystem : NetworkBehaviour
     /// </summary>
     private bool AddProgress(int missionId, PlayerRef player)
     {
-        if (!HasStateAuthority || !Initialized)
+        if (!HasStateAuthority || !Initialized || !HasMission(missionId, player))
             return false;
 
+        bool progressed = false;
         for (int i = 0; i < MissionCount; i++)
         {
             MissionState state = Missions[i];
@@ -242,13 +244,13 @@ public class MissionSystem : NetworkBehaviour
             if (state.MissionId != missionId)
                 continue;
 
-            // 개인 미션이라면 배정받은 플레이어만 진행 가능
-            if (state.MissionType != MissionType.Shared && state.Owner != player)
+            // 개인행동은 수행자만, 같은 개인 미션은 배정받은 모두에게 진행도를 반영한다.
+            if (state.MissionType == MissionType.PersonalAction && state.Owner != player)
                 continue;
 
 
             if (state.Status != MissionStatus.InProgress)
-                return false;
+                continue;
 
 
             state.AddProgress();
@@ -261,12 +263,12 @@ public class MissionSystem : NetworkBehaviour
             );
 
 
-            CheckCitizenMissionsCompleted();
-
-            return true;
+            progressed = true;
         }
 
-        return false;
+        if (progressed)
+            CheckCitizenMissionsCompleted();
+        return progressed;
     }
 
 
@@ -358,8 +360,6 @@ public class MissionSystem : NetworkBehaviour
         if (!Initialized)
             return false;
 
-        bool hasPersonalAction = false;
-
         for (int i = 0; i < MissionCount; i++)
         {
             MissionState state = Missions[i];
@@ -373,13 +373,26 @@ public class MissionSystem : NetworkBehaviour
             if (state.MissionType != MissionType.PersonalAction)
                 continue;
 
-            hasPersonalAction = true;
-
             if (!state.IsCompleted)
                 return false;
         }
 
-        return hasPersonalAction;
+        // 개인행동 미션이 아직 배정되지 않은 경우에는 조건을 충족한 것으로 본다.
+        return true;
+    }
+
+    internal bool IsPersonalMissionCompleted(PlayerRef player)
+    {
+        if (!Initialized) return false;
+        bool hasPersonalMission = false;
+        for (int i = 0; i < MissionCount; i++)
+        {
+            MissionState state = Missions[i];
+            if (state.Owner != player || state.MissionType != MissionType.Personal) continue;
+            hasPersonalMission = true;
+            if (!state.IsCompleted) return false;
+        }
+        return hasPersonalMission;
     }
 
 

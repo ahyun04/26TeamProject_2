@@ -104,6 +104,10 @@ public class VacuumDust : NetworkBehaviour, ITargetable
         if (IsSucking || IsCollected)
             return false;
 
+        FilterCleaningMission mission = GetComponentInParent<FilterCleaningMission>();
+        if (mission == null || !mission.CanPlayerInteract(player))
+            return false;
+
         if (vacuumObject == null)
             return false;
 
@@ -149,6 +153,15 @@ public class VacuumDust : NetworkBehaviour, ITargetable
 
 
         if (SuctionItemObject == null)
+        {
+            CancelSuction();
+            return;
+        }
+
+        NetworkObject playerObject = Runner.GetPlayerObject(suctionPlayer);
+        PlayerHealth health = playerObject != null ? playerObject.GetComponent<PlayerHealth>() : null;
+        VacuumItem heldVacuum = GetVacuum();
+        if (health == null || !health.CanAct || heldVacuum == null || heldVacuum.HolderObject != playerObject)
         {
             CancelSuction();
             return;

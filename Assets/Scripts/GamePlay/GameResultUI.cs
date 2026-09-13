@@ -64,6 +64,8 @@ public class GameResultUI : MonoBehaviour
         resultText.text = result == PlayerResult.Win ? winText : loseText;
         RefreshPlayerResults();
         resultPanel.SetActive(true);
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
     }
 
     private void RefreshPlayerResults()

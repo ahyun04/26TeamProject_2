@@ -24,6 +24,7 @@ namespace LockdownProtocol.Lobby.Invite
         private readonly Dictionary<string, InviteData> _incomingInvites = new Dictionary<string, InviteData>();
 
         private InviteManager _currentRoomInviteManager;
+        private PlayerPresence _hookedPresence;
 
         private void Awake()
         {
@@ -51,20 +52,19 @@ namespace LockdownProtocol.Lobby.Invite
             if (roomInviteManager != _currentRoomInviteManager)
             {
                 UnhookRoomInviteManager();
+                _outgoingInvites.Clear();
                 _currentRoomInviteManager = roomInviteManager;
                 HookRoomInviteManager();
             }
 
-            if (PlayerPresence.Local != null)
-            {
-                TryHookGlobalLobby();
-            }
+            TryHookGlobalLobby();
         }
 
         private void OnDestroy()
         {
             UnhookRoomInviteManager();
             UnhookGlobalLobby();
+            if (Instance == this) Instance = null;
         }
 
         // ================== 채널 1: 내가 있는 방의 InviteManager ==================
@@ -110,22 +110,25 @@ namespace LockdownProtocol.Lobby.Invite
 
         private void TryHookGlobalLobby()
         {
-            if (_globalLobbyHooked) return;
+            if (_globalLobbyHooked && _hookedPresence == PlayerPresence.Local) return;
+            UnhookGlobalLobby();
             if (PlayerPresence.Local == null) return;
 
-            PlayerPresence.Local.InviteReceivedLocally += HandleInviteReceived;
-            PlayerPresence.Local.InviteResultReceivedLocally += HandleMyInviteResult;
+            _hookedPresence = PlayerPresence.Local;
+            _hookedPresence.InviteReceivedLocally += HandleInviteReceived;
+            _hookedPresence.InviteResultReceivedLocally += HandleMyInviteResult;
             _globalLobbyHooked = true;
         }
 
         private void UnhookGlobalLobby()
         {
             if (!_globalLobbyHooked) return;
-            if (PlayerPresence.Local != null)
+            if (_hookedPresence != null)
             {
-                PlayerPresence.Local.InviteReceivedLocally -= HandleInviteReceived;
-                PlayerPresence.Local.InviteResultReceivedLocally -= HandleMyInviteResult;
+                _hookedPresence.InviteReceivedLocally -= HandleInviteReceived;
+                _hookedPresence.InviteResultReceivedLocally -= HandleMyInviteResult;
             }
+            _hookedPresence = null;
             _globalLobbyHooked = false;
         }
 
@@ -135,7 +138,7 @@ namespace LockdownProtocol.Lobby.Invite
             InviteReceived?.Invoke(invite);
         }
 
-        private void HandleMyInviteResult(string inviteId, InviteState state, string message, string approvedRoomId)
+        private async void HandleMyInviteResult(string inviteId, InviteState state, string message, string approvedRoomId)
         {
             _incomingInvites.Remove(inviteId);
 
@@ -145,7 +148,21 @@ namespace LockdownProtocol.Lobby.Invite
                 var bootstrap = FindFirstObjectByType<NetworkBootstrap>();
                 if (bootstrap != null)
                 {
-                    _ = bootstrap.JoinRoom(approvedRoomId);
+                    try
+                    {
+                        var result = await bootstrap.JoinRoom(approvedRoomId);
+                        if (!result.Ok)
+                        {
+                            state = InviteState.Failed;
+                            message = $"방 참가 실패: {result.ShutdownReason}";
+                        }
+                    }
+                    catch (System.Exception exception)
+                    {
+                        state = InviteState.Failed;
+                        message = exception.Message;
+                        Debug.LogException(exception);
+                    }
                 }
                 else
                 {

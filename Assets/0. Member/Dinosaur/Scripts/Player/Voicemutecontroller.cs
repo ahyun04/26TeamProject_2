@@ -1,3 +1,4 @@
+using Fusion;
 using Photon.Voice.Unity;
 using UnityEngine;
 
@@ -17,16 +18,24 @@ public class VoiceMuteController : MonoBehaviour
     [SerializeField] private KeyCode muteKey = KeyCode.V;
 
     private Recorder _recorder;
+    private NetworkObject _networkObject;
+    private bool _transmissionAllowed = true;
+    private static bool _localMuted;
 
     public bool IsMuted { get; private set; }
 
     private void Awake()
     {
         _recorder = GetComponent<Recorder>();
+        _networkObject = GetComponent<NetworkObject>();
+        IsMuted = _localMuted;
+        if (GetComponent<PlayerVoiceChannelController>() != null)
+            _transmissionAllowed = false;
     }
 
     private void Update()
     {
+        if (_networkObject != null && (!_networkObject.IsValid || !_networkObject.HasInputAuthority)) return;
         if (Input.GetKeyDown(muteKey))
         {
             ToggleMute();
@@ -36,8 +45,15 @@ public class VoiceMuteController : MonoBehaviour
     private void ToggleMute()
     {
         IsMuted = !IsMuted;
-        _recorder.TransmitEnabled = !IsMuted;
+        _localMuted = IsMuted;
+        _recorder.TransmitEnabled = _transmissionAllowed && !IsMuted;
 
         Debug.Log($"[VoiceMuteController] 음소거: {IsMuted}");
+    }
+
+    internal void SetTransmissionAllowed(bool allowed)
+    {
+        _transmissionAllowed = allowed;
+        if (_recorder != null) _recorder.TransmitEnabled = allowed && !IsMuted;
     }
 }

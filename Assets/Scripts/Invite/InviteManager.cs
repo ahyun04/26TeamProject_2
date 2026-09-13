@@ -103,7 +103,7 @@ namespace LockdownProtocol.Lobby.Invite
 
         // ================== 초대 요청 (인바이터 = 이 방 안에 있는 플레이어) ==================
 
-        [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
+        [Rpc(RpcSources.All, RpcTargets.StateAuthority, HostMode = RpcHostMode.SourceIsHostPlayer)]
         public async void RPC_RequestInvite(string inviterId, string inviterNickname, string targetPlayerId, RpcInfo info = default)
         {
             PlayerRef inviterRef = info.Source;
@@ -112,7 +112,7 @@ namespace LockdownProtocol.Lobby.Invite
             //    연결돼 있다는 뜻이지만, 방 상태 조건은 별도로 검증해야 한다)
             if (_roomManager.CurrentRoomState != RoomManager.RoomState.Waiting)
             {
-                NotifyRequestFailed(inviterRef, "게임이 이미 시작되었습니다");
+                NotifyRequestFailed(inviterRef, targetPlayerId, "게임이 이미 시작되었습니다");
                 return;
             }
 
@@ -120,7 +120,7 @@ namespace LockdownProtocol.Lobby.Invite
             var currentPlayers = FindObjectsByType<LobbyPlayerController>(FindObjectsSortMode.None);
             if (currentPlayers.Length >= _roomManager.MaxPlayerCount)
             {
-                NotifyRequestFailed(inviterRef, "방의 인원이 가득 찼습니다");
+                NotifyRequestFailed(inviterRef, targetPlayerId, "방의 인원이 가득 찼습니다");
                 return;
             }
 
@@ -138,30 +138,43 @@ namespace LockdownProtocol.Lobby.Invite
             // 4. 대상 플레이어 상태 확인 (온라인/다른 방/게임 중 여부) - Transport를 통해 조회
             if (Transport == null)
             {
-                NotifyRequestFailed(inviterRef, "초대할 수 없습니다");
+                NotifyRequestFailed(inviterRef, targetPlayerId, "초대할 수 없습니다");
                 return;
             }
 
             var presence = await Transport.QueryPresence(targetPlayerId);
 
+            if (Object == null || !Object.IsValid) return;
+            if (_roomManager.CurrentRoomState != RoomManager.RoomState.Waiting)
+            {
+                NotifyRequestFailed(inviterRef, targetPlayerId, "게임이 이미 시작되었습니다");
+                return;
+            }
+            currentPlayers = FindObjectsByType<LobbyPlayerController>(FindObjectsSortMode.None);
+            if (currentPlayers.Length >= _roomManager.MaxPlayerCount)
+            {
+                NotifyRequestFailed(inviterRef, targetPlayerId, "방의 인원이 가득 찼습니다");
+                return;
+            }
+
             if (!presence.Exists)
             {
-                NotifyRequestFailed(inviterRef, "존재하지 않는 플레이어입니다");
+                NotifyRequestFailed(inviterRef, targetPlayerId, "존재하지 않는 플레이어입니다");
                 return;
             }
             if (!presence.IsOnline)
             {
-                NotifyRequestFailed(inviterRef, "플레이어가 오프라인입니다");
+                NotifyRequestFailed(inviterRef, targetPlayerId, "플레이어가 오프라인입니다");
                 return;
             }
             if (presence.IsInGame)
             {
-                NotifyRequestFailed(inviterRef, "현재 게임 중인 플레이어입니다");
+                NotifyRequestFailed(inviterRef, targetPlayerId, "현재 게임 중인 플레이어입니다");
                 return;
             }
             if (presence.IsInAnyRoom)
             {
-                NotifyRequestFailed(inviterRef, "이미 다른 방에 참가 중입니다");
+                NotifyRequestFailed(inviterRef, targetPlayerId, "이미 다른 방에 참가 중입니다");
                 return;
             }
 
@@ -182,9 +195,9 @@ namespace LockdownProtocol.Lobby.Invite
             RPC_NotifyInviteSent(inviterRef, targetPlayerId, invite.InviteId);
         }
 
-        private void NotifyRequestFailed(PlayerRef inviter, string message)
+        private void NotifyRequestFailed(PlayerRef inviter, string targetPlayerId, string message)
         {
-            RPC_NotifyInviteFailed(inviter, message);
+            RPC_NotifyInviteFailed(inviter, targetPlayerId, message);
         }
 
         [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
@@ -194,14 +207,15 @@ namespace LockdownProtocol.Lobby.Invite
         }
 
         [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-        private void RPC_NotifyInviteFailed([RpcTarget] PlayerRef inviter, string message)
+        private void RPC_NotifyInviteFailed([RpcTarget] PlayerRef inviter, string targetPlayerId, string message)
         {
+            InviteResultForInviter?.Invoke(targetPlayerId, InviteState.Failed, message);
             InviteRequestFailed?.Invoke(message);
         }
 
         // ================== 초대 취소 (인바이터가 요청) ==================
 
-        [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
+        [Rpc(RpcSources.All, RpcTargets.StateAuthority, HostMode = RpcHostMode.SourceIsHostPlayer)]
         public void RPC_CancelInvite(string inviteId, RpcInfo info = default)
         {
             if (!_invites.TryGetValue(inviteId, out var invite)) return;
@@ -241,6 +255,7 @@ namespace LockdownProtocol.Lobby.Invite
                 invite.State = InviteState.Expired;
                 _invites.Remove(inviteId);
                 Transport?.NotifyResult(invite.TargetPlayerId, inviteId, InviteState.Expired, "초대가 만료되었습니다");
+                NotifyInviterOfResult(invite, InviteState.Expired, "초대가 만료되었습니다");
                 return;
             }
 
@@ -249,6 +264,7 @@ namespace LockdownProtocol.Lobby.Invite
                 invite.State = InviteState.Failed;
                 _invites.Remove(inviteId);
                 Transport?.NotifyResult(invite.TargetPlayerId, inviteId, InviteState.Failed, "게임이 이미 시작되었습니다");
+                NotifyInviterOfResult(invite, InviteState.Failed, "게임이 이미 시작되었습니다");
                 return;
             }
 
@@ -258,6 +274,7 @@ namespace LockdownProtocol.Lobby.Invite
                 invite.State = InviteState.Failed;
                 _invites.Remove(inviteId);
                 Transport?.NotifyResult(invite.TargetPlayerId, inviteId, InviteState.Failed, "방의 인원이 가득 찼습니다");
+                NotifyInviterOfResult(invite, InviteState.Failed, "방의 인원이 가득 찼습니다");
                 return;
             }
 
@@ -382,6 +399,7 @@ namespace LockdownProtocol.Lobby.Invite
                 invite.State = InviteState.Cancelled;
                 _invites.Remove(inviteId);
                 Transport?.NotifyResult(invite.TargetPlayerId, inviteId, InviteState.Cancelled, message);
+                NotifyInviterOfResult(invite, InviteState.Cancelled, message);
             }
         }
 

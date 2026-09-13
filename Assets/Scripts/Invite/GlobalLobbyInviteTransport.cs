@@ -19,6 +19,9 @@ namespace LockdownProtocol.Lobby.Invite
 
         private NetworkRunner _runner;
         private PlayerPresence _localPresence;
+        private bool _isInRoom;
+        private string _roomId;
+        private bool _isInGame;
 
         private void Awake()
         {
@@ -34,7 +37,8 @@ namespace LockdownProtocol.Lobby.Invite
 
         private async void Start()
         {
-            await ConnectToGlobalLobby();
+            try { await ConnectToGlobalLobby(); }
+            catch (Exception exception) { Debug.LogException(exception); }
         }
 
         private async Task ConnectToGlobalLobby()
@@ -65,15 +69,29 @@ namespace LockdownProtocol.Lobby.Invite
 
             var spawned = _runner.Spawn(playerPresencePrefab, inputAuthority: _runner.LocalPlayer);
             _localPresence = spawned.GetComponent<PlayerPresence>();
-            _localPresence.InviteReceivedLocally += invite => { /* InviteClientManager가 이후 여기에 연결 */ };
-            _localPresence.InviteResponseReceivedLocally += (inviteId, accepted) => InviteResponseReceived?.Invoke(inviteId, accepted);
+            _localPresence.SetRoomStatus(_isInRoom, _roomId, _isInGame);
+            _localPresence.InviteResponseReceivedLocally += HandleResponse;
 
             Debug.Log("[GlobalLobbyInviteTransport] 전역 로비 접속 완료");
         }
 
         public void UpdateLocalRoomStatus(bool isInRoom, string roomId, bool isInGame)
         {
+            _isInRoom = isInRoom;
+            _roomId = roomId;
+            _isInGame = isInGame;
             _localPresence?.SetRoomStatus(isInRoom, roomId, isInGame);
+        }
+
+        private void HandleResponse(string inviteId, bool accepted)
+        {
+            InviteResponseReceived?.Invoke(inviteId, accepted);
+        }
+
+        private void OnDestroy()
+        {
+            if (_localPresence != null) _localPresence.InviteResponseReceivedLocally -= HandleResponse;
+            if (Instance == this) Instance = null;
         }
 
         // ================== IInviteTransport 구현 ==================
@@ -146,9 +164,11 @@ namespace LockdownProtocol.Lobby.Invite
 
             while (elapsed < presenceSearchTimeoutSeconds)
             {
+                if (this == null) return null;
                 foreach (var presence in FindObjectsByType<PlayerPresence>(FindObjectsSortMode.None))
                 {
-                    if (presence.PlayerId == playerId) return presence;
+                    if (presence.Object != null && presence.Object.IsValid && presence.Runner == _runner &&
+                        presence.PlayerId == playerId) return presence;
                 }
 
                 await Task.Delay(TimeSpan.FromSeconds(retryInterval));

@@ -26,15 +26,18 @@ namespace LockdownProtocol.Networking
         {
             // 클라 전용 연출
             PlayDeathAnimation();
-            ScreenFadeOut();
-            DisableInputUI();
+            if (HasInputAuthority)
+            {
+                ScreenFadeOut();
+                DisableInputUI();
+            }
 
             // 서버 전용 
             if (Object.HasStateAuthority)
             {
                 SpawnBody();
                 DropItems();
-                _spectator.BeginSpectatorTransition();
+                _spectator?.BeginSpectatorTransition();
             }
         }
 
@@ -64,7 +67,7 @@ namespace LockdownProtocol.Networking
         // 인벤토리 시스템 기획/구현 후 연결
         private void DropItems()
         {
-            Debug.Log($"[DeathManager] {name} 아이템 드랍 (미구현) - 서버 전용");
+            GetComponent<PlayerItemController>()?.DropCurrentItem();
         }
     }
 }

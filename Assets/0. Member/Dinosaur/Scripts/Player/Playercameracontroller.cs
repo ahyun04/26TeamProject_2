@@ -1,5 +1,6 @@
 using Fusion;
 using Fusion.Addons.SimpleKCC;
+using LockdownProtocol.Lobby;
 using UnityEngine;
 
 /// <summary>
@@ -19,6 +20,7 @@ public class PlayerCameraController : NetworkBehaviour
     [SerializeField] private Transform cameraPivot; // 머리 위치, Pitch 회전축
 
     private SimpleKCC _kcc;
+    private LockdownProtocol.Networking.SpectatorManager _spectator;
 
     /// <summary>
     /// 이 클라이언트의 로컬 카메라 위치를 다른 시스템(음성 거리 감쇠 등)이 참조할 수 있게 노출.
@@ -31,6 +33,7 @@ public class PlayerCameraController : NetworkBehaviour
     public override void Spawned()
     {
         _kcc = GetComponent<SimpleKCC>();
+        _spectator = GetComponent<LockdownProtocol.Networking.SpectatorManager>();
 
         bool isLocalPlayer = Object.HasInputAuthority;
 
@@ -40,8 +43,9 @@ public class PlayerCameraController : NetworkBehaviour
 
         if (isLocalPlayer)
         {
-            Cursor.lockState = CursorLockMode.Locked;
-            Cursor.visible = false;
+            bool isLobby = LobbyRoomUI.Instance != null;
+            Cursor.lockState = isLobby ? CursorLockMode.None : CursorLockMode.Locked;
+            Cursor.visible = isLobby;
             LocalListenerTransform = playerCamera.transform;
         }
     }
@@ -60,6 +64,17 @@ public class PlayerCameraController : NetworkBehaviour
         // 먼저 갱신하는데, LateUpdate는 그 이후에 실행되므로 최신 보간 결과를 반영할 수 있다.
         // (Fusion 공식 Simple KCC 샘플과 동일한 패턴)
         if (Object == null || !Object.HasInputAuthority) return;
+        if (_spectator != null && _spectator.IsSpectator)
+        {
+            NetworkObject target = Runner.GetPlayerObject(_spectator.CurrentSpectateTarget);
+            PlayerCameraController targetCamera = target != null ? target.GetComponent<PlayerCameraController>() : null;
+            if (targetCamera != null && targetCamera.playerCamera != null && targetCamera._kcc != null)
+            {
+                playerCamera.transform.SetPositionAndRotation(targetCamera.playerCamera.transform.position,
+                    Quaternion.Euler(targetCamera._kcc.GetLookRotation()));
+            }
+            return;
+        }
 
         // KCC에 이미 누적된 Pitch/Yaw 중 Pitch만 꺼내와 카메라 피벗에 반영한다.
         // Yaw는 PlayerMovement가 이미 캐릭터 몸통(transform) 회전에 반영해뒀으므로 여기선 필요 없다.
