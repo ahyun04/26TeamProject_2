@@ -148,6 +148,26 @@ namespace LockdownProtocol.Lobby
                 return;
             }
 
+            LobbyPlayerController earliest = null;
+
+            foreach (var controller in FindObjectsByType<LobbyPlayerController>(FindObjectsSortMode.None))
+            {
+                if (controller.Object == null || controller.Object.InputAuthority == HostPlayerId) continue;
+                if (earliest == null || controller.JoinOrder < earliest.JoinOrder)
+                {
+                    earliest = controller;
+                }
+            }
+
+            if (earliest != null)
+            {
+                var newHost = earliest.Object.InputAuthority;
+                HostPlayerId = newHost;
+                FindFirstObjectByType<LobbyPlayerSpawner>()?.RefreshHostFlag(newHost);
+                RPC_NotifyHostChanged(newHost);
+                return;
+            }
+
             // 남은 플레이어 없음 -> 방 삭제
             CurrentRoomState = RoomState.Closed;
             Debug.Log("[RoomManager] 남은 플레이어 없음 - 방 삭제 (미구현: 세션 종료 처리)");
