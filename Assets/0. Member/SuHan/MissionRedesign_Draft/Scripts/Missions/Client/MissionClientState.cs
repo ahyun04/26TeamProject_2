@@ -17,8 +17,12 @@ namespace TrustNoOne.Missions
         public readonly int Required;
         public readonly ObjectiveStatus Status;
 
+        /// <summary>제한 시간 마감(시뮬레이션 시각, 초). 없으면 0. 현재는 단체 미션만 채워진다.</summary>
+        public readonly float Deadline;
+
         public ObjectiveView(
-            int slot, MissionDefinition definition, PlayerRef owner, int progress, int required, ObjectiveStatus status)
+            int slot, MissionDefinition definition, PlayerRef owner, int progress, int required, ObjectiveStatus status,
+            float deadline = 0f)
         {
             Slot = slot;
             Definition = definition;
@@ -26,6 +30,7 @@ namespace TrustNoOne.Missions
             Progress = progress;
             Required = required;
             Status = status;
+            Deadline = deadline;
         }
     }
 
@@ -137,7 +142,8 @@ namespace TrustNoOne.Missions
                     if (existing.Definition != pool.Get(states[i].DefIndex) ||
                         existing.Progress != states[i].Progress ||
                         existing.Required != states[i].Required ||
-                        existing.Status != states[i].Status)
+                        existing.Status != states[i].Status ||
+                        existing.Deadline != states[i].Deadline)
                     {
                         changed = true;
                         break;
@@ -153,7 +159,7 @@ namespace TrustNoOne.Missions
                 {
                     team.Add(new ObjectiveView(
                         i, pool.Get(states[i].DefIndex), PlayerRef.None,
-                        states[i].Progress, states[i].Required, states[i].Status));
+                        states[i].Progress, states[i].Required, states[i].Status, states[i].Deadline));
                 }
             }
 

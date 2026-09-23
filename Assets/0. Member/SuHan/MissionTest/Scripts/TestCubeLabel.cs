@@ -5,10 +5,10 @@ using UnityEngine;
 /// [테스트 전용] 에셋 없이 큐브를 구분하기 위한 이름표 + 색.
 ///  - 이름표: Unity 내장 폰트(LegacyRuntime.ttf)로 만든 TextMesh. 항상 화면 카메라를 바라본다.
 ///  - 색: MaterialPropertyBlock 으로 칠한다. 머티리얼 에셋을 새로 만들지 않기 위해서다.
-///  - MissionInteractable 이 붙어 있으면 상태를 이름표에 덧붙인다: 홀드 진행률 / [완료] / (내 미션 아님).
+///  - MissionStation 이 붙어 있으면 상태를 덧붙인다: HoldStation 진행률 / [완료] / (지금 할 미션 아님)
 ///
 /// [이름표를 자식으로 두지 않는 이유] 큐브는 (1, 2, 1)처럼 늘려서 쓰는데, 자식으로 두면 글자까지 같이 늘어난다.
-///  그래서 별도 오브젝트로 만들고 위치만 따라가게 했다.
+/// [색 되돌리기] 잠김(Lock)이 제한 시간 초기화로 풀리면 원래 색으로 돌아간다.
 /// </summary>
 public class TestCubeLabel : MonoBehaviour
 {
@@ -20,11 +20,11 @@ public class TestCubeLabel : MonoBehaviour
 
     [SerializeField] private float heightOffset = 0.4f;
 
-    private static readonly Color ConsumedColor = new Color(0.35f, 0.35f, 0.35f);
+    private static readonly Color CompletedColor = new Color(0.35f, 0.35f, 0.35f);
     private static Camera viewCamera;
     private static float nextCameraSearchTime;
 
-    /// <summary>이름표 첫 줄 (예: "발전기"). 홀드 게이지 제목으로 쓴다.</summary>
+    /// <summary>이름표 첫 줄 (예: "밸브 잠그기"). 홀드 게이지 제목으로 쓴다.</summary>
     public string Title
     {
         get
@@ -39,17 +39,18 @@ public class TestCubeLabel : MonoBehaviour
 
     private GameObject labelObject;
     private TextMesh textMesh;
-    private MissionInteractable interactable;
+    private MissionStation station;
     private Collider[] colliders;
     private Renderer[] tintTargets;
     private Vector3 labelOffset;
-    private bool consumedTintApplied;
+    private bool? lastCompleted;
 
     private void Start()
     {
-        interactable = GetComponent<MissionInteractable>();
+        station = GetComponent<MissionStation>();
         colliders = GetComponentsInChildren<Collider>(true);
-        tintTargets = GetComponentsInChildren<Renderer>(true);
+        // 켜져 있는 렌더러만: 평소에 꺼져 있는 조준 외곽선(MissionPrompt)은 칠하지 않는다 (흰색 발광이 유지돼야 함)
+        tintTargets = GetComponentsInChildren<Renderer>(false);
 
         labelOffset = ComputeLabelOffset();
         CreateLabel();
@@ -80,25 +81,25 @@ public class TestCubeLabel : MonoBehaviour
 
     private string BuildStatus()
     {
-        if (interactable == null || interactable.Object == null || !interactable.Object.IsValid)
+        if (station == null || station.Object == null || !station.Object.IsValid)
             return string.Empty;
 
-        if (interactable.Consumed)
-        {
-            if (tintRenderers && !consumedTintApplied)
-            {
-                ApplyTint(ConsumedColor);
-                consumedTintApplied = true;
-            }
+        bool completed = station.Completed;
 
-            return "\n[완료]";
+        if (tintRenderers && lastCompleted != completed)
+        {
+            ApplyTint(completed ? CompletedColor : color);
+            lastCompleted = completed;
         }
 
-        if (interactable.IsUsedByLocalPlayer)
-            return $"\n진행 {Mathf.RoundToInt(interactable.HoldProgress01 * 100f)}%";
+        if (completed)
+            return "\n[완료]";
 
-        // MissionInteractable 이 "내 목표가 아니면" 콜라이더를 끈다. 그 상태를 그대로 보여준다.
-        return AnyColliderEnabled() ? string.Empty : "\n(내 미션 아님)";
+        if (station is HoldStation hold && hold.IsOperatedByLocalPlayer)
+            return $"\n진행 {Mathf.RoundToInt(hold.HoldProgress01 * 100f)}%";
+
+        // MissionStation 이 "지금 내가 할 미션이 아니면" 콜라이더를 끈다 (개인용은 내가 끝낸 뒤에도 해당).
+        return AnyColliderEnabled() ? string.Empty : "\n(지금 할 미션 아님)";
     }
 
     private bool AnyColliderEnabled()
@@ -117,7 +118,7 @@ public class TestCubeLabel : MonoBehaviour
 
     private Vector3 ComputeLabelOffset()
     {
-        Renderer[] renderers = GetComponentsInChildren<Renderer>(true);
+        Renderer[] renderers = GetComponentsInChildren<Renderer>(false);
 
         if (renderers.Length == 0)
             return Vector3.up * (1f + heightOffset);

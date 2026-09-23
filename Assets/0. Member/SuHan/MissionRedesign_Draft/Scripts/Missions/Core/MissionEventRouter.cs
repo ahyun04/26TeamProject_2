@@ -5,17 +5,19 @@ using Fusion;
 namespace TrustNoOne.Missions
 {
     /// <summary>
-    /// [역할] 이번 판의 모든 목표를 들고 있다가, 발행된 MissionEvent 를 목표들에게 전달한다.
+    /// [역할] 이번 판의 모든 목표를 들고 있다가, 발행된 MissionEvent 와 시간 경과를 목표들에게 전달한다.
     ///        (호스트 전용 · 네트워크 비의존)
     ///
     /// [처리 순서] Publish: ① 행동 기록 → ② 각 목표의 OnEvent.
     ///  기록을 먼저 하는 이유: Custom 목표가 OnEvent 안에서 "지금까지의 기록"을 참조할 수 있게 하기 위해서.
     ///
-    /// [하나의 이벤트 → 여러 목표] 같은 이벤트가 단체 미션과 개인 미션에 동시에 반영될 수 있다
-    ///  (예: 발전기 수리 1회가 단체 "5대"와 개인 "2회" 모두에 +1). 기획서에 반대 규칙이 없어 이렇게 정했다.
+    /// [하나의 이벤트 → 여러 목표] 같은 이벤트가 단체 미션과 개인 미션에 동시에 반영될 수 있다 (design-spec D16).
     ///
-    /// [변경 통지] 상태가 바뀐 목표마다 ObjectiveChanged 를 발생시킨다. MissionManager 가 이걸 받아서 동기화한다.
-    ///  라우터는 "무엇이 바뀌었나"만 알리고 "어떻게 동기화하나"는 모른다 → 네트워크와 판정이 분리된다.
+    /// [변경 통지]
+    ///  - ObjectiveChanged: 상태가 바뀐 목표마다 (MissionManager 가 동기화에 사용)
+    ///  - ObjectiveReset  : 제한 시간 초과로 진행도가 0 이 된 목표 (MissionManager 가 미션 오브젝트 초기화 알림에 사용).
+    ///                      초기화도 상태 변경이므로 ObjectiveChanged 를 먼저 보내고 ObjectiveReset 을 보낸다.
+    ///  라우터는 "무엇이 바뀌었나"만 알리고 "어떻게 동기화/초기화하나"는 모른다 → 네트워크·씬과 판정이 분리된다.
     /// </summary>
     public class MissionEventRouter
     {
@@ -26,6 +28,7 @@ namespace TrustNoOne.Missions
         public IReadOnlyList<IMissionObjective> Objectives => objectives;
 
         public event Action<IMissionObjective> ObjectiveChanged;
+        public event Action<IMissionObjective> ObjectiveReset;
 
         /// <summary>새 판 시작: 목표 목록을 교체하고 기록을 비운다.</summary>
         public void Reset(IEnumerable<IMissionObjective> newObjectives)
@@ -50,7 +53,8 @@ namespace TrustNoOne.Missions
             return false;
         }
 
-        public void Publish(in MissionEvent e)
+        /// <summary>행동 발생. now = 호스트 시뮬레이션 시각(초).</summary>
+        public void Publish(in MissionEvent e, double now)
         {
             Log.Record(e);
 
@@ -58,8 +62,23 @@ namespace TrustNoOne.Missions
             {
                 IMissionObjective objective = objectives[i];
 
-                if (objective.OnEvent(e, Log))
+                if (objective.OnEvent(e, Log, now))
                     ObjectiveChanged?.Invoke(objective);
+            }
+        }
+
+        /// <summary>시간 경과. 제한 시간을 넘긴 목표를 초기화하고 통지한다. 호스트가 매 틱 호출.</summary>
+        public void Tick(double now)
+        {
+            for (int i = 0; i < objectives.Count; i++)
+            {
+                IMissionObjective objective = objectives[i];
+
+                if (!objective.OnTick(now))
+                    continue;
+
+                ObjectiveChanged?.Invoke(objective);
+                ObjectiveReset?.Invoke(objective);
             }
         }
 

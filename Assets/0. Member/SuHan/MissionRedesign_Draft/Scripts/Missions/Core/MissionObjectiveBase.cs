@@ -11,6 +11,8 @@ namespace TrustNoOne.Missions
     ///  - 단체 목표: 참여자 = 배정 시점의 시민 전원 (살인마는 단체 미션을 진행시킬 수 없다)
     ///  - 개인 목표: 참여자 = 주인 한 명
     ///  → CanBeAdvancedBy 하나로 두 경우가 같은 코드로 처리된다.
+    ///
+    /// [기본값] 제한 시간이 없는 목표는 Deadline 음수, OnTick 은 아무것도 하지 않는다.
     /// </summary>
     public abstract class MissionObjectiveBase : IMissionObjective
     {
@@ -31,6 +33,8 @@ namespace TrustNoOne.Missions
 
         public virtual int Required => Definition.RequiredCount;
 
+        public virtual double Deadline => -1d;
+
         public bool CanBeAdvancedBy(PlayerRef actor)
         {
             return participants.Contains(actor);
@@ -43,7 +47,12 @@ namespace TrustNoOne.Missions
                 && CanBeAdvancedBy(actor);
         }
 
-        public abstract bool OnEvent(in MissionEvent e, PlayerActionLog log);
+        public abstract bool OnEvent(in MissionEvent e, PlayerActionLog log, double now);
+
+        public virtual bool OnTick(double now)
+        {
+            return false;
+        }
 
         public virtual bool OnPlayerFinalized(PlayerRef player)
         {

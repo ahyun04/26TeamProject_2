@@ -6,18 +6,18 @@ using UnityEngine;
 /// [테스트 전용] 화면 왼쪽 위에 미션 상태를 글자로 보여주는 디버그 패널 (에셋 없이 IMGUI 로 그린다).
 ///
 /// [보여주는 것] MissionClientState(= 이 PC가 볼 수 있는 정보만)를 그대로 출력한다.
-///  시민 전체 진행도 %, 단체 완료/탈출 해금 여부, 단체 미션 · 내 개인 미션 · 내 행동 목표 목록, 전체 공개 결과.
+///  시민 전체 진행도 %, 단체 완료/탈출 해금 여부, 단체 미션(+ 제한 시간이 있으면 남은 시간) · 내 개인 미션 · 내 행동 목표, 전체 공개 결과.
+///  남은 시간 = 마감 시각(호스트가 동기화) - 현재 시뮬레이션 시각 (stage1 명세 2-4).
 ///
 /// [단축키] 호스트에서만 동작한다.
-///  F9  : 내 행동 확정 — 탈출/사망을 흉내낸다. "한 번도 달리지 않기" 같은 종료 판정 목표가 이때 결과로 확정된다.
-///        (실제 게임에서는 GameEndSystem 이 탈출/사망/시간 종료 시점에 MissionManager.FinalizePlayer 를 호출할 자리)
+///  F9  : 내 행동 확정 — 탈출/사망을 흉내낸다. "뛰지 않는다" 같은 종료 판정 목표가 이때 결과로 확정된다.
 ///  F10 : 게임 종료 전체 공개 (MissionManager.RevealAllMissions)
 /// </summary>
 public class MissionDebugOverlay : MonoBehaviour
 {
     [SerializeField] private KeyCode finalizeKey = KeyCode.F9;
     [SerializeField] private KeyCode revealKey = KeyCode.F10;
-    [SerializeField] private float panelWidth = 520f;
+    [SerializeField] private float panelWidth = 540f;
 
     private MissionManager manager;
     private GUIStyle style;
@@ -65,7 +65,9 @@ public class MissionDebugOverlay : MonoBehaviour
             style.normal.textColor = Color.white;
         }
 
-        string body = TryGetManager() ? BuildBody(manager.Client) : "MissionManager 대기 중...";
+        string body = TryGetManager()
+            ? BuildBody(manager.Client, (float)manager.Runner.SimulationTime)
+            : "MissionManager 대기 중...";
 
         GUIContent content = new GUIContent(body);
         float height = style.CalcHeight(content, panelWidth - 20f) + 20f;
@@ -76,7 +78,7 @@ public class MissionDebugOverlay : MonoBehaviour
         GUI.Label(new Rect(panel.x + 10f, panel.y + 10f, panel.width - 20f, panel.height - 20f), content, style);
     }
 
-    private string BuildBody(MissionClientState client)
+    private string BuildBody(MissionClientState client, float now)
     {
         builder.Clear();
 
@@ -85,18 +87,18 @@ public class MissionDebugOverlay : MonoBehaviour
 
         builder.AppendLine();
         builder.AppendLine(client.IsTeamParticipant ? "<b>[단체 미션]</b>" : "<b>[단체 미션]</b> (나는 참여 대상 아님)");
-        AppendList(client, null);
+        AppendList(client, null, now);
 
         builder.AppendLine("<b>[개인 미션]</b>");
-        AppendList(client, MissionCategory.Personal);
+        AppendList(client, MissionCategory.Personal, now);
 
         builder.AppendLine("<b>[개인 행동 목표]</b>");
-        AppendList(client, MissionCategory.ActionGoal);
+        AppendList(client, MissionCategory.ActionGoal, now);
 
         if (HasCategory(client, MissionCategory.Killer))
         {
             builder.AppendLine("<b>[살인마 미션]</b>");
-            AppendList(client, MissionCategory.Killer);
+            AppendList(client, MissionCategory.Killer, now);
         }
 
         if (client.Revealed.Count > 0)
@@ -105,7 +107,7 @@ public class MissionDebugOverlay : MonoBehaviour
             builder.AppendLine("<b>[게임 종료 · 전체 공개]</b>");
 
             foreach (ObjectiveView view in client.Revealed)
-                builder.AppendLine($"  {view.Owner}  {Format(view)}");
+                builder.AppendLine($"  {view.Owner}  {Format(view, now)}");
         }
 
         builder.AppendLine();
@@ -118,7 +120,7 @@ public class MissionDebugOverlay : MonoBehaviour
     }
 
     /// <summary>category 가 null 이면 단체 미션 목록, 아니면 내 목록 중 그 카테고리만.</summary>
-    private void AppendList(MissionClientState client, MissionCategory? category)
+    private void AppendList(MissionClientState client, MissionCategory? category, float now)
     {
         int count = 0;
 
@@ -126,7 +128,7 @@ public class MissionDebugOverlay : MonoBehaviour
         {
             foreach (ObjectiveView view in client.Team)
             {
-                builder.AppendLine($"  {Format(view)}");
+                builder.AppendLine($"  {Format(view, now)}");
                 count++;
             }
         }
@@ -137,7 +139,7 @@ public class MissionDebugOverlay : MonoBehaviour
                 if (view.Definition == null || view.Definition.Category != category.Value)
                     continue;
 
-                builder.AppendLine($"  {Format(view)}");
+                builder.AppendLine($"  {Format(view, now)}");
                 count++;
             }
         }
@@ -157,7 +159,7 @@ public class MissionDebugOverlay : MonoBehaviour
         return false;
     }
 
-    private static string Format(ObjectiveView view)
+    private static string Format(ObjectiveView view, float now)
     {
         string title = view.Definition != null
             ? $"{view.Definition.Id} {view.Definition.DisplayName}"
@@ -176,7 +178,17 @@ public class MissionDebugOverlay : MonoBehaviour
             _ => "진행 중",
         };
 
-        return $"{title}   {progress}   {status}";
+        string timer = view.Deadline > 0f && view.Status == ObjectiveStatus.InProgress
+            ? $"   <color=#FFB35C>남은 시간 {FormatTime(view.Deadline - now)}</color>"
+            : string.Empty;
+
+        return $"{title}   {progress}   {status}{timer}";
+    }
+
+    private static string FormatTime(float seconds)
+    {
+        int total = Mathf.Max(0, Mathf.CeilToInt(seconds));
+        return $"{total / 60}:{total % 60:00}";
     }
 
     private static string YesNo(bool value)

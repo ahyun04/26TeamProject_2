@@ -32,7 +32,7 @@ namespace TrustNoOne.Missions
             return false;
         }
 
-        public override bool OnEvent(in MissionEvent e, PlayerActionLog log)
+        public override bool OnEvent(in MissionEvent e, PlayerActionLog log, double now)
         {
             if (Status != ObjectiveStatus.InProgress)
                 return false;

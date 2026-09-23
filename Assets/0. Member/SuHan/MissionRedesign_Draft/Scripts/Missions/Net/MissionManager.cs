@@ -77,6 +77,13 @@ namespace TrustNoOne.Missions
         /// <summary>탈출 조건이 해금된 순간 1회.</summary>
         public event Action OnEscapeUnlocked;
 
+        /// <summary>
+        /// 제한 시간 초과로 어떤 미션이 처음부터 다시 시작될 때 (호스트). 인자 = 그 미션의 Trigger 행동.
+        /// 같은 행동을 완료 이벤트로 쓰는 미션 오브젝트(MissionStation)가 구독해서 원래 상태로 돌아간다.
+        /// (예: 발전기 2분 체인 실패 → GeneratorRepaired → 발전기 3대 「수리 완료」 해제)
+        /// </summary>
+        public event Action<MissionEventType> OnMissionReset;
+
         // ───────────── 클라이언트 캐시 (모든 피어) ─────────────
 
         /// <summary>UI 가 읽는 로컬 캐시. 이 PC 가 화면에 그려도 되는 정보만 들어 있다.</summary>
@@ -121,6 +128,7 @@ namespace TrustNoOne.Missions
             {
                 router = new MissionEventRouter();
                 router.ObjectiveChanged += OnObjectiveChanged;
+                router.ObjectiveReset += OnObjectiveReset;
                 Factory = new ObjectiveFactory();
                 return;
             }
@@ -132,14 +140,24 @@ namespace TrustNoOne.Missions
 
         public override void Despawned(NetworkRunner runner, bool hasState)
         {
-            if (hasState && router != null)
-                router.ObjectiveChanged -= OnObjectiveChanged;
+            if (!hasState || router == null)
+                return;
+
+            router.ObjectiveChanged -= OnObjectiveChanged;
+            router.ObjectiveReset -= OnObjectiveReset;
         }
 
         /// <summary>
         /// 공개 상태([Networked])를 로컬 캐시로 옮긴다. 값이 같으면 캐시가 아무것도 하지 않으므로 매 프레임 호출해도 안전하다.
         /// ChangeDetector 대신 단순 비교를 택한 이유: 배열이 최대 8칸이라 비용이 미미하고, 검증되지 않은 API 의존을 늘리지 않기 위해서.
         /// </summary>
+        /// <summary>호스트: 제한 시간 판정을 위해 매 틱 현재 시뮬레이션 시각을 Core 에 넘긴다.</summary>
+        public override void FixedUpdateNetwork()
+        {
+            if (CanQuery)
+                router.Tick(Runner.SimulationTime);
+        }
+
         public override void Render()
         {
             if (Client == null || !Initialized)
@@ -264,7 +282,7 @@ namespace TrustNoOne.Missions
             if (!HasStateAuthority || router == null || !Initialized)
                 return;
 
-            router.Publish(e);
+            router.Publish(e, Runner.SimulationTime);
         }
 
         public bool HasActiveObjective(PlayerRef actor, MissionEventType eventType)
@@ -348,6 +366,16 @@ namespace TrustNoOne.Missions
         // ═════════════════════════════════════════════════════════════
 
         /// <summary>라우터가 "이 목표의 상태가 바뀌었다"고 알렸을 때: 알맞은 범위로 동기화하고 집계를 갱신한다.</summary>
+        /// <summary>
+        /// 라우터가 "제한 시간 초과로 이 목표가 0 으로 돌아갔다"고 알렸을 때.
+        /// 상태 동기화는 직전의 OnObjectiveChanged 가 이미 했으므로, 여기서는 미션 오브젝트들에게 초기화만 알린다.
+        /// </summary>
+        private void OnObjectiveReset(IMissionObjective objective)
+        {
+            Debug.Log($"[MissionManager] 제한 시간 초과 → 처음부터 다시: {objective.Definition.Id} {objective.Definition.DisplayName}");
+            OnMissionReset?.Invoke(objective.Definition.Trigger);
+        }
+
         private void OnObjectiveChanged(IMissionObjective objective)
         {
             if (objective.Definition.Category == MissionCategory.Team)
@@ -433,6 +461,7 @@ namespace TrustNoOne.Missions
                 Progress = objective.Progress,
                 Required = objective.Required,
                 Status = objective.Status,
+                Deadline = objective.Deadline < 0d ? 0f : (float)objective.Deadline,
             };
         }
 

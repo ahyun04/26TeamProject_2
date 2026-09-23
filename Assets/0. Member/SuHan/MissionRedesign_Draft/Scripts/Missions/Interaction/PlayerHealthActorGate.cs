@@ -6,7 +6,7 @@ namespace TrustNoOne.Missions
 {
     /// <summary>
     /// [역할] IMissionActorGate 의 기본 구현: 기존 PlayerHealth 를 기준으로 플레이어 상태를 판단한다.
-    ///        씬에 1개만 배치한다 (모든 MissionInteractable 이 같은 인스턴스를 공유해야 "다른 미션 중" 판단이 맞다).
+    ///        씬에 1개만 배치한다 (모든 MissionStation 이 같은 인스턴스를 공유해야 "다른 미션 중" 판단이 맞다).
     ///
     /// [판단 기준]
     ///  - PlayerHealth.CanAct : 살아 있고, 탈출하지 않았고, 게임이 끝나지 않았을 때 true

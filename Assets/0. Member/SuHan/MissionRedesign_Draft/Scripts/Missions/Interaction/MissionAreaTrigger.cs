@@ -22,7 +22,7 @@ namespace TrustNoOne.Missions
     /// [한 번만] 같은 플레이어는 한 판에 한 번만 알린다 ("방문" 미션이므로). 미션이 다시 초기화되면 기록도 비운다.
     ///
     /// [NetworkObject 불필요] 상태를 동기화하지 않으므로 일반 MonoBehaviour 로 씬에 바로 배치한다
-    ///  (MissionInteractable 처럼 Runner.Spawn 할 필요가 없다).
+    ///  (MissionStation 처럼 Runner.Spawn 할 필요가 없다).
     /// </summary>
     public class MissionAreaTrigger : MonoBehaviour
     {

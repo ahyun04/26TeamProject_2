@@ -39,5 +39,19 @@ namespace TrustNoOne.Missions
         LieDetectorUsed = 41,         // "거짓말 탐지기 사용하지 않기"
         CorpseFirstFound = 42,        // "시체 최초 발견"
         AreaVisited = 43,             // "특정 지역 방문" (TargetId = 지역 ID)
+
+        // ── 새 기획서 개인 미션 (Trust No One 개인 미션 기획서) — 미니게임 오브젝트가 완료 시 발행 ──
+        ValveClosed = 60,             // PS001 밸브 잠그기
+        BreakerRestored = 61,         // PS002 차단기 올리기
+        WiresConnected = 62,          // PS003 전선 연결하기
+        AntennaAligned = 63,          // PS004 안테나 방향 맞추기
+        PressureStabilized = 64,      // PS005 압력 수치 맞추기
+        FilterCleaned = 65,           // PS006 필터 청소하기
+
+        // ── 새 기획서 단체 미션 (Trust No One 단체 미션 기획서). 발전기는 기존 GeneratorRepaired(1) ──
+        SecurityCodeEntered = 70,     // TG002 코드 순서 맞추기
+        EquipmentAssembled = 71,      // TG003 고장난 장비 조립
+        LifeSupportRestored = 72,     // TG004 생명 유지 장치 복구
+        FireDoorOpened = 73,          // TG005 대형 방화문 열기
     }
 }

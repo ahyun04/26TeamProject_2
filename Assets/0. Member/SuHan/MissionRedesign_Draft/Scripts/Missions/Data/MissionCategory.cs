@@ -42,4 +42,16 @@ namespace TrustNoOne.Missions
         /// </summary>
         Custom = 2,
     }
+
+    /// <summary>
+    /// [역할] 제한 시간을 언제부터 셀지. 단체 미션 기획서의 두 가지 규칙을 표현한다.
+    /// </summary>
+    public enum TimeLimitMode
+    {
+        /// <summary>진행할 때마다 다시 센다. 예) 발전기: 1대 고칠 때마다 "다음 발전기까지 2분".</summary>
+        SinceLastProgress = 0,
+
+        /// <summary>첫 진행부터 센다. 예) 생명 유지 장치: "제한 시간 안에 밸브 4개 모두".</summary>
+        SinceFirstProgress = 1,
+    }
 }
