@@ -6,111 +6,384 @@ using UnityEngine;
 
 /// <summary>
 /// [에디터 전용] 옛 미션 프리팹(Assets/Prefabs/Mission)을 새 구조(MissionStation)로 바꾼 "복사본"을 만든다.
-///  원본 프리팹은 수정하지 않는다 (명세 S1: 옛 코드·프리팹은 교체 단계까지 그대로).
+///  원본 프리팹은 수정하지 않는다 (stage1 명세 S1: 옛 코드·프리팹은 교체 단계까지 그대로).
 ///
 /// [방식] 모델·월드 UI·NetworkObject 는 그대로 두고 스크립트만 교체한다. 옛 값은 SerializedObject 로 읽어 옮긴다.
 ///  옛 타입은 "이름(문자열)"으로 찾는다 → 교체 단계에서 옛 코드를 지워도 이 파일은 그대로 컴파일된다.
-/// [안전장치] 변환 결과에 옛 스크립트나 Missing Script 가 남으면 저장하지 않는다.
-/// [조준 외곽선] 조작 부품(버튼)에 MissionOutlineBuilder 로 외곽선을 붙인다 — 옛 프리팹은 조준 여부를 알려주는 표시가 없었다.
-/// [확장] 미니게임을 이식할 때마다 Convert… 함수와 메뉴 호출을 하나씩 추가한다. (1단계: 발전기)
+/// [공통 틀 — Convert] 원본 로드 → 복사본 생성 → 미니게임별 Build → 검증 2가지 → 저장 → 복사본 파괴.
+///  검증: ① 옛 스크립트 · Missing Script 가 남지 않았는가 ② 모든 콜라이더를 조준하면 입력을 받는 대상이 잡히는가.
+///  하나라도 실패하면 저장하지 않는다.
+/// [조준 외곽선] MissionOutlineBuilder 로 붙인다 (1단계 사용자 요청). 부품마다 MissionPrompt 를 두면 조준한 부품만 켜진다 (2a 명세 P7).
+/// [변환 목록] 1단계 발전기 / 2a 밸브 · 안테나 · 차단기. 미니게임을 이식할 때마다 Build… 와 Convert… 를 하나씩 추가한다.
 /// </summary>
 public static class LegacyMissionConverter
 {
     private const string OutputFolder = "Assets/0. Member/SuHan/MissionRedesign_Draft/Prefabs/Missions";
-    private const string LegacyGeneratorPath = "Assets/Prefabs/Mission/Generator_Prefab.prefab";
+    private const string LegacyFolder = "Assets/Prefabs/Mission";
 
     public const string GeneratorStationPath = OutputFolder + "/Generator_Station.prefab";
+    public const string ValveStationPath = OutputFolder + "/Valve_Station.prefab";
+    public const string AntennaStationPath = OutputFolder + "/Antenna_Station.prefab";
+    public const string BreakerStationPath = OutputFolder + "/Breaker_Station.prefab";
 
-    private static readonly string[] LegacyTypeNames = { "GeneratorMission", "MissionButton", "MissionMiniGameBase" };
+    // 개인 미니게임 공통 거리 (2a 명세 3장). 발전기는 1단계 값 3.5 유지.
+    private const float PersonalInteractRange = 3f;
+
+    private static readonly string[] LegacyTypeNames =
+    {
+        "MissionMiniGameBase", "GeneratorMission", "MissionButton",
+        "ValveMission", "AntennaMission", "AntennaLockButton", "BreakerMission", "BreakerLever",
+    };
 
     [MenuItem("SuHan/Convert Legacy Mission Prefabs")]
     public static void ConvertAllFromMenu()
     {
-        ConvertGenerator();
+        Report("발전기", ConvertGenerator());
+        Report("밸브", ConvertValve());
+        Report("안테나", ConvertAntenna());
+        Report("차단기", ConvertBreaker());
         AssetDatabase.SaveAssets();
 
         // 새 NetworkObject 프리팹을 Fusion 네트워크 프리팹 목록에 즉시 반영 (안 하면 Runner.Spawn 이 실패한다)
         Fusion.Editor.NetworkProjectConfigUtilities.RebuildPrefabTable();
     }
 
-    /// <summary>발전기 변환. 성공하면 저장된 프리팹의 NetworkObject, 실패하면 null. Fusion 프리팹 목록 갱신은 호출한 쪽 책임.</summary>
-    public static NetworkObject ConvertGenerator()
+    private static void Report(string what, NetworkObject result)
+    {
+        if (result == null)
+            Debug.LogError($"[LegacyMissionConverter] {what} 변환 실패 (위 로그 참고)");
+    }
+
+    public static NetworkObject ConvertGenerator() =>
+        Convert("발전기", LegacyFolder + "/Generator_Prefab.prefab", "Generator_Station", GeneratorStationPath, BuildGenerator);
+
+    public static NetworkObject ConvertValve() =>
+        Convert("밸브", LegacyFolder + "/Valve_Prefab.prefab", "Valve_Station", ValveStationPath, BuildValve);
+
+    public static NetworkObject ConvertAntenna() =>
+        Convert("안테나", LegacyFolder + "/Antenna_Prefab.prefab", "Antenna_Station", AntennaStationPath, BuildAntenna);
+
+    public static NetworkObject ConvertBreaker() =>
+        Convert("차단기", LegacyFolder + "/CircuitBreaker_Prefab.prefab", "Breaker_Station", BreakerStationPath, BuildBreaker);
+
+    // ═════════════════════════════════════════════════════════════
+    //  공통 틀
+    // ═════════════════════════════════════════════════════════════
+
+    /// <param name="build">복사본을 새 구조로 바꾼다. 실패하면 오류를 남기고 false.</param>
+    private static NetworkObject Convert(string what, string legacyPath, string outputName, string outputPath, System.Func<GameObject, bool> build)
     {
         EnsureFolder(OutputFolder);
 
-        GameObject legacy = AssetDatabase.LoadAssetAtPath<GameObject>(LegacyGeneratorPath);
+        GameObject legacy = AssetDatabase.LoadAssetAtPath<GameObject>(legacyPath);
 
         if (legacy == null)
         {
-            Debug.LogError($"[LegacyMissionConverter] 옛 발전기 프리팹이 없습니다: {LegacyGeneratorPath}");
+            Debug.LogError($"[LegacyMissionConverter] 옛 {what} 프리팹이 없습니다: {legacyPath}");
             return null;
         }
 
         GameObject copy = Object.Instantiate(legacy);
-        copy.name = "Generator_Station";
+        copy.name = outputName;
 
         try
         {
-            MonoBehaviour oldMission = FindLegacy(copy, "GeneratorMission");
-            MonoBehaviour oldButton = FindLegacy(copy, "MissionButton");
-
-            if (oldMission == null || oldButton == null)
-            {
-                Debug.LogError("[LegacyMissionConverter] 발전기 프리팹에서 GeneratorMission 또는 MissionButton 을 찾지 못했습니다.");
+            if (!build(copy))
                 return null;
-            }
-
-            SerializedObject oldMissionSO = new SerializedObject(oldMission);
-            SerializedObject oldButtonSO = new SerializedObject(oldButton);
-            GameObject buttonObject = oldButton.gameObject;
-
-            // 루트: GeneratorMission → GeneratorStation
-            GeneratorStation station = copy.AddComponent<GeneratorStation>();
-            SerializedObject stationSO = new SerializedObject(station);
-            stationSO.FindProperty("completionEvent").intValue = (int)MissionEventType.GeneratorRepaired;
-            stationSO.FindProperty("completionPolicy").intValue = (int)CompletionPolicy.Lock;
-            stationSO.FindProperty("interactRange").floatValue = 3.5f;
-            CopyReference(oldMissionSO, "guideText", stationSO, "guideText");
-            CopyReference(oldMissionSO, "gaugeFill", stationSO, "gaugeFill");
-            CopyReference(oldMissionSO, "completeText", stationSO, "completeText");
-            CopyFloat(oldMissionSO, "fillDuration", stationSO, "fillDuration");
-            CopyString(oldMissionSO, "waitingText", stationSO, "waitingText");
-            CopyString(oldMissionSO, "runningText", stationSO, "runningText");
-            CopyColliders(oldMissionSO, stationSO, buttonObject);
-            stationSO.ApplyModifiedPropertiesWithoutUndo();
-
-            // 버튼: MissionButton → StationButton (partIndex 0)
-            // 부품은 "자기 콜라이더가 있는 오브젝트"에 붙인다. 옛 MissionButton 은 루트에 있었지만, 새 GeneratorStation(루트)도
-            // 조준 대상(ITargetable)이라 루트에 두면 감지기가 스테이션을 먼저 잡아서 클릭이 버튼에 전달되지 않는다.
-            GameObject partObject = FindPartObject(stationSO, copy) ?? buttonObject;
-            StationButton button = partObject.AddComponent<StationButton>();
-            SerializedObject buttonSO = new SerializedObject(button);
-            buttonSO.FindProperty("station").objectReferenceValue = station;
-            buttonSO.FindProperty("partIndex").intValue = 0;
-            CopyReference(oldButtonSO, "buttonVisual", buttonSO, "buttonVisual");
-            CopyVector3(oldButtonSO, "pressOffset", buttonSO, "pressOffset");
-            CopyFloat(oldButtonSO, "pressTime", buttonSO, "pressTime");
-            CopyFloat(oldButtonSO, "returnTime", buttonSO, "returnTime");
-            buttonSO.ApplyModifiedPropertiesWithoutUndo();
-
-            // 조준 시 외곽선: 버튼을 조준해서 누르는 미니게임이라 버튼 모델에 붙인다 (눌림 애니메이션을 따라 움직인다)
-            Transform buttonVisual = buttonSO.FindProperty("buttonVisual").objectReferenceValue as Transform;
-            MissionOutlineBuilder.Attach(copy, buttonVisual != null ? buttonVisual.gameObject : buttonObject);
-
-            Object.DestroyImmediate(oldButton);
-            Object.DestroyImmediate(oldMission);
 
             if (!VerifyNoLegacyScripts(copy) || !VerifyTargetResolution(copy))
                 return null;
 
-            GameObject saved = PrefabUtility.SaveAsPrefabAsset(copy, GeneratorStationPath);
-            Debug.Log($"[LegacyMissionConverter] 발전기 변환 완료: {GeneratorStationPath}");
+            GameObject saved = PrefabUtility.SaveAsPrefabAsset(copy, outputPath);
+            Debug.Log($"[LegacyMissionConverter] {what} 변환 완료: {outputPath}");
             return saved != null ? saved.GetComponent<NetworkObject>() : null;
         }
         finally
         {
             Object.DestroyImmediate(copy);
         }
+    }
+
+    /// <summary>스테이션 공통 값 설정. 반환한 SerializedObject 에 미니게임별 값을 더 넣고 Apply 한다.</summary>
+    private static SerializedObject ConfigureStation(MissionStation station, MissionEventType completionEvent, CompletionPolicy policy, float range)
+    {
+        SerializedObject so = new SerializedObject(station);
+        // enum 은 intValue 로 넣는다: MissionEventType 값이 연속이 아니라 enumValueIndex 를 쓰면 엉뚱한 값이 들어간다
+        so.FindProperty("completionEvent").intValue = (int)completionEvent;
+        so.FindProperty("completionPolicy").intValue = (int)policy;
+        so.FindProperty("interactRange").floatValue = range;
+        return so;
+    }
+
+    // ═════════════════════════════════════════════════════════════
+    //  1단계: 발전기
+    // ═════════════════════════════════════════════════════════════
+
+    private static bool BuildGenerator(GameObject copy)
+    {
+        MonoBehaviour oldMission = FindLegacy(copy, "GeneratorMission");
+        MonoBehaviour oldButton = FindLegacy(copy, "MissionButton");
+
+        if (oldMission == null || oldButton == null)
+        {
+            Debug.LogError("[LegacyMissionConverter] 발전기 프리팹에서 GeneratorMission 또는 MissionButton 을 찾지 못했습니다.");
+            return false;
+        }
+
+        SerializedObject oldMissionSO = new SerializedObject(oldMission);
+        SerializedObject oldButtonSO = new SerializedObject(oldButton);
+        GameObject buttonObject = oldButton.gameObject;
+
+        // 루트: GeneratorMission → GeneratorStation
+        GeneratorStation station = copy.AddComponent<GeneratorStation>();
+        SerializedObject stationSO = ConfigureStation(station, MissionEventType.GeneratorRepaired, CompletionPolicy.Lock, 3.5f);
+        CopyReference(oldMissionSO, "guideText", stationSO, "guideText");
+        CopyReference(oldMissionSO, "gaugeFill", stationSO, "gaugeFill");
+        CopyReference(oldMissionSO, "completeText", stationSO, "completeText");
+        CopyFloat(oldMissionSO, "fillDuration", stationSO, "fillDuration");
+        CopyString(oldMissionSO, "waitingText", stationSO, "waitingText");
+        CopyString(oldMissionSO, "runningText", stationSO, "runningText");
+        CopyColliders(oldMissionSO, stationSO, buttonObject);
+        stationSO.ApplyModifiedPropertiesWithoutUndo();
+
+        // 버튼: MissionButton → StationButton (partIndex 0)
+        // 부품은 "자기 콜라이더가 있는 오브젝트"에 붙인다. 옛 MissionButton 은 루트에 있었지만, 새 GeneratorStation(루트)도
+        // 조준 대상(ITargetable)이라 루트에 두면 감지기가 스테이션을 먼저 잡아서 클릭이 버튼에 전달되지 않는다.
+        GameObject partObject = FindPartObject(stationSO, copy) ?? buttonObject;
+        StationButton button = AddStationButton(partObject, station, 0);
+        SerializedObject buttonSO = new SerializedObject(button);
+        CopyReference(oldButtonSO, "buttonVisual", buttonSO, "buttonVisual");
+        CopyVector3(oldButtonSO, "pressOffset", buttonSO, "pressOffset");
+        CopyFloat(oldButtonSO, "pressTime", buttonSO, "pressTime");
+        CopyFloat(oldButtonSO, "returnTime", buttonSO, "returnTime");
+        buttonSO.ApplyModifiedPropertiesWithoutUndo();
+
+        // 조준 시 외곽선: 버튼을 조준해서 누르는 미니게임이라 버튼 모델에 붙인다 (눌림 애니메이션을 따라 움직인다)
+        Transform buttonVisual = buttonSO.FindProperty("buttonVisual").objectReferenceValue as Transform;
+        MissionOutlineBuilder.Attach(copy, buttonVisual != null ? buttonVisual.gameObject : buttonObject);
+
+        Object.DestroyImmediate(oldButton);
+        Object.DestroyImmediate(oldMission);
+        return true;
+    }
+
+    // ═════════════════════════════════════════════════════════════
+    //  2a: 밸브 (F 홀드로 회전)
+    // ═════════════════════════════════════════════════════════════
+
+    private static bool BuildValve(GameObject copy)
+    {
+        MonoBehaviour oldMission = FindLegacy(copy, "ValveMission");
+
+        if (oldMission == null)
+        {
+            Debug.LogError("[LegacyMissionConverter] 밸브 프리팹에서 ValveMission 을 찾지 못했습니다.");
+            return false;
+        }
+
+        SerializedObject oldSO = new SerializedObject(oldMission);
+
+        // 루트: ValveMission → ValveStation. 부품 없음 — 모델 콜라이더에서 위로 올라가면 루트의 ValveStation(F 홀드)이 잡힌다.
+        ValveStation station = copy.AddComponent<ValveStation>();
+        SerializedObject so = ConfigureStation(station, MissionEventType.ValveClosed, CompletionPolicy.ResetForNext, PersonalInteractRange);
+        CopyReference(oldSO, "rotatingPart", so, "rotatingPart");
+        CopyVector3(oldSO, "rotationAxis", so, "rotationAxis");
+        CopyFloat(oldSO, "rotationSpeed", so, "rotationSpeed");
+        CopyFloat(oldSO, "minTargetAngle", so, "minTargetAngle");
+        CopyFloat(oldSO, "maxTargetAngle", so, "maxTargetAngle");
+        CopyColliders(oldSO, so, copy);
+        so.ApplyModifiedPropertiesWithoutUndo();
+
+        // 외곽선: 밸브 프리팹은 이미 MissionPrompt + 외곽선(ValveOutLine)을 갖고 있다 → 비어 있을 때만 만든다
+        if (!HasHighlight(copy))
+        {
+            Transform part = so.FindProperty("rotatingPart").objectReferenceValue as Transform;
+            MissionOutlineBuilder.Attach(copy, part != null ? part.gameObject : copy);
+        }
+
+        Object.DestroyImmediate(oldMission);
+        return true;
+    }
+
+    // ═════════════════════════════════════════════════════════════
+    //  2a: 안테나 (F 홀드로 회전 → 고정 버튼)
+    // ═════════════════════════════════════════════════════════════
+
+    private static bool BuildAntenna(GameObject copy)
+    {
+        MonoBehaviour oldMission = FindLegacy(copy, "AntennaMission");
+        MonoBehaviour oldLock = FindLegacy(copy, "AntennaLockButton");
+
+        if (oldMission == null || oldLock == null)
+        {
+            Debug.LogError("[LegacyMissionConverter] 안테나 프리팹에서 AntennaMission 또는 AntennaLockButton 을 찾지 못했습니다.");
+            return false;
+        }
+
+        SerializedObject oldSO = new SerializedObject(oldMission);
+        GameObject lockObject = oldLock.gameObject;
+
+        if (lockObject == copy)
+        {
+            Debug.LogError("[LegacyMissionConverter] 안테나 고정 버튼이 루트에 있어 스테이션에 가려집니다.");
+            return false;
+        }
+
+        AntennaStation station = copy.AddComponent<AntennaStation>();
+        SerializedObject so = ConfigureStation(station, MissionEventType.AntennaAligned, CompletionPolicy.ResetForNext, PersonalInteractRange);
+        CopyReference(oldSO, "antennaTransform", so, "rotatingPart");
+        CopyVector3(oldSO, "rotationAxis", so, "rotationAxis");
+        CopyFloat(oldSO, "rotationSpeed", so, "rotationSpeed");
+        // 옛 AntennaMission 은 목표 각도를 상수(MinTargetAngle 360 / MaxTargetAngle 720)로 가졌다
+        so.FindProperty("minTargetAngle").floatValue = 360f;
+        so.FindProperty("maxTargetAngle").floatValue = 720f;
+        CopyReference(oldSO, "gaugeFill", so, "gaugeFill");
+        CopyReference(oldSO, "percentText", so, "percentText");
+        CopyColliders(oldSO, so, copy);
+
+        // 고정 버튼 콜라이더도 "내 미션 아니면 끄기" 대상에 넣는다 (옛 목록에 빠져 있어도)
+        foreach (Collider c in lockObject.GetComponents<Collider>())
+            AddCollider(so, c);
+
+        so.ApplyModifiedPropertiesWithoutUndo();
+
+        // 고정 버튼: AntennaLockButton → StationButton(0). 버튼 모양은 캔버스 UI 라 눌림 애니메이션(buttonVisual)은 없다.
+        AddStationButton(lockObject, station, AntennaStation.LockButtonPart);
+
+        // 외곽선: 안테나 몸체. ButtonHitbox 근처에는 메시가 없어서(UI 버튼) 자기 MissionPrompt 를 두지 않는다
+        //  → 버튼을 조준해도 GetComponentInParent 로 루트 프롬프트가 잡혀 몸체 외곽선이 켜진다 (2a 명세 6장 해소).
+        Transform part = so.FindProperty("rotatingPart").objectReferenceValue as Transform;
+        MissionOutlineBuilder.Attach(copy, part != null ? part.gameObject : copy);
+
+        Object.DestroyImmediate(oldLock);
+        Object.DestroyImmediate(oldMission);
+        return true;
+    }
+
+    // ═════════════════════════════════════════════════════════════
+    //  2a: 차단기 (레버 6개 클릭)
+    // ═════════════════════════════════════════════════════════════
+
+    private static bool BuildBreaker(GameObject copy)
+    {
+        MonoBehaviour oldMission = FindLegacy(copy, "BreakerMission");
+        List<MonoBehaviour> oldLevers = FindAllLegacy(copy, "BreakerLever");
+
+        if (oldMission == null || oldLevers.Count == 0)
+        {
+            Debug.LogError("[LegacyMissionConverter] 차단기 프리팹에서 BreakerMission 또는 BreakerLever 를 찾지 못했습니다.");
+            return false;
+        }
+
+        if (oldLevers.Count > BreakerStation.MaxLevers)
+        {
+            Debug.LogError($"[LegacyMissionConverter] 차단기 레버가 {oldLevers.Count}개입니다 (최대 {BreakerStation.MaxLevers}).");
+            return false;
+        }
+
+        SerializedObject oldSO = new SerializedObject(oldMission);
+
+        BreakerStation station = copy.AddComponent<BreakerStation>();
+        SerializedObject so = ConfigureStation(station, MissionEventType.BreakerRestored, CompletionPolicy.ResetForNext, PersonalInteractRange);
+        CopyColliders(oldSO, so, copy);
+
+        BreakerLeverVisual[] visuals = new BreakerLeverVisual[oldLevers.Count];
+
+        foreach (MonoBehaviour oldLever in oldLevers)
+        {
+            SerializedObject leverSO = new SerializedObject(oldLever);
+            int index = leverSO.FindProperty("leverIndex").intValue;
+
+            // 레버 번호는 0 ~ (개수-1) 이고 겹치면 안 된다 (배열 인덱스 = partIndex)
+            if (index < 0 || index >= visuals.Length || visuals[index] != null)
+            {
+                Debug.LogError($"[LegacyMissionConverter] 차단기 레버 '{oldLever.name}' 의 번호 {index} 가 범위를 벗어나거나 중복입니다.");
+                return false;
+            }
+
+            GameObject leverObject = oldLever.gameObject;
+
+            // 모습: BreakerLever 의 연출 값을 BreakerLeverVisual 로
+            BreakerLeverVisual visual = leverObject.AddComponent<BreakerLeverVisual>();
+            SerializedObject visualSO = new SerializedObject(visual);
+            CopyReference(leverSO, "leverTransform", visualSO, "leverTransform");
+            CopyReference(leverSO, "leverRenderer", visualSO, "leverRenderer");
+            CopyVector3(leverSO, "offRotation", visualSO, "offRotation");
+            CopyVector3(leverSO, "onRotation", visualSO, "onRotation");
+            CopyFloat(leverSO, "rotateDuration", visualSO, "rotateDuration");
+            visualSO.ApplyModifiedPropertiesWithoutUndo();
+            visuals[index] = visual;
+
+            // 클릭: StationButton (레버는 회전 연출이 반응을 보여 주므로 눌림 애니메이션 없음)
+            AddStationButton(leverObject, station, index);
+
+            foreach (Collider c in leverObject.GetComponents<Collider>())
+                AddCollider(so, c);
+
+            // 외곽선: 레버마다 MissionPrompt → 조준한 레버만 켜진다 (2a 명세 P7)
+            Renderer leverRenderer = visualSO.FindProperty("leverRenderer").objectReferenceValue as Renderer;
+            MissionOutlineBuilder.Attach(leverObject, leverRenderer != null ? leverRenderer.gameObject : leverObject);
+        }
+
+        SerializedProperty leverList = so.FindProperty("levers");
+        leverList.ClearArray();
+
+        for (int i = 0; i < visuals.Length; i++)
+        {
+            leverList.InsertArrayElementAtIndex(i);
+            leverList.GetArrayElementAtIndex(i).objectReferenceValue = visuals[i];
+        }
+
+        so.ApplyModifiedPropertiesWithoutUndo();
+
+        foreach (MonoBehaviour oldLever in oldLevers)
+            Object.DestroyImmediate(oldLever);
+
+        Object.DestroyImmediate(oldMission);
+        return true;
+    }
+
+    // ═════════════════════════════════════════════════════════════
+    //  부품 · 콜라이더 · 외곽선
+    // ═════════════════════════════════════════════════════════════
+
+    private static StationButton AddStationButton(GameObject target, MissionStation station, int partIndex)
+    {
+        StationButton button = target.AddComponent<StationButton>();
+        SerializedObject so = new SerializedObject(button);
+        so.FindProperty("station").objectReferenceValue = station;
+        so.FindProperty("partIndex").intValue = partIndex;
+        so.ApplyModifiedPropertiesWithoutUndo();
+        return button;
+    }
+
+    /// <summary>interactionColliders 에 없으면 추가한다.</summary>
+    private static void AddCollider(SerializedObject stationSO, Collider collider)
+    {
+        if (collider == null)
+            return;
+
+        SerializedProperty list = stationSO.FindProperty("interactionColliders");
+
+        for (int i = 0; i < list.arraySize; i++)
+        {
+            if (list.GetArrayElementAtIndex(i).objectReferenceValue == collider)
+                return;
+        }
+
+        list.InsertArrayElementAtIndex(list.arraySize);
+        list.GetArrayElementAtIndex(list.arraySize - 1).objectReferenceValue = collider;
+    }
+
+    /// <summary>루트에 외곽선 오브젝트가 연결된 MissionPrompt 가 이미 있는가.</summary>
+    private static bool HasHighlight(GameObject root)
+    {
+        MissionPrompt prompt = root.GetComponent<MissionPrompt>();
+
+        if (prompt == null)
+            return false;
+
+        return new SerializedObject(prompt).FindProperty("highlightObject").objectReferenceValue != null;
     }
 
     // ─── 값 옮기기 (옛 값이 비어 있으면 경고만 하고 새 컴포넌트의 기본값을 둔다) ───
@@ -167,7 +440,7 @@ public static class LegacyMissionConverter
         to.FindProperty(toName).vector3Value = source.vector3Value;
     }
 
-    /// <summary>옛 interactionColliders 를 옮기고, 비어 있으면 버튼의 콜라이더를 쓴다 (발전기는 버튼을 조준해서 누른다).</summary>
+    /// <summary>옛 interactionColliders 를 옮기고, 비어 있으면 fallbackRoot 아래 콜라이더 전부를 쓴다.</summary>
     private static void CopyColliders(SerializedObject from, SerializedObject to, GameObject fallbackRoot)
     {
         List<Object> colliders = new List<Object>();
@@ -191,7 +464,7 @@ public static class LegacyMissionConverter
         }
 
         if (colliders.Count == 0)
-            Debug.LogWarning("[LegacyMissionConverter] 상호작용 콜라이더가 없습니다. 버튼을 감지할 수 없습니다.");
+            Debug.LogWarning("[LegacyMissionConverter] 상호작용 콜라이더가 없습니다. 조준할 수 없습니다.");
 
         SerializedProperty newList = to.FindProperty("interactionColliders");
         newList.ClearArray();
@@ -268,6 +541,19 @@ public static class LegacyMissionConverter
         }
 
         return null;
+    }
+
+    private static List<MonoBehaviour> FindAllLegacy(GameObject root, string typeName)
+    {
+        List<MonoBehaviour> found = new List<MonoBehaviour>();
+
+        foreach (MonoBehaviour behaviour in root.GetComponentsInChildren<MonoBehaviour>(true))
+        {
+            if (behaviour != null && behaviour.GetType().Name == typeName)
+                found.Add(behaviour);
+        }
+
+        return found;
     }
 
     private static bool VerifyNoLegacyScripts(GameObject root)

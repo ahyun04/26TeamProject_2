@@ -12,7 +12,8 @@ using Object = UnityEngine.Object;
 ///
 /// [배치] (stage1 명세 5절)
 ///  - 단체 TG001 발전기 작동시키기: 진짜 GeneratorStation 3대 (LegacyMissionConverter 로 옛 발전기 프리팹을 변환)
-///  - 단체 TG002~TG005, 개인 PS001~PS006: 아직 이식 전이라 "자리 표시" HoldStation 큐브 (F 2초)
+///  - 개인 PS001 밸브 / PS002 차단기 / PS004 안테나: 진짜 스테이션 (2a, LegacyMissionConverter 로 옛 프리팹 변환, 실패 시 자리 표시)
+///  - 단체 TG002~TG005, 개인 PS003 · PS005 · PS006: 아직 이식 전이라 "자리 표시" HoldStation 큐브 (F 2초)
 ///      단체는 Lock(완료 후 잠금), 개인은 ResetForNext(완료 후 원래대로) — 명세 S3
 ///  - 개인 행동 목표 AG101 뛰지 않는다: TestRunReporter (Shift 달리기 감지)
 ///  - 디버그 패널(F9 확정 / F10 공개, 단체 미션 남은 시간), 홀드 게이지 HUD
@@ -41,6 +42,9 @@ public static class SoloMissionTestSetup
 
     // 발전기 제한 시간(초). 초기화를 빨리 보려면 TG001 에셋의 Time Limit Seconds 를 줄여서 테스트한다.
     private const float GeneratorTimeLimit = 120f;
+
+    // 밸브 손잡이 중심 높이 (모델 피벗 = 손잡이 중심). 옛 게임 씬에서도 벽에 달려 있다.
+    private const float ValveMountHeight = 1.2f;
 
     // 단체를 매 판 몇 개 뽑을지는 기획서에 없어 우선 전부 (명세 7절 열린 항목 1)
     private const int TeamCount = 5;
@@ -110,13 +114,18 @@ public static class SoloMissionTestSetup
         Team("Placeholder_TG004_LifeSupport", "생명 유지 장치 복구", "TG004", MissionEventType.LifeSupportRestored, new Vector3(3f, 0f, 16f)),
         Team("Placeholder_TG005_FireDoor", "대형 방화문 열기", "TG005", MissionEventType.FireDoorOpened, new Vector3(9f, 0f, 16f)),
 
-        Personal("Placeholder_PS001_Valve", "밸브 잠그기", "PS001", MissionEventType.ValveClosed, new Vector3(-12.5f, 0f, -8f)),
-        Personal("Placeholder_PS002_Breaker", "차단기 올리기", "PS002", MissionEventType.BreakerRestored, new Vector3(-7.5f, 0f, -8f)),
         Personal("Placeholder_PS003_Wiring", "전선 연결하기", "PS003", MissionEventType.WiresConnected, new Vector3(-2.5f, 0f, -8f)),
-        Personal("Placeholder_PS004_Antenna", "안테나 방향 맞추기", "PS004", MissionEventType.AntennaAligned, new Vector3(2.5f, 0f, -8f)),
         Personal("Placeholder_PS005_Pressure", "압력 수치 맞추기", "PS005", MissionEventType.PressureStabilized, new Vector3(7.5f, 0f, -8f)),
         Personal("Placeholder_PS006_Filter", "필터 청소하기", "PS006", MissionEventType.FilterCleaned, new Vector3(12.5f, 0f, -8f)),
     };
+
+    // 2a 에서 실제 미니게임으로 바뀐 개인 미션. 변환에 실패하면 이 자리 표시로 대체한다 (발전기와 같은 규칙).
+    private static readonly PlaceholderSpec ValveFallback =
+        Personal("Placeholder_PS001_Valve", "밸브 잠그기", "PS001", MissionEventType.ValveClosed, new Vector3(-12.5f, 0f, -8f));
+    private static readonly PlaceholderSpec BreakerFallback =
+        Personal("Placeholder_PS002_Breaker", "차단기 올리기", "PS002", MissionEventType.BreakerRestored, new Vector3(-7.5f, 0f, -8f));
+    private static readonly PlaceholderSpec AntennaFallback =
+        Personal("Placeholder_PS004_Antenna", "안테나 방향 맞추기", "PS004", MissionEventType.AntennaAligned, new Vector3(2.5f, 0f, -8f));
 
     private static PlaceholderSpec Team(string prefab, string title, string id, MissionEventType e, Vector3 position)
     {
@@ -138,7 +147,7 @@ public static class SoloMissionTestSetup
 
     private const string InfoText =
         "가까운 앞줄: 발전기 3대 (버튼 클릭 → 3초, 1대 고치면 다음 1대까지 2분)\n" +
-        "먼 앞줄: 단체 미션 자리 표시 (F 2초)  /  뒤: 개인 미션 자리 표시 (F 2초, 완료 후 초기화)\n" +
+        "먼 앞줄: 단체 미션 자리 표시 (F 2초)  /  뒤: 개인 미션 — 밸브·차단기·안테나는 실제 미니게임, 나머지는 자리 표시\n" +
         "Shift 달리기 = AG101 '뛰지 않는다' 위반   F9 내 행동 확정 / F10 전체 공개";
 
     // ═════════════════════════════════════════════════════════════
@@ -179,6 +188,11 @@ public static class SoloMissionTestSetup
         foreach (PlaceholderSpec spec in PlaceholderStations)
             spawns.Add((BuildPlaceholderPrefab(spec), spec.Position));
 
+        // 밸브 모델은 피벗이 손잡이 중심이라 바닥(y=0)에 두면 절반이 묻힌다 → 벽에 달린 높이로 띄운다
+        AddConvertedOrPlaceholder(spawns, LegacyMissionConverter.ConvertValve(), ValveFallback, "밸브", new Vector3(0f, ValveMountHeight, 0f));
+        AddConvertedOrPlaceholder(spawns, LegacyMissionConverter.ConvertBreaker(), BreakerFallback, "차단기");
+        AddConvertedOrPlaceholder(spawns, LegacyMissionConverter.ConvertAntenna(), AntennaFallback, "안테나");
+
         WireScene(scene, playerPrefab, missionManagerPrefab, spawns);
 
         AssetDatabase.SaveAssets();
@@ -205,6 +219,7 @@ public static class SoloMissionTestSetup
             "Mission_Antenna", "Mission_Exit", "Mission_ServerCheck", "Mission_Door",
             "Action_MedKit", "Action_ItemCraft", "Action_ItemGive", "Action_LieDetector", "Action_Corpse",
             "TestDoor_MissionInteractable",
+            "Placeholder_PS001_Valve", "Placeholder_PS002_Breaker", "Placeholder_PS004_Antenna",
         };
 
         foreach (string prefab in oldPrefabs)
@@ -312,6 +327,24 @@ public static class SoloMissionTestSetup
     }
 
     /// <summary>자리 표시 스테이션: 루트(NetworkObject + HoldStation + 이름표) 아래에 큐브. 루트 위치 = 바닥 중앙.</summary>
+    /// <summary>
+    /// 변환에 성공하면 그 프리팹을 fallback 위치 + convertedOffset 에, 실패하면 자리 표시 큐브를 fallback 위치에 배치한다.
+    /// (offset 은 모델 피벗 보정용이라 바닥에 서는 자리 표시 큐브에는 쓰지 않는다)
+    /// </summary>
+    private static void AddConvertedOrPlaceholder(
+        List<(NetworkObject prefab, Vector3 position)> spawns, NetworkObject converted, PlaceholderSpec fallback, string what,
+        Vector3 convertedOffset = default)
+    {
+        if (converted == null)
+        {
+            Debug.LogWarning($"[SoloMissionTestSetup] {what} 변환에 실패해 자리 표시 큐브로 대체합니다 (위의 LegacyMissionConverter 오류 확인).");
+            spawns.Add((BuildPlaceholderPrefab(fallback), fallback.Position));
+            return;
+        }
+
+        spawns.Add((converted, fallback.Position + convertedOffset));
+    }
+
     private static NetworkObject BuildPlaceholderPrefab(PlaceholderSpec spec)
     {
         GameObject root = new GameObject(spec.PrefabName);
@@ -439,6 +472,12 @@ public static class SoloMissionTestSetup
 
         CreateInfoLabel(layoutRoot.transform, "Info (조작 안내)", new Vector3(0f, 0.8f, 4f), InfoText);
         CreateInfoLabel(layoutRoot.transform, "Info (발전기)", new Vector3(0f, 2.2f, 11f), $"발전기 ×3 · TG001 · 제한 {GeneratorTimeLimit:0}초 체인");
+        CreateInfoLabel(layoutRoot.transform, "Info (밸브)", ValveFallback.Position + new Vector3(0f, 2.4f, 0f),
+            "밸브 잠그기 · PS001\nF 유지 4~8초 (떼면 처음부터)");
+        CreateInfoLabel(layoutRoot.transform, "Info (차단기)", BreakerFallback.Position + new Vector3(0f, 2.4f, 0f),
+            "차단기 올리기 · PS002\n레버 클릭 → 전부 올리기");
+        CreateInfoLabel(layoutRoot.transform, "Info (안테나)", AntennaFallback.Position + new Vector3(0f, 2.4f, 0f),
+            "안테나 방향 맞추기 · PS004\nF 유지 → 고정 버튼 클릭");
 
         GameObject bootstrapObject = FindOrCreate("SoloTestBootstrap", Vector3.zero);
         SoloTestBootstrap bootstrap = GetOrAdd<SoloTestBootstrap>(bootstrapObject);
