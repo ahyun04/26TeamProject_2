@@ -12,8 +12,8 @@ using Object = UnityEngine.Object;
 ///
 /// [배치] (stage1 명세 5절)
 ///  - 단체 TG001 발전기 작동시키기: 진짜 GeneratorStation 3대 (LegacyMissionConverter 로 옛 발전기 프리팹을 변환)
-///  - 개인 PS001 밸브 / PS002 차단기 / PS003 전선 / PS004 안테나: 진짜 스테이션 (2a·2b, LegacyMissionConverter 로 옛 프리팹 변환, 실패 시 자리 표시)
-///  - 단체 TG002~TG005, 개인 PS005 · PS006: 아직 이식 전이라 "자리 표시" HoldStation 큐브 (F 2초)
+///  - 개인 PS001 밸브 / PS002 차단기 / PS003 전선 / PS004 안테나 / PS006 필터(+ 청소기 아이템): 진짜 스테이션 (2a·2b·2c, LegacyMissionConverter 로 옛 프리팹 변환, 실패 시 자리 표시)
+///  - 단체 TG002~TG005, 개인 PS005: 아직 이식 전이라 "자리 표시" HoldStation 큐브 (F 2초)
 ///      단체는 Lock(완료 후 잠금), 개인은 ResetForNext(완료 후 원래대로) — 명세 S3
 ///  - 개인 행동 목표 AG101 뛰지 않는다: TestRunReporter (Shift 달리기 감지)
 ///  - 디버그 패널(F9 확정 / F10 공개, 단체 미션 남은 시간), 홀드 게이지 HUD
@@ -115,7 +115,6 @@ public static class SoloMissionTestSetup
         Team("Placeholder_TG005_FireDoor", "대형 방화문 열기", "TG005", MissionEventType.FireDoorOpened, new Vector3(9f, 0f, 16f)),
 
         Personal("Placeholder_PS005_Pressure", "압력 수치 맞추기", "PS005", MissionEventType.PressureStabilized, new Vector3(7.5f, 0f, -8f)),
-        Personal("Placeholder_PS006_Filter", "필터 청소하기", "PS006", MissionEventType.FilterCleaned, new Vector3(12.5f, 0f, -8f)),
     };
 
     // 2a 에서 실제 미니게임으로 바뀐 개인 미션. 변환에 실패하면 이 자리 표시로 대체한다 (발전기와 같은 규칙).
@@ -127,6 +126,11 @@ public static class SoloMissionTestSetup
         Personal("Placeholder_PS004_Antenna", "안테나 방향 맞추기", "PS004", MissionEventType.AntennaAligned, new Vector3(2.5f, 0f, -8f));
     private static readonly PlaceholderSpec WiringFallback =
         Personal("Placeholder_PS003_Wiring", "전선 연결하기", "PS003", MissionEventType.WiresConnected, new Vector3(-2.5f, 0f, -8f));
+    private static readonly PlaceholderSpec FilterFallback =
+        Personal("Placeholder_PS006_Filter", "필터 청소하기", "PS006", MissionEventType.FilterCleaned, new Vector3(12.5f, 0f, -8f));
+
+    // 필터 옆 바닥에 청소기 (필터 청소는 청소기를 들어야 한다 — 2c 명세 F1)
+    private static readonly Vector3 VacuumToolPosition = new Vector3(10.5f, 0f, -6f);
 
     private static PlaceholderSpec Team(string prefab, string title, string id, MissionEventType e, Vector3 position)
     {
@@ -148,7 +152,7 @@ public static class SoloMissionTestSetup
 
     private const string InfoText =
         "가까운 앞줄: 발전기 3대 (버튼 클릭 → 3초, 1대 고치면 다음 1대까지 2분)\n" +
-        "먼 앞줄: 단체 미션 자리 표시 (F 2초)  /  뒤: 개인 미션 — 밸브·차단기·전선·안테나는 실제 미니게임, 나머지는 자리 표시\n" +
+        "먼 앞줄: 단체 미션 자리 표시 (F 2초)  /  뒤: 개인 미션 — 밸브·차단기·전선·안테나·필터는 실제 미니게임, 나머지는 자리 표시\n" +
         "Shift 달리기 = AG101 '뛰지 않는다' 위반   F9 내 행동 확정 / F10 전체 공개";
 
     // ═════════════════════════════════════════════════════════════
@@ -194,6 +198,14 @@ public static class SoloMissionTestSetup
         AddConvertedOrPlaceholder(spawns, LegacyMissionConverter.ConvertBreaker(), BreakerFallback, "차단기");
         AddConvertedOrPlaceholder(spawns, LegacyMissionConverter.ConvertAntenna(), AntennaFallback, "안테나");
         AddConvertedOrPlaceholder(spawns, LegacyMissionConverter.ConvertWiring(), WiringFallback, "전선");
+        AddConvertedOrPlaceholder(spawns, LegacyMissionConverter.ConvertFilter(), FilterFallback, "필터");
+
+        NetworkObject vacuumTool = LegacyMissionConverter.ConvertVacuumTool();
+
+        if (vacuumTool != null)
+            spawns.Add((vacuumTool, VacuumToolPosition));
+        else
+            Debug.LogWarning("[SoloMissionTestSetup] 청소기 변환에 실패해 청소기를 두지 않습니다 (위의 LegacyMissionConverter 오류 확인).");
 
         WireScene(scene, playerPrefab, missionManagerPrefab, spawns);
 
@@ -221,7 +233,7 @@ public static class SoloMissionTestSetup
             "Mission_Antenna", "Mission_Exit", "Mission_ServerCheck", "Mission_Door",
             "Action_MedKit", "Action_ItemCraft", "Action_ItemGive", "Action_LieDetector", "Action_Corpse",
             "TestDoor_MissionInteractable",
-            "Placeholder_PS001_Valve", "Placeholder_PS002_Breaker", "Placeholder_PS003_Wiring", "Placeholder_PS004_Antenna",
+            "Placeholder_PS001_Valve", "Placeholder_PS002_Breaker", "Placeholder_PS003_Wiring", "Placeholder_PS004_Antenna", "Placeholder_PS006_Filter",
         };
 
         foreach (string prefab in oldPrefabs)
@@ -482,6 +494,8 @@ public static class SoloMissionTestSetup
             "안테나 방향 맞추기 · PS004\nF 유지 → 고정 버튼 클릭");
         CreateInfoLabel(layoutRoot.transform, "Info (전선)", WiringFallback.Position + new Vector3(0f, 2.4f, 0f),
             "전선 연결하기 · PS003\n같은 색끼리 끌어서 연결 → 레버");
+        CreateInfoLabel(layoutRoot.transform, "Info (필터)", FilterFallback.Position + new Vector3(0f, 2.4f, 0f),
+            "필터 청소하기 · PS006\n청소기 줍기(좌클릭) → 먼지 조준 → 우클릭 · G 내려놓기");
 
         GameObject bootstrapObject = FindOrCreate("SoloTestBootstrap", Vector3.zero);
         SoloTestBootstrap bootstrap = GetOrAdd<SoloTestBootstrap>(bootstrapObject);
