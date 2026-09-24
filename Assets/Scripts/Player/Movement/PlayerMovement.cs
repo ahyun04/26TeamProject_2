@@ -51,11 +51,13 @@ public class PlayerMovement : NetworkBehaviour
                           room.Runner == Runner && room.CurrentRoomState == RoomManager.RoomState.Starting;
         if (isStarting || (health != null && !health.CanAct))
         {
+            stamina?.updateStamina(default, false);
             if (HasStateAuthority || HasInputAuthority) simpleKCC.Move();
             return;
         }
         if (!GetInput(out NetworkInputData input))
         {
+            stamina?.updateStamina(default, false);
             // Host가 특정 틱의 입력을 받지 못한 경우에도 중력과 접지를 처리한다.
             // 다른 플레이어를 보는 일반 프록시에서는 Move를 호출하지 않는다.
             if (Object.HasStateAuthority)
@@ -68,7 +70,10 @@ public class PlayerMovement : NetworkBehaviour
 
         Vector2 moveInput = Vector2.ClampMagnitude(input.MoveDirection, 1f);
         bool isMoving = moveInput.sqrMagnitude > 0.0001f;
-        float moveSpeed = DetermineSpeed(input, isMoving);
+        bool isSprinting = stamina != null
+            ? stamina.updateStamina(input, true)
+            : input.IsPressed(InputButton.Sprint) && isMoving; //이번 틱에 허용된 달리기
+        float moveSpeed = DetermineSpeed(input, isSprinting);
 
         Vector3 localDirection = new Vector3(moveInput.x, 0f, moveInput.y);
         Vector3 moveVelocity = simpleKCC.TransformRotation * localDirection * moveSpeed;
@@ -92,15 +97,12 @@ public class PlayerMovement : NetworkBehaviour
             maximumPitch);
     }
 
-    private float DetermineSpeed(NetworkInputData input, bool isMoving)
+    private float DetermineSpeed(NetworkInputData input, bool isSprinting)
     {
         if (input.IsPressed(InputButton.Crouch))
             return crouchSpeed;
 
-        bool wantsSprint = input.IsPressed(InputButton.Sprint);
-        bool hasStamina = stamina == null || stamina.HasStamina;
-
-        return wantsSprint && isMoving && hasStamina ? sprintSpeed : walkSpeed;
+        return isSprinting ? sprintSpeed : walkSpeed;
     }
 
     public Vector2 LocalMoveVelocity

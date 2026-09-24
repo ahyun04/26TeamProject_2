@@ -24,6 +24,7 @@ public class GameEndSystem : NetworkBehaviour
 
     private readonly List<PlayerRef> players = new();
     private readonly Dictionary<PlayerRef, PlayerHealth> playerHealths = new();
+    private readonly HashSet<PlayerRef> departedPlayers = new(); //패배 확정 후 퇴장한 플레이어
 
     public override void Spawned()
     {
@@ -44,9 +45,6 @@ public class GameEndSystem : NetworkBehaviour
 
     public override void Despawned(NetworkRunner runner, bool hasState)
     {
-        if (!hasState)
-            return;
-
         UnsubscribeEvents();
         UnsubscribePlayerHealths();
     }
@@ -56,6 +54,31 @@ public class GameEndSystem : NetworkBehaviour
         return PlayerResults.TryGet(player, out PlayerResult result)
             ? result
             : PlayerResult.None;
+    }
+
+    internal void handlePlayerLeft(PlayerRef player) //플레이어 제거 전에 퇴장 패배와 남은 승리 조건 갱신
+    {
+        if (!HasStateAuthority || !ResultsInitialized || IsGameEnded ||
+            !PlayerResults.ContainsKey(player) || !departedPlayers.Add(player))
+            return;
+
+        PlayerResults.Set(player, PlayerResult.Lose);
+        OnPlayerResultDecided?.Invoke(player, PlayerResult.Lose);
+        if (playerHealths.TryGetValue(player, out PlayerHealth health))
+        {
+            if (health != null)
+            {
+                health.Died -= HandlePlayerStateChanged;
+                health.Escaped -= HandlePlayerStateChanged;
+            }
+            playerHealths.Remove(player);
+        }
+
+        // 마지막 시민의 퇴장을 먼저 판정하여 미션 제거가 시민 승리로 처리되지 않게 한다.
+        CheckAllCitizensRemoved();
+        TryEndGame();
+        if (missionSystem != null && missionSystem.Object != null && missionSystem.Object.IsValid)
+            missionSystem.removePlayerMissions(player);
     }
 
     private void FindDependencies()
@@ -166,7 +189,8 @@ public class GameEndSystem : NetworkBehaviour
 
         foreach (PlayerRef player in players)
         {
-            if (!IsCitizen(player) || !playerHealths.TryGetValue(player, out PlayerHealth health))
+            if (!IsCitizen(player) || !playerHealths.TryGetValue(player, out PlayerHealth health) ||
+                health == null || health.Object == null || !health.Object.IsValid)
                 continue;
 
             if (health.IsEscaped && TrySetResult(player, PlayerResult.Win))
@@ -237,7 +261,11 @@ public class GameEndSystem : NetworkBehaviour
 
             hasCitizen = true;
 
+            if (departedPlayers.Contains(player))
+                continue;
+
             if (!playerHealths.TryGetValue(player, out PlayerHealth health) ||
+                health == null || health.Object == null || !health.Object.IsValid ||
                 (!health.IsDead && !health.IsEscaped))
             {
                 return;

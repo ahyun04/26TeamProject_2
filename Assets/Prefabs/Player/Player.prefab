@@ -31,6 +31,7 @@ GameObject:
   - component: {fileID: 910000000000000007}
   - component: {fileID: 910000000000000008}
   - component: {fileID: 910000000000000009}
+  - component: {fileID: 435993125232472710}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -89,6 +90,7 @@ MonoBehaviour:
   - {fileID: 910000000000000005}
   - {fileID: 910000000000000006}
   - {fileID: 910000000000000009}
+  - {fileID: 435993125232472710}
   - {fileID: 910000000000000014}
   ForceRemoteRenderTimeframe: 0
 --- !u!54 &5758612769849293622
@@ -237,7 +239,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   targetDetector: {fileID: 4904234193367178779}
-  firstPersonItemView: {fileID: 0}
+  firstPersonItemView: {fileID: 1943323556666587649}
   maxInteractDistance: 5
   _CurrentItemObject: {fileID: 0}
 --- !u!114 &4904234193367178779
@@ -566,7 +568,10 @@ PrefabInstance:
     m_RemovedComponents:
     - {fileID: 5866666021909216657, guid: f54722e8212df164bb7dfe2ff99c8a8f, type: 3}
     m_RemovedGameObjects: []
-    m_AddedGameObjects: []
+    m_AddedGameObjects:
+    - targetCorrespondingSourceObject: {fileID: 8477669212626722451, guid: f54722e8212df164bb7dfe2ff99c8a8f, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6144708844676597327}
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: f54722e8212df164bb7dfe2ff99c8a8f, type: 3}
 --- !u!4 &9067475105181430262 stripped
@@ -852,3 +857,52 @@ MonoBehaviour:
   obstacleMask:
     serializedVersion: 2
     m_Bits: 1
+--- !u!114 &435993125232472710
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1265554726670306911}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f5988126e43baa448b03e3a99f25bbe6, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  handPoint: {fileID: 6144708844676597327}
+--- !u!1 &3485674638728517697
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6144708844676597327}
+  m_Layer: 0
+  m_Name: ItemHandPoint
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6144708844676597327
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3485674638728517697}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0.6532813, y: -0.2705986, z: -0.65328133, w: -0.27059853}
+  m_LocalPosition: {x: 0.0002499998, y: 0.0007071086, z: -0.000212136}
+  m_LocalScale: {x: 0.01, y: 0.01, z: 0.01}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1151275359695898766}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!4 &1151275359695898766 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 8477669212626722451, guid: f54722e8212df164bb7dfe2ff99c8a8f, type: 3}
+  m_PrefabInstance: {fileID: 8817095809313281565}
+  m_PrefabAsset: {fileID: 0}

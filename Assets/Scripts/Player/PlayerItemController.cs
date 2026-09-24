@@ -21,6 +21,8 @@ public class PlayerItemController : NetworkBehaviour
     // 현재 아이템이 Target 변화에 반응하는 기능을 가지고 있을 경우 저장
     private IItemTargetHandler targetHandler;
     private PlayerHealth health;
+    private NetworkObject displayedItem; //현재 1인칭 표시를 적용한 아이템
+    private bool presentationInitialized; //장착 표시 초기화 여부
 
 
     public override void Spawned()
@@ -52,6 +54,12 @@ public class PlayerItemController : NetworkBehaviour
         RefreshCurrentItem();
     }
 
+    public override void Render() //아이템 오브젝트의 수신이 늦어져도 로컬 표시 갱신
+    {
+        if (HasInputAuthority && (!presentationInitialized || displayedItem != CurrentItemObject))
+            RefreshCurrentItem();
+    }
+
 
     public override void Despawned(NetworkRunner runner, bool hasState)
     {
@@ -68,6 +76,8 @@ public class PlayerItemController : NetworkBehaviour
         firstPersonItemView?.Clear();
 
         targetHandler = null;
+        displayedItem = null;
+        presentationInitialized = false;
     }
 
 
@@ -300,6 +310,11 @@ public class PlayerItemController : NetworkBehaviour
     /// </summary>
     private void RefreshCurrentItem()
     {
+        if (presentationInitialized && displayedItem == CurrentItemObject)
+            return;
+
+        displayedItem = CurrentItemObject;
+        presentationInitialized = true;
         // 이전 아이템의 Outline 같은 로컬 효과 제거
         targetHandler?.ClearLocalTarget();
 

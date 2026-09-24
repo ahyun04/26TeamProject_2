@@ -12,7 +12,8 @@ public class PlayerInputProvider : MonoBehaviour, INetworkRunnerCallbacks
     private void Update()
     {
         LobbyRoomUI lobbyUI = LobbyRoomUI.Instance;
-        if (lobbyUI != null && (lobbyUI.BlocksPlayerInput || Input.GetKeyDown(KeyCode.Escape)))
+        if (SessionDisconnectUIComponent.IsOpen ||
+            (lobbyUI != null && (lobbyUI.BlocksPlayerInput || Input.GetKeyDown(KeyCode.Escape))))
         {
             accumulatedLook = Vector2.zero;
             jumpPressed = false;
@@ -31,8 +32,8 @@ public class PlayerInputProvider : MonoBehaviour, INetworkRunnerCallbacks
     public void OnInput(NetworkRunner runner, NetworkInput input)
     {
         NetworkInputData data = new NetworkInputData();
-        if (LobbyRoomUI.Instance != null &&
-            (LobbyRoomUI.Instance.BlocksPlayerInput || Input.GetKeyDown(KeyCode.Escape)))
+        if (SessionDisconnectUIComponent.IsOpen || (LobbyRoomUI.Instance != null &&
+            (LobbyRoomUI.Instance.BlocksPlayerInput || Input.GetKeyDown(KeyCode.Escape))))
         {
             accumulatedLook = Vector2.zero;
             jumpPressed = false;

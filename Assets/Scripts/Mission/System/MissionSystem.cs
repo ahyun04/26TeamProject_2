@@ -184,6 +184,27 @@ public class MissionSystem : NetworkBehaviour
         return null;
     }
 
+    internal void removePlayerMissions(PlayerRef player) //퇴장자의 개인 미션을 남은 게임의 목표에서 제거
+    {
+        if (!HasStateAuthority || !Initialized || player == PlayerRef.None)
+            return;
+
+        int retainedCount = 0; //남은 미션 수
+        int previousCount = MissionCount; //기존 미션 수
+        for (int i = 0; i < previousCount; i++)
+        {
+            MissionState state = Missions[i]; //현재 미션
+            if (state.Owner == player && state.MissionType != MissionType.Shared)
+                continue;
+            Missions.Set(retainedCount++, state);
+        }
+
+        for (int i = retainedCount; i < previousCount; i++)
+            Missions.Set(i, default);
+        MissionCount = retainedCount;
+        CheckCitizenMissionsCompleted();
+    }
+
     /// <summary>
     /// 해당 플레이어가 이 미션을 수행할 수 있는지 확인
     /// </summary>

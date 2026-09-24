@@ -111,8 +111,9 @@ namespace LockdownProtocol.Lobby
             MaxPlayerCount = maxPlayers > 0 ? maxPlayers : defaultMaxPlayerCount;
             IsPrivate = isPrivate;
             HostPlayerId = hostPlayer;
-            CurrentRoomState = RoomState.Waiting;
+            SetRoomState(RoomState.Waiting);
             FindFirstObjectByType<LobbyPlayerSpawner>()?.RefreshHostFlag(hostPlayer);
+            RPC_NotifyHostChanged(hostPlayer);
         }
 
         // ================== 방 나가기 ==================
@@ -128,49 +129,6 @@ namespace LockdownProtocol.Lobby
             }
 
             bootstrap.LeaveRoom();
-        }
-
-        // ================== 방장 위임 ==================
-
-        private void AssignNewHost(NetworkRunner runner)
-        {
-            if (!Object.HasStateAuthority) return;
-
-            // 기획서: 입장 순서가 가장 빠른 플레이어를 새 방장으로.
-            // ActivePlayers 순서가 입장 순서를 보장하지 않을 수 있어 실제로는
-            // LobbyPlayerController 쪽에 JoinedTick 같은 값을 두고 비교하는 게 안전함 (TODO)
-            foreach (var player in runner.ActivePlayers)
-            {
-                if (player == HostPlayerId) continue;
-                HostPlayerId = player;
-                FindFirstObjectByType<LobbyPlayerSpawner>()?.RefreshHostFlag(player);
-                RPC_NotifyHostChanged(player);
-                return;
-            }
-
-            LobbyPlayerController earliest = null;
-
-            foreach (var controller in FindObjectsByType<LobbyPlayerController>(FindObjectsSortMode.None))
-            {
-                if (controller.Object == null || controller.Object.InputAuthority == HostPlayerId) continue;
-                if (earliest == null || controller.JoinOrder < earliest.JoinOrder)
-                {
-                    earliest = controller;
-                }
-            }
-
-            if (earliest != null)
-            {
-                var newHost = earliest.Object.InputAuthority;
-                HostPlayerId = newHost;
-                FindFirstObjectByType<LobbyPlayerSpawner>()?.RefreshHostFlag(newHost);
-                RPC_NotifyHostChanged(newHost);
-                return;
-            }
-
-            // 남은 플레이어 없음 -> 방 삭제
-            CurrentRoomState = RoomState.Closed;
-            Debug.Log("[RoomManager] 남은 플레이어 없음 - 방 삭제 (미구현: 세션 종료 처리)");
         }
 
         [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
@@ -218,20 +176,8 @@ namespace LockdownProtocol.Lobby
             if (runner != Runner) return;
             if (!Object.HasStateAuthority) return;
 
-            bool wasHost = player == HostPlayerId;
-
-            if (wasHost)
-            {
-                bool wasStarting = CurrentRoomState == RoomState.Starting;
-                AssignNewHost(runner);
-
-                // 게임 시작 중(Starting) 방장이 나간 경우: 시작 취소하고 Waiting 복귀
-                if (wasStarting && CurrentRoomState != RoomState.Closed)
-                {
-                    CurrentRoomState = RoomState.Waiting;
-                    Debug.Log("[RoomManager] 게임 시작 중 방장 이탈 - 시작 취소, Waiting 복귀");
-                }
-            }
+            if (player == HostPlayerId)
+                SetRoomState(RoomState.Closed);
         }
     }
 }

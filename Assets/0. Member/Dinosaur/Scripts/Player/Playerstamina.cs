@@ -4,7 +4,7 @@ using UnityEngine;
 
 /// <summary>
 /// 플레이어 스태미너 관리. 체력과 달리 외부 요청이 아니라 자기 자신의 입력(스프린트 여부)에 반응해
-/// 매 틱 스스로 증감을 계산한다. PlayerMovement는 HasStamina만 조회해 스프린트 허용 여부를 판단한다.
+/// PlayerMovement가 매 틱 실제 이동 가능 상태와 입력을 전달하며 스프린트 허용 여부를 함께 계산한다.
 /// </summary>
 [RequireComponent(typeof(NetworkObject))]
 public class PlayerStamina : NetworkBehaviour
@@ -35,15 +35,16 @@ public class PlayerStamina : NetworkBehaviour
         }
     }
 
-    public override void FixedUpdateNetwork()
+    internal bool updateStamina(NetworkInputData input, bool canMove) //실제 스프린트 조건에 맞춰 소모와 회복을 처리
     {
-        if (!GetInput(out NetworkInputData input))
-            return;
+        if (!HasStateAuthority && !HasInputAuthority)
+            return false;
 
-        bool isMoving = input.MoveDirection.sqrMagnitude > 0.01f;
-        bool wantsSprint = input.IsPressed(InputButton.Sprint) && isMoving;
+        bool isMoving = input.MoveDirection.sqrMagnitude > 0.0001f; //이동 입력 여부
+        bool isSprinting = canMove && isMoving && HasStamina &&
+                           input.IsPressed(InputButton.Sprint) && !input.IsPressed(InputButton.Crouch); //이번 틱의 달리기 여부
 
-        if (wantsSprint && HasStamina)
+        if (isSprinting)
         {
             Drain(drainPerSecond * Runner.DeltaTime);
             RegenDelayTimer = regenDelaySeconds;
@@ -56,6 +57,7 @@ public class PlayerStamina : NetworkBehaviour
         {
             Regen(regenPerSecond * Runner.DeltaTime);
         }
+        return isSprinting;
     }
 
     private void Drain(float amount)

@@ -3,6 +3,7 @@ using Fusion;
 using LockdownProtocol.Lobby;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class GameResultUI : MonoBehaviour
 {
@@ -14,6 +15,8 @@ public class GameResultUI : MonoBehaviour
     [SerializeField] private PlayerResultEntryUI playerResultEntryPrefab;
     [SerializeField] private string winText = "Win";
     [SerializeField] private string loseText = "Lose";
+    [SerializeField] private Button returnButton; //방장의 대기실 복귀 버튼
+    [SerializeField] private TMP_Text returnStatusText; //대기실 복귀 상태 안내
 
     private readonly List<PlayerResultEntryUI> spawnedEntries = new();
     private readonly List<PlayerRef> resultPlayers = new();
@@ -26,6 +29,8 @@ public class GameResultUI : MonoBehaviour
 
     private void OnEnable()
     {
+        if (returnButton != null)
+            returnButton.onClick.AddListener(returnToStandBy);
         if (gameEndSystem == null)
             gameEndSystem = FindFirstObjectByType<GameEndSystem>();
 
@@ -43,6 +48,8 @@ public class GameResultUI : MonoBehaviour
 
     private void OnDisable()
     {
+        if (returnButton != null)
+            returnButton.onClick.RemoveListener(returnToStandBy);
         if (gameEndSystem != null)
             gameEndSystem.OnGameEnded -= HandleGameEnded;
     }
@@ -64,8 +71,33 @@ public class GameResultUI : MonoBehaviour
         resultText.text = result == PlayerResult.Win ? winText : loseText;
         RefreshPlayerResults();
         resultPanel.SetActive(true);
+        bool isHost = gameEndSystem.Runner.IsServer;
+        if (returnButton != null)
+            returnButton.interactable = isHost;
+        if (returnStatusText != null)
+            returnStatusText.text = isHost
+                ? "버튼을 누르면 모두 대기실로 이동합니다."
+                : "방장이 대기실로 돌아가기를 기다리는 중입니다.";
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
+    }
+
+    private async void returnToStandBy() //결과 확인 후 네트워크 대기실 복귀 요청
+    {
+        NetworkBootstrap bootstrap = FindFirstObjectByType<NetworkBootstrap>();
+        if (bootstrap == null)
+            return;
+
+        returnButton.interactable = false;
+        if (returnStatusText != null)
+            returnStatusText.text = "대기실로 이동 중입니다.";
+        bool succeeded = await bootstrap.returnToStandBy();
+        if (this == null || succeeded)
+            return;
+
+        returnButton.interactable = true;
+        if (returnStatusText != null)
+            returnStatusText.text = "대기실 이동에 실패했습니다.";
     }
 
     private void RefreshPlayerResults()

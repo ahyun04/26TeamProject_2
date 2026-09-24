@@ -42,7 +42,7 @@ namespace LockdownProtocol.Lobby
         private bool _isOpen;
 
         internal static LobbyRoomUI Instance { get; private set; }
-        internal bool BlocksPlayerInput => _isOpen ||
+        internal bool BlocksPlayerInput => SessionDisconnectUIComponent.IsOpen || _isOpen ||
             (_miniHud != null && _miniHud.IsLeaveConfirmationOpen) ||
             (inviteListPanel != null && inviteListPanel.isActiveAndEnabled && inviteListPanel.IsOpen);
 
@@ -90,7 +90,7 @@ namespace LockdownProtocol.Lobby
                 if (_gameStartManager != null)
                     _gameStartManager.StartFailed += HandleStartFailed;
             }
-            if (Input.GetKeyDown(KeyCode.Escape))
+            if (!SessionDisconnectUIComponent.IsOpen && Input.GetKeyDown(KeyCode.Escape))
             {
                 SetOpen(!_isOpen);
             }

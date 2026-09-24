@@ -30,7 +30,7 @@ public class PlayerFirstPersonItemView : MonoBehaviour
 
         currentView.transform.localRotation = Quaternion.identity;
 
-        currentView.transform.localScale = Vector3.one;
+        currentView.transform.localScale = data.FirstPersonPrefab.transform.localScale;
     }
 
 
@@ -39,6 +39,7 @@ public class PlayerFirstPersonItemView : MonoBehaviour
         if (currentView == null)
             return;
 
+        currentView.SetActive(false);
         Destroy(currentView);
 
         currentView = null;

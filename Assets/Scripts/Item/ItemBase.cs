@@ -6,12 +6,16 @@ public abstract class ItemBase : NetworkBehaviour, ITargetable
     [SerializeField] private ItemData data;
 
     private ItemWorldView worldView;
+    private NetworkObject displayedHolder; //현재 화면에 반영한 소유자
+    private bool presentationInitialized; //장착 표시 초기화 여부
 
 
     [Networked, OnChangedRender(nameof(OnHolderChanged))]
     public NetworkObject HolderObject { get; private set; }
     [Networked, OnChangedRender(nameof(OnHolderChanged))]
     private Vector3 WorldPosition { get; set; }
+    [Networked, OnChangedRender(nameof(OnHolderChanged))]
+    private Quaternion worldRotation { get; set; } //내려놓은 아이템의 회전
 
 
     public ItemData Data => data;
@@ -23,7 +27,11 @@ public abstract class ItemBase : NetworkBehaviour, ITargetable
 
     public override void Spawned()
     {
-        if (HasStateAuthority) WorldPosition = transform.position;
+        if (HasStateAuthority)
+        {
+            WorldPosition = transform.position;
+            worldRotation = transform.rotation;
+        }
         worldView = GetComponent<ItemWorldView>();
 
         if (worldView == null)
@@ -32,13 +40,19 @@ public abstract class ItemBase : NetworkBehaviour, ITargetable
         ApplyHeldState();
     }
 
+    public override void Render() //소유자 오브젝트가 늦게 생성된 경우에도 장착 표시 갱신
+    {
+        if (!presentationInitialized || displayedHolder != HolderObject)
+            ApplyHeldState();
+    }
+
 
     public bool TryEquip(NetworkObject holder)
     {
         if (!HasStateAuthority)
             return false;
 
-        if (holder == null)
+        if (holder == null || !holder.IsValid || holder.Runner != Runner)
             return false;
 
         if (HolderObject != null)
@@ -73,7 +87,6 @@ public abstract class ItemBase : NetworkBehaviour, ITargetable
 
     private void ApplyHeldState()
     {
-        if (!IsHeld) transform.position = WorldPosition;
         if (worldView == null)
             worldView = GetComponent<ItemWorldView>();
 
@@ -83,6 +96,20 @@ public abstract class ItemBase : NetworkBehaviour, ITargetable
             return;
         }
 
-        worldView.SetVisible(!IsHeld);
+        displayedHolder = HolderObject;
+        presentationInitialized = true;
+        if (displayedHolder == null)
+        {
+            worldView.SetVisible(true);
+            transform.SetPositionAndRotation(WorldPosition, worldRotation);
+            return;
+        }
+
+        PlayerItemHoldPoint holdPoint = displayedHolder.GetComponent<PlayerItemHoldPoint>(); //소유자의 손 위치
+        Transform hand = holdPoint != null ? holdPoint.HandPoint : null; //모델이 따라갈 장착 지점
+        if (hand == null)
+            Debug.LogError($"[{name}] 소유자의 PlayerItemHoldPoint가 연결되지 않았습니다.");
+
+        worldView.setHeld(hand, !displayedHolder.HasInputAuthority && hand != null);
     }
 }

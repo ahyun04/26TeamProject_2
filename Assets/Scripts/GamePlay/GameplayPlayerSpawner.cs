@@ -48,6 +48,9 @@ public class GameplayPlayerSpawner : NetworkBehaviour
     private void HandlePlayerLeft(NetworkRunner runner, PlayerRef player)
     {
         if (runner != Runner || !HasStateAuthority) return;
+        GameEndSystem gameEnd = FindFirstObjectByType<GameEndSystem>();
+        if (gameEnd != null && gameEnd.Object != null && gameEnd.Object.IsValid && gameEnd.Runner == runner)
+            gameEnd.handlePlayerLeft(player);
         NetworkObject playerObject = runner.GetPlayerObject(player);
         if (playerObject == null || !playerObject.IsValid) return;
         playerObject.GetComponent<PlayerItemController>()?.DropCurrentItem();
