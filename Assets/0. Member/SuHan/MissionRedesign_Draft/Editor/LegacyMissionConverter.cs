@@ -16,7 +16,7 @@ using UnityEngine;
 ///  공통 후처리: 조준 문구(MissionPrompt.promptObject)가 있으면 PromptBillboard 를 붙여 항상 보는 사람 쪽을 향하게 한다
 ///  (옛 밸브 문구가 방향 고정이라 배치에 따라 뒤집혀 보였음 — 2b 테스트에서 발견).
 /// [조준 외곽선] MissionOutlineBuilder 로 붙인다 (1단계 사용자 요청). 부품마다 MissionPrompt 를 두면 조준한 부품만 켜진다 (2a 명세 P7).
-/// [변환 목록] 1단계 발전기 / 2a 밸브 · 안테나 · 차단기 / 2b 전선. 미니게임을 이식할 때마다 Build… 와 Convert… 를 하나씩 추가한다.
+/// [변환 목록] 1단계 발전기 / 2a 밸브 · 안테나 · 차단기 / 2b 전선 / 2c 필터 · 청소기(아이템). 미니게임을 이식할 때마다 Build… 와 Convert… 를 하나씩 추가한다.
 /// </summary>
 public static class LegacyMissionConverter
 {
@@ -28,6 +28,15 @@ public static class LegacyMissionConverter
     public const string AntennaStationPath = OutputFolder + "/Antenna_Station.prefab";
     public const string BreakerStationPath = OutputFolder + "/Breaker_Station.prefab";
     public const string WiringStationPath = OutputFolder + "/Wiring_Station.prefab";
+    public const string FilterStationPath = OutputFolder + "/Filter_Station.prefab";
+
+    private const string ItemPrefabFolder = "Assets/0. Member/SuHan/MissionRedesign_Draft/Prefabs/Items";
+    private const string ItemDataFolder = "Assets/0. Member/SuHan/MissionRedesign_Draft/Items";
+    private const string LegacyVacuumDataPath = "Assets/ScriptableObjects/Data/Item/VacuumData.asset";
+
+    public const string VacuumToolPath = ItemPrefabFolder + "/Vacuum_Tool.prefab";
+    public const string VacuumToolFirstPersonPath = ItemPrefabFolder + "/Vacuum_Tool_FP.prefab";
+    public const string VacuumToolDataPath = ItemDataFolder + "/VacuumToolData.asset";
 
     // 개인 미니게임 공통 거리 (2a 명세 3장). 발전기는 1단계 값 3.5 유지.
     private const float PersonalInteractRange = 3f;
@@ -37,6 +46,7 @@ public static class LegacyMissionConverter
         "MissionMiniGameBase", "GeneratorMission", "MissionButton",
         "ValveMission", "AntennaMission", "AntennaLockButton", "BreakerMission", "BreakerLever",
         "WiringMission", "WireStartPoint", "WireEndPoint", "WireConnectionVisual", "WiringLever",
+        "FilterCleaningMission", "VacuumDust", "VacuumItem", "FirstPersonVacuumView",
     };
 
     [MenuItem("SuHan/Convert Legacy Mission Prefabs")]
@@ -47,6 +57,8 @@ public static class LegacyMissionConverter
         Report("안테나", ConvertAntenna());
         Report("차단기", ConvertBreaker());
         Report("전선", ConvertWiring());
+        Report("필터", ConvertFilter());
+        Report("청소기", ConvertVacuumTool());
         AssetDatabase.SaveAssets();
 
         // 새 NetworkObject 프리팹을 Fusion 네트워크 프리팹 목록에 즉시 반영 (안 하면 Runner.Spawn 이 실패한다)
@@ -74,14 +86,48 @@ public static class LegacyMissionConverter
     public static NetworkObject ConvertWiring() =>
         Convert("전선", LegacyFolder + "/Wiring/Wiring_Prefab.prefab", "Wiring_Station", WiringStationPath, BuildWiring);
 
+    public static NetworkObject ConvertFilter() =>
+        Convert("필터", LegacyFolder + "/FilterCleaning_Prefab.prefab", "Filter_Station", FilterStationPath, BuildFilter);
+
+    /// <summary>
+    /// 청소기: 1인칭 모델 → 아이템 데이터(복사본) → 아이템 프리팹 순서로 만든다 (앞의 결과를 뒤에서 참조).
+    /// 아이템은 스테이션이 아니라 조준 검증을 하지 않는다.
+    /// </summary>
+    public static NetworkObject ConvertVacuumTool()
+    {
+        GameObject firstPerson = ConvertPrefab("청소기 1인칭", LegacyFolder + "/Vacuum_FP_Prefab.prefab", "Vacuum_Tool_FP",
+            VacuumToolFirstPersonPath, BuildVacuumFirstPerson, false);
+
+        if (firstPerson == null)
+            return null;
+
+        Object itemData = CreateVacuumToolData(firstPerson);
+
+        if (itemData == null)
+            return null;
+
+        return Convert("청소기", LegacyFolder + "/Vacuum_Prefab.prefab", "Vacuum_Tool", VacuumToolPath,
+            copy => BuildVacuumTool(copy, itemData), false);
+    }
+
     // ═════════════════════════════════════════════════════════════
     //  공통 틀
     // ═════════════════════════════════════════════════════════════
 
     /// <param name="build">복사본을 새 구조로 바꾼다. 실패하면 오류를 남기고 false.</param>
-    private static NetworkObject Convert(string what, string legacyPath, string outputName, string outputPath, System.Func<GameObject, bool> build)
+    /// <param name="verifyTargets">조준 검증을 할지. 스테이션이 아닌 것(아이템 · 1인칭 모델)은 false.</param>
+    private static NetworkObject Convert(string what, string legacyPath, string outputName, string outputPath,
+        System.Func<GameObject, bool> build, bool verifyTargets = true)
     {
-        EnsureFolder(OutputFolder);
+        GameObject saved = ConvertPrefab(what, legacyPath, outputName, outputPath, build, verifyTargets);
+        return saved != null ? saved.GetComponent<NetworkObject>() : null;
+    }
+
+    /// <summary>Convert 의 본체. NetworkObject 가 없는 프리팹(1인칭 모델)도 변환할 수 있게 저장된 GameObject 를 돌려준다.</summary>
+    private static GameObject ConvertPrefab(string what, string legacyPath, string outputName, string outputPath,
+        System.Func<GameObject, bool> build, bool verifyTargets)
+    {
+        EnsureFolder(System.IO.Path.GetDirectoryName(outputPath).Replace('\\', '/'));
 
         GameObject legacy = AssetDatabase.LoadAssetAtPath<GameObject>(legacyPath);
 
@@ -101,12 +147,12 @@ public static class LegacyMissionConverter
 
             AddPromptBillboards(copy);
 
-            if (!VerifyNoLegacyScripts(copy) || !VerifyTargetResolution(copy))
+            if (!VerifyNoLegacyScripts(copy) || (verifyTargets && !VerifyTargetResolution(copy)))
                 return null;
 
             GameObject saved = PrefabUtility.SaveAsPrefabAsset(copy, outputPath);
             Debug.Log($"[LegacyMissionConverter] {what} 변환 완료: {outputPath}");
-            return saved != null ? saved.GetComponent<NetworkObject>() : null;
+            return saved;
         }
         finally
         {
@@ -547,6 +593,184 @@ public static class LegacyMissionConverter
     }
 
     // ═════════════════════════════════════════════════════════════
+    //  2c: 필터 (먼지 = 중첩 NetworkObject 주소 + 스테이션이 상태 관리)
+    // ═════════════════════════════════════════════════════════════
+
+    private static bool BuildFilter(GameObject copy)
+    {
+        MonoBehaviour oldMission = FindLegacy(copy, "FilterCleaningMission");
+
+        if (oldMission == null)
+        {
+            Debug.LogError("[LegacyMissionConverter] 필터 프리팹에서 FilterCleaningMission 을 찾지 못했습니다.");
+            return false;
+        }
+
+        SerializedObject oldSO = new SerializedObject(oldMission);
+        SerializedProperty oldDusts = oldSO.FindProperty("dusts");
+        int count = oldDusts != null ? oldDusts.arraySize : 0;
+
+        if (count == 0 || count > FilterStation.MaxDusts)
+        {
+            Debug.LogError($"[LegacyMissionConverter] 필터 먼지가 {count}개입니다 (1~{FilterStation.MaxDusts}개 필요).");
+            return false;
+        }
+
+        FilterStation station = copy.AddComponent<FilterStation>();
+        SerializedObject so = ConfigureStation(station, MissionEventType.FilterCleaned, CompletionPolicy.ResetForNext, PersonalInteractRange);
+
+        // F8: 먼지 콜라이더는 FilterStation 이 직접 관리한다 → 베이스 목록은 비운다
+        so.FindProperty("interactionColliders").ClearArray();
+
+        FilterDust[] newDusts = new FilterDust[count];
+        List<MonoBehaviour> oldDustComponents = new List<MonoBehaviour>();
+
+        // 옛 dusts 배열 순서 = 먼지 번호
+        for (int i = 0; i < count; i++)
+        {
+            MonoBehaviour oldDust = oldDusts.GetArrayElementAtIndex(i).objectReferenceValue as MonoBehaviour;
+
+            if (oldDust == null || oldDustComponents.Contains(oldDust))
+            {
+                Debug.LogError($"[LegacyMissionConverter] 필터 먼지 {i}번이 비어 있거나 중복입니다.");
+                return false;
+            }
+
+            if (oldDust.GetComponent<NetworkObject>() == null)
+            {
+                Debug.LogError($"[LegacyMissionConverter] 필터 먼지 '{oldDust.name}' 에 NetworkObject 가 없습니다 (청소기 우클릭이 먼지를 구분할 수 없음).");
+                return false;
+            }
+
+            SerializedObject oldDustSO = new SerializedObject(oldDust);
+            FilterDust dust = oldDust.gameObject.AddComponent<FilterDust>();
+            SerializedObject dustSO = new SerializedObject(dust);
+            dustSO.FindProperty("station").objectReferenceValue = station;
+            dustSO.FindProperty("index").intValue = i;
+            CopyReference(oldDustSO, "dustCollider", dustSO, "dustCollider");
+            CopyReference(oldDustSO, "outlineRoot", dustSO, "outlineObject");
+            dustSO.ApplyModifiedPropertiesWithoutUndo();
+
+            newDusts[i] = dust;
+            oldDustComponents.Add(oldDust);
+        }
+
+        SerializedProperty dustList = so.FindProperty("dusts");
+        dustList.ClearArray();
+
+        for (int i = 0; i < count; i++)
+        {
+            dustList.InsertArrayElementAtIndex(i);
+            dustList.GetArrayElementAtIndex(i).objectReferenceValue = newDusts[i];
+        }
+
+        so.ApplyModifiedPropertiesWithoutUndo();
+
+        foreach (MonoBehaviour old in oldDustComponents)
+            Object.DestroyImmediate(old);
+
+        Object.DestroyImmediate(oldMission);
+        return true;
+    }
+
+    // ═════════════════════════════════════════════════════════════
+    //  2c: 청소기 아이템 (1인칭 모델 · 아이템 데이터 · 아이템)
+    // ═════════════════════════════════════════════════════════════
+
+    private static bool BuildVacuumFirstPerson(GameObject copy)
+    {
+        MonoBehaviour oldView = FindLegacy(copy, "FirstPersonVacuumView");
+
+        if (oldView == null)
+        {
+            Debug.LogError("[LegacyMissionConverter] 청소기 1인칭 프리팹에서 FirstPersonVacuumView 를 찾지 못했습니다.");
+            return false;
+        }
+
+        SerializedObject oldSO = new SerializedObject(oldView);
+        VacuumFirstPersonView view = oldView.gameObject.AddComponent<VacuumFirstPersonView>();
+        SerializedObject so = new SerializedObject(view);
+        CopyReference(oldSO, "mouth", so, "mouth");
+        so.ApplyModifiedPropertiesWithoutUndo();
+
+        Object.DestroyImmediate(oldView);
+        return true;
+    }
+
+    /// <summary>
+    /// 팀원의 VacuumData 를 복사해 1인칭 프리팹만 새 것으로 바꾼다 (결정 F9 — 원본을 바꾸면 교체 전까지 옛 청소기가 깨진다).
+    /// 이미 있으면 원본 값을 다시 덮어써 아이콘 · 이름 변경을 따라가고, 에셋 GUID 는 유지한다.
+    /// </summary>
+    private static Object CreateVacuumToolData(GameObject firstPersonPrefab)
+    {
+        EnsureFolder(ItemDataFolder);
+
+        Object original = AssetDatabase.LoadAssetAtPath<Object>(LegacyVacuumDataPath);
+
+        if (original == null)
+        {
+            Debug.LogError($"[LegacyMissionConverter] 청소기 아이템 데이터가 없습니다: {LegacyVacuumDataPath}");
+            return null;
+        }
+
+        Object data = AssetDatabase.LoadAssetAtPath<Object>(VacuumToolDataPath);
+
+        if (data == null)
+        {
+            if (!AssetDatabase.CopyAsset(LegacyVacuumDataPath, VacuumToolDataPath))
+            {
+                Debug.LogError($"[LegacyMissionConverter] 아이템 데이터 복사 실패: {VacuumToolDataPath}");
+                return null;
+            }
+
+            data = AssetDatabase.LoadAssetAtPath<Object>(VacuumToolDataPath);
+        }
+        else
+        {
+            EditorUtility.CopySerialized(original, data);
+            data.name = System.IO.Path.GetFileNameWithoutExtension(VacuumToolDataPath);
+        }
+
+        SerializedObject so = new SerializedObject(data);
+        SerializedProperty firstPerson = so.FindProperty("firstPersonPrefab");
+
+        if (firstPerson == null)
+        {
+            Debug.LogError("[LegacyMissionConverter] 아이템 데이터에 firstPersonPrefab 이 없습니다.");
+            return null;
+        }
+
+        firstPerson.objectReferenceValue = firstPersonPrefab;
+        so.ApplyModifiedPropertiesWithoutUndo();
+        EditorUtility.SetDirty(data);
+
+        Debug.Log($"[LegacyMissionConverter] 청소기 아이템 데이터 준비 완료: {VacuumToolDataPath}");
+        return data;
+    }
+
+    private static bool BuildVacuumTool(GameObject copy, Object itemData)
+    {
+        MonoBehaviour oldItem = FindLegacy(copy, "VacuumItem");
+
+        if (oldItem == null)
+        {
+            Debug.LogError("[LegacyMissionConverter] 청소기 프리팹에서 VacuumItem 을 찾지 못했습니다.");
+            return false;
+        }
+
+        SerializedObject oldSO = new SerializedObject(oldItem);
+        VacuumTool tool = oldItem.gameObject.AddComponent<VacuumTool>();
+        SerializedObject so = new SerializedObject(tool);
+        so.FindProperty("data").objectReferenceValue = itemData;
+        CopyReference(oldSO, "mouth", so, "mouth");
+        CopyFloat(oldSO, "suctionDuration", so, "suctionDuration");
+        so.ApplyModifiedPropertiesWithoutUndo();
+
+        Object.DestroyImmediate(oldItem);
+        return true;
+    }
+
+    // ═════════════════════════════════════════════════════════════
     //  부품 · 콜라이더 · 외곽선
     // ═════════════════════════════════════════════════════════════
 
@@ -769,8 +993,9 @@ public static class LegacyMissionConverter
                 }
             }
 
-            // 클릭 · F 홀드 · 드래그(끄는 부품) · 놓는 곳 중 하나면 입력을 받을 수 있다 (2b 명세 3장)
-            if (resolved is IInteractable || resolved is IHoldInteractable || resolved is IDragInteractable || resolved is StationDropTarget)
+            // 클릭 · F 홀드 · 드래그(끄는 부품) · 놓는 곳 · 아이템 우클릭 대상 중 하나면 입력을 받을 수 있다 (2b 3장, 2c F10)
+            if (resolved is IInteractable || resolved is IHoldInteractable || resolved is IDragInteractable
+                || resolved is StationDropTarget || resolved is IItemUseTarget)
                 continue;
 
             string resolvedName = resolved != null ? resolved.GetType().Name : "없음";

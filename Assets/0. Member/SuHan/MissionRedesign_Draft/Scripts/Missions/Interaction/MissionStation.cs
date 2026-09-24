@@ -73,6 +73,13 @@ namespace TrustNoOne.Missions
         private bool subscribedToReset;
         private bool? collidersEnabled;
 
+        /// <summary>
+        /// 이 스테이션이 지금 이 PC 의 플레이어에게 상호작용 대상인가 (= 잠기지 않았고 내 미션). 연출용 — 규칙은 호스트가 따로 강제한다.
+        /// 매니저가 준비되기 전에는 true (콜라이더를 건드리지 않던 이전 동작과 같은 의미).
+        /// 하위 클래스가 부품 콜라이더를 자기 조건과 합쳐서 켜고 끌 때 쓴다 (2c 명세 F8 — 필터 먼지: 내 미션 && 안 치움).
+        /// </summary>
+        protected bool LocalInteractionAllowed { get; private set; } = true;
+
         public NetworkObject TargetObject => Object;
         public MissionEventType CompletionEvent => completionEvent;
         public CompletionPolicy Policy => completionPolicy;
@@ -339,13 +346,15 @@ namespace TrustNoOne.Missions
         {
             EnsureManager();
 
-            if (interactionColliders == null || interactionColliders.Length == 0)
-                return;
-
             if (manager == null || manager.Object == null || !manager.Object.IsValid || manager.Client == null || !manager.Initialized)
                 return;
 
-            bool shouldEnable = !Completed && manager.Client.IsEventRelevant(completionEvent);
+            LocalInteractionAllowed = !Completed && manager.Client.IsEventRelevant(completionEvent);
+
+            if (interactionColliders == null || interactionColliders.Length == 0)
+                return;
+
+            bool shouldEnable = LocalInteractionAllowed;
 
             if (collidersEnabled == shouldEnable)
                 return;
