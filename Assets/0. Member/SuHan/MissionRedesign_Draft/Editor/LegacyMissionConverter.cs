@@ -13,8 +13,10 @@ using UnityEngine;
 /// [공통 틀 — Convert] 원본 로드 → 복사본 생성 → 미니게임별 Build → 검증 2가지 → 저장 → 복사본 파괴.
 ///  검증: ① 옛 스크립트 · Missing Script 가 남지 않았는가 ② 모든 콜라이더를 조준하면 입력을 받는 대상이 잡히는가.
 ///  하나라도 실패하면 저장하지 않는다.
+///  공통 후처리: 조준 문구(MissionPrompt.promptObject)가 있으면 PromptBillboard 를 붙여 항상 보는 사람 쪽을 향하게 한다
+///  (옛 밸브 문구가 방향 고정이라 배치에 따라 뒤집혀 보였음 — 2b 테스트에서 발견).
 /// [조준 외곽선] MissionOutlineBuilder 로 붙인다 (1단계 사용자 요청). 부품마다 MissionPrompt 를 두면 조준한 부품만 켜진다 (2a 명세 P7).
-/// [변환 목록] 1단계 발전기 / 2a 밸브 · 안테나 · 차단기. 미니게임을 이식할 때마다 Build… 와 Convert… 를 하나씩 추가한다.
+/// [변환 목록] 1단계 발전기 / 2a 밸브 · 안테나 · 차단기 / 2b 전선. 미니게임을 이식할 때마다 Build… 와 Convert… 를 하나씩 추가한다.
 /// </summary>
 public static class LegacyMissionConverter
 {
@@ -25,6 +27,7 @@ public static class LegacyMissionConverter
     public const string ValveStationPath = OutputFolder + "/Valve_Station.prefab";
     public const string AntennaStationPath = OutputFolder + "/Antenna_Station.prefab";
     public const string BreakerStationPath = OutputFolder + "/Breaker_Station.prefab";
+    public const string WiringStationPath = OutputFolder + "/Wiring_Station.prefab";
 
     // 개인 미니게임 공통 거리 (2a 명세 3장). 발전기는 1단계 값 3.5 유지.
     private const float PersonalInteractRange = 3f;
@@ -33,6 +36,7 @@ public static class LegacyMissionConverter
     {
         "MissionMiniGameBase", "GeneratorMission", "MissionButton",
         "ValveMission", "AntennaMission", "AntennaLockButton", "BreakerMission", "BreakerLever",
+        "WiringMission", "WireStartPoint", "WireEndPoint", "WireConnectionVisual", "WiringLever",
     };
 
     [MenuItem("SuHan/Convert Legacy Mission Prefabs")]
@@ -42,6 +46,7 @@ public static class LegacyMissionConverter
         Report("밸브", ConvertValve());
         Report("안테나", ConvertAntenna());
         Report("차단기", ConvertBreaker());
+        Report("전선", ConvertWiring());
         AssetDatabase.SaveAssets();
 
         // 새 NetworkObject 프리팹을 Fusion 네트워크 프리팹 목록에 즉시 반영 (안 하면 Runner.Spawn 이 실패한다)
@@ -65,6 +70,9 @@ public static class LegacyMissionConverter
 
     public static NetworkObject ConvertBreaker() =>
         Convert("차단기", LegacyFolder + "/CircuitBreaker_Prefab.prefab", "Breaker_Station", BreakerStationPath, BuildBreaker);
+
+    public static NetworkObject ConvertWiring() =>
+        Convert("전선", LegacyFolder + "/Wiring/Wiring_Prefab.prefab", "Wiring_Station", WiringStationPath, BuildWiring);
 
     // ═════════════════════════════════════════════════════════════
     //  공통 틀
@@ -90,6 +98,8 @@ public static class LegacyMissionConverter
         {
             if (!build(copy))
                 return null;
+
+            AddPromptBillboards(copy);
 
             if (!VerifyNoLegacyScripts(copy) || !VerifyTargetResolution(copy))
                 return null;
@@ -344,6 +354,199 @@ public static class LegacyMissionConverter
     }
 
     // ═════════════════════════════════════════════════════════════
+    //  2b: 전선 (시작점 드래그 → 같은 색 도착점 → 레버)
+    // ═════════════════════════════════════════════════════════════
+
+    private static bool BuildWiring(GameObject copy)
+    {
+        const int wireCount = WiringRules.WireCount;
+
+        MonoBehaviour oldMission = FindLegacy(copy, "WiringMission");
+        MonoBehaviour oldLever = FindLegacy(copy, "WiringLever");
+        List<MonoBehaviour> oldStarts = FindAllLegacy(copy, "WireStartPoint");
+        List<MonoBehaviour> oldEnds = FindAllLegacy(copy, "WireEndPoint");
+
+        if (oldMission == null || oldLever == null || oldStarts.Count != wireCount || oldEnds.Count != wireCount)
+        {
+            Debug.LogError($"[LegacyMissionConverter] 전선 프리팹 구성이 다릅니다 (WiringMission · WiringLever 1개씩, 시작점 · 도착점 {wireCount}개씩 필요).");
+            return false;
+        }
+
+        SerializedObject oldSO = new SerializedObject(oldMission);
+
+        WiringStation station = copy.AddComponent<WiringStation>();
+        SerializedObject so = ConfigureStation(station, MissionEventType.WiresConnected, CompletionPolicy.ResetForNext, PersonalInteractRange);
+        CopyColliders(oldSO, so, copy);
+
+        WireVisual[] wires = new WireVisual[wireCount];
+        Transform[] endAnchors = new Transform[wireCount];
+        int[] endColors = new int[wireCount];
+        bool[] endSeen = new bool[wireCount];
+        List<MonoBehaviour> oldLines = new List<MonoBehaviour>();
+
+        // 시작점: WireStartPoint → StationDragPart, 그 시작점의 WireConnectionVisual → WireVisual
+        foreach (MonoBehaviour oldStart in oldStarts)
+        {
+            SerializedObject startSO = new SerializedObject(oldStart);
+            int index = startSO.FindProperty("index").intValue;
+
+            if (index < 0 || index >= wireCount || wires[index] != null)
+            {
+                Debug.LogError($"[LegacyMissionConverter] 전선 시작점 '{oldStart.name}' 의 번호 {index} 가 범위를 벗어나거나 중복입니다.");
+                return false;
+            }
+
+            MonoBehaviour oldLine = startSO.FindProperty("connectionVisual").objectReferenceValue as MonoBehaviour;
+
+            if (oldLine == null)
+            {
+                Debug.LogError($"[LegacyMissionConverter] 전선 시작점 '{oldStart.name}' 에 connectionVisual 이 없습니다.");
+                return false;
+            }
+
+            SerializedObject lineSO = new SerializedObject(oldLine);
+            WireVisual wire = oldLine.gameObject.AddComponent<WireVisual>();
+            SerializedObject wireSO = new SerializedObject(wire);
+
+            // 꽂이 색 (옛 WireStartPoint). anchor 가 비었으면 옛 코드처럼 시작점 자신
+            if (startSO.FindProperty("anchor").objectReferenceValue != null)
+                CopyReference(startSO, "anchor", wireSO, "startAnchor");
+            else
+                wireSO.FindProperty("startAnchor").objectReferenceValue = oldStart.transform;
+
+            CopyReference(startSO, "colorRenderer", wireSO, "plugRenderer");
+            CopyInt(startSO, "materialIndex", wireSO, "plugMaterialIndex");
+            CopyString(startSO, "colorProperty", wireSO, "plugColorProperty");
+
+            // 전선 메시 (옛 WireConnectionVisual). lengthAxis 는 옛 WireMeshAxis 와 같은 값
+            CopyReference(lineSO, "wireMesh", wireSO, "wireMesh");
+            CopyReference(lineSO, "wireMeshFilter", wireSO, "wireMeshFilter");
+            CopyReference(lineSO, "wireRenderer", wireSO, "wireRenderer");
+            CopyInt(lineSO, "lengthAxis", wireSO, "lengthAxis");
+            CopyReference(lineSO, "wirePlane", wireSO, "wirePlane");
+            CopyString(lineSO, "colorProperty", wireSO, "wireColorProperty");
+            CopyFloat(lineSO, "extraLength", wireSO, "extraLength");
+            CopyFloat(lineSO, "followSpeed", wireSO, "followSpeed");
+            wireSO.ApplyModifiedPropertiesWithoutUndo();
+
+            wires[index] = wire;
+            oldLines.Add(oldLine);
+
+            GameObject startObject = oldStart.gameObject;
+            StationDragPart dragPart = startObject.AddComponent<StationDragPart>();
+            SerializedObject dragSO = new SerializedObject(dragPart);
+            dragSO.FindProperty("station").objectReferenceValue = station;
+            dragSO.FindProperty("partIndex").intValue = index;
+            dragSO.FindProperty("preview").objectReferenceValue = wire;
+            dragSO.ApplyModifiedPropertiesWithoutUndo();
+
+            foreach (Collider c in startObject.GetComponents<Collider>())
+                AddCollider(so, c);
+
+            // 외곽선: 꽂이 오브젝트에는 자기 메시가 없고, 꽂이 모양은 패널 메시의 서브메시(= 색을 칠하는 재질 번호)다.
+            //  그 서브메시만 떼어 외곽선을 만든다 → 조준한 줄만 빛난다 (2b 테스트 피드백, 명세 W8)
+            Renderer plugRenderer = startSO.FindProperty("colorRenderer").objectReferenceValue as Renderer;
+            MeshFilter plugMesh = plugRenderer != null ? plugRenderer.GetComponent<MeshFilter>() : null;
+            MissionOutlineBuilder.AttachSubmesh(startObject, plugMesh, startSO.FindProperty("materialIndex").intValue, $"WirePlug_{index}");
+        }
+
+        // 도착점: WireEndPoint → StationDropTarget, 색 · 위치는 스테이션 배열로
+        foreach (MonoBehaviour oldEnd in oldEnds)
+        {
+            SerializedObject endSO = new SerializedObject(oldEnd);
+            int index = endSO.FindProperty("index").intValue;
+
+            if (index < 0 || index >= wireCount || endSeen[index])
+            {
+                Debug.LogError($"[LegacyMissionConverter] 전선 도착점 '{oldEnd.name}' 의 번호 {index} 가 범위를 벗어나거나 중복입니다.");
+                return false;
+            }
+
+            endSeen[index] = true;
+            endColors[index] = endSO.FindProperty("wireColor").intValue;
+
+            Transform anchor = endSO.FindProperty("anchor").objectReferenceValue as Transform;
+            endAnchors[index] = anchor != null ? anchor : oldEnd.transform;
+
+            GameObject endObject = oldEnd.gameObject;
+            StationDropTarget dropTarget = endObject.AddComponent<StationDropTarget>();
+            SerializedObject dropSO = new SerializedObject(dropTarget);
+            dropSO.FindProperty("station").objectReferenceValue = station;
+            dropSO.FindProperty("partIndex").intValue = index;
+            dropSO.ApplyModifiedPropertiesWithoutUndo();
+
+            foreach (Collider c in endObject.GetComponents<Collider>())
+                AddCollider(so, c);
+
+            // 외곽선 없음: 도착점은 따로 뗄 모양이 없다. 빈 프롬프트를 둬서 패널 전체가 빛나지 않게 한다 (W8)
+            MissionOutlineBuilder.AttachEmpty(endObject);
+        }
+
+        // 레버: WiringLever → StationButton(LeverPart). 당겨졌다 돌아오는 연출은 pressRotation (W7)
+        SerializedObject oldLeverSO = new SerializedObject(oldLever);
+        GameObject leverObject = oldLever.gameObject;
+        Transform leverTransform = oldLeverSO.FindProperty("leverTransform").objectReferenceValue as Transform;
+
+        if (leverTransform == null)
+            leverTransform = leverObject.transform;
+
+        StationButton lever = AddStationButton(leverObject, station, WiringStation.LeverPart);
+        SerializedObject leverSO = new SerializedObject(lever);
+        leverSO.FindProperty("buttonVisual").objectReferenceValue = leverTransform;
+
+        Vector3 current = leverTransform.localEulerAngles;
+        Vector3 completed = oldLeverSO.FindProperty("completedRotation").vector3Value;
+        leverSO.FindProperty("pressRotation").vector3Value = new Vector3(
+            Mathf.DeltaAngle(current.x, completed.x),
+            Mathf.DeltaAngle(current.y, completed.y),
+            Mathf.DeltaAngle(current.z, completed.z));
+
+        CopyFloat(oldLeverSO, "rotateDuration", leverSO, "pressTime");
+        CopyFloat(oldLeverSO, "rotateDuration", leverSO, "returnTime");
+        leverSO.ApplyModifiedPropertiesWithoutUndo();
+
+        foreach (Collider c in leverObject.GetComponents<Collider>())
+            AddCollider(so, c);
+
+        AttachPartOutline(leverObject);
+
+        // 스테이션 배열 채우기 (인덱스 = 부품 번호)
+        SerializedProperty wireList = so.FindProperty("wires");
+        SerializedProperty anchorList = so.FindProperty("endAnchors");
+        SerializedProperty colorList = so.FindProperty("endColors");
+        wireList.ClearArray();
+        anchorList.ClearArray();
+        colorList.ClearArray();
+
+        for (int i = 0; i < wireCount; i++)
+        {
+            wireList.InsertArrayElementAtIndex(i);
+            wireList.GetArrayElementAtIndex(i).objectReferenceValue = wires[i];
+            anchorList.InsertArrayElementAtIndex(i);
+            anchorList.GetArrayElementAtIndex(i).objectReferenceValue = endAnchors[i];
+            colorList.InsertArrayElementAtIndex(i);
+            colorList.GetArrayElementAtIndex(i).intValue = endColors[i];
+        }
+
+        so.ApplyModifiedPropertiesWithoutUndo();
+
+        // 패널 전체 외곽선은 붙이지 않는다: 어느 부품을 조준했는지 알 수 없게 된다 (W8). 모든 부품이 자기 프롬프트를 가진다.
+
+        foreach (MonoBehaviour old in oldStarts)
+            Object.DestroyImmediate(old);
+
+        foreach (MonoBehaviour old in oldEnds)
+            Object.DestroyImmediate(old);
+
+        foreach (MonoBehaviour old in oldLines)
+            Object.DestroyImmediate(old);
+
+        Object.DestroyImmediate(oldLever);
+        Object.DestroyImmediate(oldMission);
+        return true;
+    }
+
+    // ═════════════════════════════════════════════════════════════
     //  부품 · 콜라이더 · 외곽선
     // ═════════════════════════════════════════════════════════════
 
@@ -384,6 +587,37 @@ public static class LegacyMissionConverter
             return false;
 
         return new SerializedObject(prompt).FindProperty("highlightObject").objectReferenceValue != null;
+    }
+
+    /// <summary>조준 문구 오브젝트(MissionPrompt.promptObject)마다 PromptBillboard 를 붙인다 (이미 있으면 그대로).</summary>
+    private static void AddPromptBillboards(GameObject root)
+    {
+        foreach (MissionPrompt prompt in root.GetComponentsInChildren<MissionPrompt>(true))
+        {
+            GameObject promptObject = new SerializedObject(prompt).FindProperty("promptObject").objectReferenceValue as GameObject;
+
+            if (promptObject != null && promptObject.GetComponent<PromptBillboard>() == null)
+                promptObject.AddComponent<PromptBillboard>();
+        }
+    }
+
+    /// <summary>
+    /// 부품 자신에게 메시가 있으면 그 메시로 부품 전용 외곽선을 붙인다 (조준한 부품만 켜짐, 2a P7).
+    /// 자식 메시는 쓰지 않는다 — 전선처럼 자식에 숨겨진 메시가 있으면 엉뚱한 외곽선이 된다.
+    /// 메시가 없으면 외곽선 없이 둔다 (빈 프롬프트 — 부모 스테이션 외곽선이 대신 켜지지 않게).
+    /// </summary>
+    private static void AttachPartOutline(GameObject part)
+    {
+        MeshFilter meshFilter = part.GetComponent<MeshFilter>();
+
+        if (meshFilter == null || meshFilter.sharedMesh == null)
+        {
+            Debug.LogWarning($"[LegacyMissionConverter] 부품 '{part.name}' 에 메시가 없어 외곽선 없이 둡니다.");
+            MissionOutlineBuilder.AttachEmpty(part);
+            return;
+        }
+
+        MissionOutlineBuilder.Attach(part, part);
     }
 
     // ─── 값 옮기기 (옛 값이 비어 있으면 경고만 하고 새 컴포넌트의 기본값을 둔다) ───
@@ -438,6 +672,20 @@ public static class LegacyMissionConverter
         }
 
         to.FindProperty(toName).vector3Value = source.vector3Value;
+    }
+
+    private static void CopyInt(SerializedObject from, string fromName, SerializedObject to, string toName)
+    {
+        SerializedProperty source = from.FindProperty(fromName);
+
+        if (source == null)
+        {
+            Debug.LogWarning($"[LegacyMissionConverter] 옛 값 '{fromName}' 이(가) 없어 기본값을 씁니다.");
+            return;
+        }
+
+        // enum 도 intValue 로 옮긴다 (값이 같은 enum 끼리 — 예: WireMeshAxis → WireAxis)
+        to.FindProperty(toName).intValue = source.intValue;
     }
 
     /// <summary>옛 interactionColliders 를 옮기고, 비어 있으면 fallbackRoot 아래 콜라이더 전부를 쓴다.</summary>
@@ -501,7 +749,7 @@ public static class LegacyMissionConverter
     /// <summary>
     /// 각 콜라이더를 조준했을 때 실제로 무엇이 잡히는지 PlayerTargetDetector 와 같은 규칙으로 확인한다:
     /// 콜라이더에서 위로 올라가며 "처음 만나는 ITargetable" 이 조준 대상이다.
-    /// 그 대상이 클릭(IInteractable)도 F 홀드(IHoldInteractable)도 받지 못하면, 조준은 되는데 아무 입력도 안 먹는 상태가 된다.
+    /// 그 대상이 클릭 · F 홀드 · 드래그를 받지 못하고 놓는 곳도 아니면, 조준은 되는데 아무 입력도 안 먹는 상태가 된다.
     /// (1단계에서 실제로 겪은 문제: 루트의 GeneratorStation 이 버튼보다 먼저 잡혀 클릭이 무시됨)
     /// </summary>
     private static bool VerifyTargetResolution(GameObject root)
@@ -521,7 +769,8 @@ public static class LegacyMissionConverter
                 }
             }
 
-            if (resolved is IInteractable || resolved is IHoldInteractable)
+            // 클릭 · F 홀드 · 드래그(끄는 부품) · 놓는 곳 중 하나면 입력을 받을 수 있다 (2b 명세 3장)
+            if (resolved is IInteractable || resolved is IHoldInteractable || resolved is IDragInteractable || resolved is StationDropTarget)
                 continue;
 
             string resolvedName = resolved != null ? resolved.GetType().Name : "없음";

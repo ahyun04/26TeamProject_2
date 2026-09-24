@@ -154,6 +154,33 @@ namespace TrustNoOne.Missions
                 OnPartPressed(info.Source, partIndex);
         }
 
+        /// <summary>
+        /// 끄는 부품(StationDragPart)을 놓는 곳(StationDropTarget)에 놓았다고 호스트에 알린다 (2b 명세 2-1).
+        /// PressPart 와 같은 모양: 수행자는 RpcInfo.Source 로 정해지고, 실제 판정은 호스트의 OnPartsConnected 가 한다.
+        /// </summary>
+        public void ConnectParts(int fromPart, int toPart)
+        {
+            if (Object == null || !Object.IsValid)
+                return;
+
+            RPC_ConnectParts(fromPart, toPart);
+        }
+
+        [Rpc(RpcSources.All, RpcTargets.StateAuthority, HostMode = RpcHostMode.SourceIsHostPlayer)]
+        private void RPC_ConnectParts(int fromPart, int toPart, RpcInfo info = default)
+        {
+            if (!info.Source.IsNone)
+                OnPartsConnected(info.Source, fromPart, toPart);
+        }
+
+        /// <summary>
+        /// 클라이언트: 이 끄는 부품의 미리보기를 시작해도 되는가. 연출용이다 — 실제 허용 여부는 호스트가 OnPartsConnected 에서 다시 판정한다.
+        /// </summary>
+        public virtual bool CanDragPart(int partIndex)
+        {
+            return Object != null && Object.IsValid && !Completed;
+        }
+
         // ═════════════════════════════════════════════════════════════
         //  호스트: 사용 세션
         // ═════════════════════════════════════════════════════════════
@@ -362,6 +389,9 @@ namespace TrustNoOne.Missions
 
         /// <summary>호스트: 부품(버튼·레버)이 눌렸을 때. 권한 검사는 자동으로 하지 않는다 — 하위 클래스가 TryBeginOperation 또는 Operator == actor 로 판단.</summary>
         protected virtual void OnPartPressed(PlayerRef actor, int partIndex) { }
+
+        /// <summary>호스트: 끄는 부품(fromPart)을 놓는 곳(toPart)에 놓았을 때. 권한 검사는 자동으로 하지 않는다 (OnPartPressed 와 같음).</summary>
+        protected virtual void OnPartsConnected(PlayerRef actor, int fromPart, int toPart) { }
 
         /// <summary>호스트: 원래 상태로 되돌릴 때 자기 [Networked] 상태를 초기화한다.</summary>
         protected virtual void OnResetHost() { }
