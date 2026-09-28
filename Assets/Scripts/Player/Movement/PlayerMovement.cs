@@ -46,6 +46,13 @@ public class PlayerMovement : NetworkBehaviour
 
     public override void FixedUpdateNetwork()
     {
+        if (health != null && health.IsDead)
+        {
+            stamina?.updateStamina(default, false);
+            if (HasStateAuthority || HasInputAuthority) simpleKCC.SetActive(false);
+            return;
+        }
+
         RoomManager room = RoomManager.Instance;
         bool isStarting = room != null && room.Object != null && room.Object.IsValid &&
                           room.Runner == Runner && room.CurrentRoomState == RoomManager.RoomState.Starting;

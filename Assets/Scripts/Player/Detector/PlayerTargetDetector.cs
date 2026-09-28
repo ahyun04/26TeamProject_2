@@ -18,10 +18,12 @@ public class PlayerTargetDetector : NetworkBehaviour
 
     private Collider lastCollider;
     private ITargetable lastResolvedTarget;
+    private PlayerHealth health; //사망과 탈출 후 상호작용 표시 차단
 
 
     public override void Spawned()
     {
+        health = GetComponent<PlayerHealth>();
         enabled = HasInputAuthority;
 
         if (!enabled)
@@ -46,6 +48,11 @@ public class PlayerTargetDetector : NetworkBehaviour
     /// </summary>
     public ITargetable DetectNow()
     {
+        if (Object == null || !Object.IsValid || (health != null && !health.CanAct))
+        {
+            clearTarget();
+            return null;
+        }
         if (playerCamera == null)
             return null;
 
@@ -116,6 +123,12 @@ public class PlayerTargetDetector : NetworkBehaviour
         lastCollider = null;
 
         lastResolvedTarget = null;
+    }
+
+    internal void clearTarget() //상호작용 대상과 안내 표시 초기화
+    {
+        ClearColliderCache();
+        SetTarget(null);
     }
 
 

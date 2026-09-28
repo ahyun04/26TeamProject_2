@@ -21,6 +21,21 @@ public class PlayerCameraController : NetworkBehaviour
 
     private SimpleKCC _kcc;
     private LockdownProtocol.Networking.SpectatorManager _spectator;
+    private Vector3 aimOffset; //카메라의 플레이어 기준 조준 위치
+
+    internal bool tryGetSimulationAimRay(out Ray ray) //호스트가 처리한 시점으로 공격 방향 계산
+    {
+        ray = default;
+        if (_kcc == null || Object == null || !Object.IsValid) return false;
+        Vector3 origin = _kcc.Position + _kcc.TransformRotation * aimOffset;
+        ray = new Ray(origin, Quaternion.Euler(_kcc.GetLookRotation()) * Vector3.forward);
+        return true;
+    }
+
+    internal Vector3 getSimulationEyePosition() //카메라가 벽 안으로 들어갔는지 검사할 기준점
+    {
+        return _kcc.Position + Vector3.up * aimOffset.y;
+    }
 
     /// <summary>
     /// 이 클라이언트의 로컬 카메라 위치를 다른 시스템(음성 거리 감쇠 등)이 참조할 수 있게 노출.
@@ -34,6 +49,7 @@ public class PlayerCameraController : NetworkBehaviour
     {
         _kcc = GetComponent<SimpleKCC>();
         _spectator = GetComponent<LockdownProtocol.Networking.SpectatorManager>();
+        aimOffset = transform.InverseTransformPoint(playerCamera.transform.position);
 
         bool isLocalPlayer = Object.HasInputAuthority;
 
@@ -63,10 +79,11 @@ public class PlayerCameraController : NetworkBehaviour
         // LateUpdate를 쓰는 이유: KCC는 Render() 콜백에서 매 렌더 프레임마다 보간된 위치/회전을
         // 먼저 갱신하는데, LateUpdate는 그 이후에 실행되므로 최신 보간 결과를 반영할 수 있다.
         // (Fusion 공식 Simple KCC 샘플과 동일한 패턴)
-        if (Object == null || !Object.HasInputAuthority) return;
+        if (Object == null || !Object.IsValid || !Object.HasInputAuthority) return;
         if (_spectator != null && _spectator.IsSpectator)
         {
-            NetworkObject target = Runner.GetPlayerObject(_spectator.CurrentSpectateTarget);
+            NetworkObject target = _spectator.CurrentSpectateTarget != PlayerRef.None
+                ? Runner.GetPlayerObject(_spectator.CurrentSpectateTarget) : null;
             PlayerCameraController targetCamera = target != null ? target.GetComponent<PlayerCameraController>() : null;
             if (targetCamera != null && targetCamera.playerCamera != null && targetCamera._kcc != null)
             {

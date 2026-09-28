@@ -43,6 +43,15 @@ public class PlayerHealth : NetworkBehaviour
     public event Action<float, float> HealthChanged; // (current, max)
     public event Action Died;
     public event Action Escaped;
+    public event Action Damaged; //피격 시 진행 중인 로컬 상호작용 중단
+
+    [Networked, OnChangedRender(nameof(handleDamage))]
+    private int damageSequence { get; set; } //연속 피격과 회복이 같은 프레임에 발생해도 피격 전달
+
+    private void handleDamage() //모든 클라이언트에 피격 알림
+    {
+        Damaged?.Invoke();
+    }
 
     public override void Spawned()
     {
@@ -61,6 +70,7 @@ public class PlayerHealth : NetworkBehaviour
         if (IsDead || IsEscaped || amount <= 0f) return;
 
         CurrentHealth = Mathf.Max(0f, CurrentHealth - amount);
+        damageSequence++;
 
         if (CurrentHealth <= 0f)
         {

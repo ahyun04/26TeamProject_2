@@ -14,15 +14,19 @@ public class PlayerInteraction : NetworkBehaviour
 
     private IDragInteractable activeDragTarget;
     private PlayerHealth health;
+    private LockdownProtocol.Networking.KillManager combat; //좌클릭 공격 입력과 상호작용 구분
 
 
     public override void Spawned()
     {
         health = GetComponent<PlayerHealth>();
+        combat = GetComponent<LockdownProtocol.Networking.KillManager>();
         enabled = HasInputAuthority;
 
         if (!enabled)
             return;
+
+        if (health != null) health.Damaged += cancelInteraction;
 
         if (targetDetector == null)
             targetDetector = GetComponent<PlayerTargetDetector>();
@@ -43,7 +47,8 @@ public class PlayerInteraction : NetworkBehaviour
             EndHoldInteraction();
             return;
         }
-        HandleLeftMouseInteraction();
+        if (combat == null || !combat.usesWeaponAttackInput())
+            HandleLeftMouseInteraction();
 
         UpdateDragInteraction();
 
@@ -148,7 +153,18 @@ public class PlayerInteraction : NetworkBehaviour
 
     private void OnDisable()
     {
+        cancelInteraction();
+    }
+
+    internal void cancelInteraction() //피격과 공격으로 진행 중인 상호작용 취소
+    {
         CancelDragInteraction();
         EndHoldInteraction();
+    }
+
+    public override void Despawned(NetworkRunner runner, bool hasState) //피격 이벤트 구독 해제
+    {
+        if (health != null) health.Damaged -= cancelInteraction;
+        cancelInteraction();
     }
 }

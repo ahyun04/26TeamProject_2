@@ -24,6 +24,16 @@ public class PlayerItemController : NetworkBehaviour
     private NetworkObject displayedItem; //현재 1인칭 표시를 적용한 아이템
     private bool presentationInitialized; //장착 표시 초기화 여부
 
+    internal bool tryGetEquippedWeapon(out ItemData weapon) //현재 플레이어가 실제로 소유한 무기 조회
+    {
+        weapon = null;
+        if (Object == null || !Object.IsValid || CurrentItemObject == null || !CurrentItemObject.IsValid) return false;
+        ItemBase item = CurrentItemObject.GetComponentInChildren<ItemBase>(true);
+        if (item == null || item.HolderObject != Object || item.Data == null || !item.Data.IsWeapon) return false;
+        weapon = item.Data;
+        return true;
+    }
+
 
     public override void Spawned()
     {

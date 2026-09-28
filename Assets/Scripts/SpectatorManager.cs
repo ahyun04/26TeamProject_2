@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Fusion;
+using LockdownProtocol.Lobby;
 using UnityEngine;
 
 namespace LockdownProtocol.Networking
@@ -13,9 +14,26 @@ namespace LockdownProtocol.Networking
         [Networked] public PlayerRef CurrentSpectateTarget { get; private set; }
         [Networked] private TickTimer TransitionTimer { get; set; }
 
+        private PlayerHealth health; //관전 전환을 요청한 플레이어의 생존 상태
+
+        public override void Spawned() //생존 상태 참조 연결
+        {
+            health = GetComponent<PlayerHealth>();
+        }
+
+        private void Update() //관전 중 좌클릭은 다음 대상, 우클릭은 이전 대상
+        {
+            if (Object == null || !Object.IsValid || !HasInputAuthority || !IsSpectator ||
+                SessionDisconnectUIComponent.IsOpen || Cursor.lockState != CursorLockMode.Locked ||
+                (LobbyRoomUI.Instance != null && LobbyRoomUI.Instance.BlocksPlayerInput)) return;
+
+            if (Input.GetMouseButtonDown(0)) RPC_ChangeSpectator(true);
+            else if (Input.GetMouseButtonDown(1)) RPC_ChangeSpectator(false);
+        }
+
         public override void FixedUpdateNetwork()
         {
-            if (!Object.HasStateAuthority) return;
+            if (!Object.HasStateAuthority || health == null || !health.IsDead) return;
 
             if (!IsSpectator && TransitionTimer.IsRunning && TransitionTimer.Expired(Runner))
             {
@@ -30,7 +48,8 @@ namespace LockdownProtocol.Networking
 
         public void BeginSpectatorTransition()
         {
-            if (!Object.HasStateAuthority) return;
+            if (!Object.HasStateAuthority || health == null || !health.IsDead ||
+                IsSpectator || TransitionTimer.IsRunning) return;
             TransitionTimer = TickTimer.CreateFromSeconds(Runner, spectatorDelaySeconds);
         }
 
@@ -41,17 +60,12 @@ namespace LockdownProtocol.Networking
 
             var living = GetLivingPlayers();
             CurrentSpectateTarget = living.Count > 0 ? living[0] : PlayerRef.None;
-
-            if (living.Count == 0)
-            {
-                // 결과 화면 시스템 나오면 연결
-                Debug.Log($"[SpectatorManager] {name} 관전 가능한 플레이어 없음 - 결과 화면 전환 필요 (미구현)");
-            }
         }
 
         private void ValidateSpectateTarget()
         {
-            var targetObj = Runner.GetPlayerObject(CurrentSpectateTarget);
+            var targetObj = CurrentSpectateTarget != PlayerRef.None
+                ? Runner.GetPlayerObject(CurrentSpectateTarget) : null;
             var targetHealth = targetObj != null ? targetObj.GetComponent<PlayerHealth>() : null;
 
             if (targetHealth != null && !targetHealth.IsDead && !targetHealth.IsEscaped) return;
@@ -64,7 +78,7 @@ namespace LockdownProtocol.Networking
         [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
         public void RPC_ChangeSpectator(bool next)
         {
-            if (!HasStateAuthority || !IsSpectator) return;
+            if (!HasStateAuthority || !IsSpectator || health == null || !health.IsDead) return;
             var living = GetLivingPlayers();
             if (living.Count == 0) return;
 
