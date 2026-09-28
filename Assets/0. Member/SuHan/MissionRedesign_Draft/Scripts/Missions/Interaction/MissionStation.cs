@@ -144,21 +144,24 @@ namespace TrustNoOne.Missions
         //  부품 입력 (StationButton 등이 호출)
         // ═════════════════════════════════════════════════════════════
 
-        /// <summary>부품이 눌렸다고 호스트에 알린다. 수행자는 RpcInfo.Source 로 정해진다 (사칭 방지).</summary>
+        /// <summary>
+        /// 부품이 눌렸다고 호스트에 알린다. 수행자는 RpcInfo.Source 로 정해진다 (사칭 방지).
+        /// 누른 사람 화면의 시각(Object.RenderTime)을 함께 보낸다 — 타이밍 판정이 필요한 스테이션이 그 시각의 상태로 판정한다 (2d 명세 PR4 · PR5).
+        /// </summary>
         public void PressPart(int partIndex)
         {
             if (Object == null || !Object.IsValid)
                 return;
 
-            RPC_PressPart(partIndex);
+            RPC_PressPart(partIndex, Object.RenderTime);
         }
 
         /// <summary>SourceIsHostPlayer: 호스트 본인이 눌러도 Source 가 호스트 플레이어로 채워진다 (옛 ValveMission 에서 검증된 패턴).</summary>
         [Rpc(RpcSources.All, RpcTargets.StateAuthority, HostMode = RpcHostMode.SourceIsHostPlayer)]
-        private void RPC_PressPart(int partIndex, RpcInfo info = default)
+        private void RPC_PressPart(int partIndex, float pressTime, RpcInfo info = default)
         {
             if (!info.Source.IsNone)
-                OnPartPressed(info.Source, partIndex);
+                OnPartPressedAt(info.Source, partIndex, pressTime);
         }
 
         /// <summary>
@@ -303,6 +306,9 @@ namespace TrustNoOne.Missions
 
             EnsureManager();
 
+            // 조작 여부와 상관없이 매 틱 (예: 압력 — 잘못 눌러 멈춘 피스톤 재개, 2d 명세 PR12)
+            OnHostTickAlways();
+
             if (Operator.IsNone)
                 return;
 
@@ -393,11 +399,20 @@ namespace TrustNoOne.Missions
         /// <summary>호스트: 사용 중 매 틱 (취소 검사를 통과한 뒤에만 불림).</summary>
         protected virtual void OnHostTick(PlayerRef actor) { }
 
+        /// <summary>호스트: 매 틱, 조작 중이 아니어도 불린다 (OnHostTick 은 조작 중에만). 2d 명세 PR12.</summary>
+        protected virtual void OnHostTickAlways() { }
+
         /// <summary>호스트: 사용이 취소됐을 때 (진행 상태 되돌리기).</summary>
         protected virtual void OnOperationCanceled(PlayerRef actor) { }
 
         /// <summary>호스트: 부품(버튼·레버)이 눌렸을 때. 권한 검사는 자동으로 하지 않는다 — 하위 클래스가 TryBeginOperation 또는 Operator == actor 로 판단.</summary>
         protected virtual void OnPartPressed(PlayerRef actor, int partIndex) { }
+
+        /// <summary>
+        /// 호스트: 부품이 눌렸을 때 + 누른 사람 화면의 시각. 기본은 시각을 무시하고 OnPartPressed 를 부른다 (기존 스테이션 동작 그대로).
+        /// 타이밍 판정이 필요한 스테이션만 override 한다 — 시각은 신뢰하지 말고 인정 범위로 제한할 것 (PressureRules.ClampPressTime).
+        /// </summary>
+        protected virtual void OnPartPressedAt(PlayerRef actor, int partIndex, float pressTime) => OnPartPressed(actor, partIndex);
 
         /// <summary>호스트: 끄는 부품(fromPart)을 놓는 곳(toPart)에 놓았을 때. 권한 검사는 자동으로 하지 않는다 (OnPartPressed 와 같음).</summary>
         protected virtual void OnPartsConnected(PlayerRef actor, int fromPart, int toPart) { }

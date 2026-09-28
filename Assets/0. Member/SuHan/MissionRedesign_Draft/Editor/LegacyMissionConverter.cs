@@ -16,7 +16,7 @@ using UnityEngine;
 ///  공통 후처리: 조준 문구(MissionPrompt.promptObject)가 있으면 PromptBillboard 를 붙여 항상 보는 사람 쪽을 향하게 한다
 ///  (옛 밸브 문구가 방향 고정이라 배치에 따라 뒤집혀 보였음 — 2b 테스트에서 발견).
 /// [조준 외곽선] MissionOutlineBuilder 로 붙인다 (1단계 사용자 요청). 부품마다 MissionPrompt 를 두면 조준한 부품만 켜진다 (2a 명세 P7).
-/// [변환 목록] 1단계 발전기 / 2a 밸브 · 안테나 · 차단기 / 2b 전선 / 2c 필터 · 청소기(아이템). 미니게임을 이식할 때마다 Build… 와 Convert… 를 하나씩 추가한다.
+/// [변환 목록] 1단계 발전기 / 2a 밸브 · 안테나 · 차단기 / 2b 전선 / 2c 필터 · 청소기(아이템) / 2d 압력(신규 — 태우님 모델에서 조립). 미니게임을 이식할 때마다 Build… 와 Convert… 를 하나씩 추가한다.
 /// </summary>
 public static class LegacyMissionConverter
 {
@@ -37,6 +37,24 @@ public static class LegacyMissionConverter
     public const string VacuumToolPath = ItemPrefabFolder + "/Vacuum_Tool.prefab";
     public const string VacuumToolFirstPersonPath = ItemPrefabFolder + "/Vacuum_Tool_FP.prefab";
     public const string VacuumToolDataPath = ItemDataFolder + "/VacuumToolData.asset";
+
+    // 2d 압력: 옛 프리팹이 없어 태우님 모델에서 조립한다 (원본은 복사해서 쓰고 수정하지 않음)
+    public const string PressureStationPath = OutputFolder + "/Pressure_Station.prefab";
+    private const string TaewooModelFolder = "Assets/0. Member/Taewoo/Model";
+    private const string PressurePanelPath = TaewooModelFolder + "/Pressure_device_panel.prefab";
+
+    // 조준 감지 레이어 (ProjectSettings 의 Interactable). 태우님 모델은 기본 레이어라 버튼을 옮겨야 조준된다
+    private const int InteractableLayer = 6;
+
+    private static readonly string[] PressureLetters = { "A", "B", "C" };
+
+    // 태우님 테스트 씬 배치를 패널 기준 상대 위치로 옮긴 값 (패널을 마주 보면 왼쪽부터 A · B · C)
+    private static readonly Vector3[] PistonOffsets =
+    {
+        new Vector3(3.486f, 0f, -6.761f),
+        new Vector3(-0.034f, 0f, -6.731f),
+        new Vector3(-3.324f, 0f, -6.621f),
+    };
 
     // 개인 미니게임 공통 거리 (2a 명세 3장). 발전기는 1단계 값 3.5 유지.
     private const float PersonalInteractRange = 3f;
@@ -59,6 +77,7 @@ public static class LegacyMissionConverter
         Report("전선", ConvertWiring());
         Report("필터", ConvertFilter());
         Report("청소기", ConvertVacuumTool());
+        Report("압력", CreatePressureStation());
         AssetDatabase.SaveAssets();
 
         // 새 NetworkObject 프리팹을 Fusion 네트워크 프리팹 목록에 즉시 반영 (안 하면 Runner.Spawn 이 실패한다)
@@ -109,6 +128,10 @@ public static class LegacyMissionConverter
         return Convert("청소기", LegacyFolder + "/Vacuum_Prefab.prefab", "Vacuum_Tool", VacuumToolPath,
             copy => BuildVacuumTool(copy, itemData), false);
     }
+
+    /// <summary>압력: 태우님 패널 프리팹을 원본으로 조립한다 (명세 PR9). 공통 틀의 저장 · 검증 · 빌보드를 그대로 쓴다.</summary>
+    public static NetworkObject CreatePressureStation() =>
+        Convert("압력", PressurePanelPath, "Pressure_Station", PressureStationPath, BuildPressure);
 
     // ═════════════════════════════════════════════════════════════
     //  공통 틀
@@ -769,6 +792,231 @@ public static class LegacyMissionConverter
         Object.DestroyImmediate(oldItem);
         return true;
     }
+
+    // ═════════════════════════════════════════════════════════════
+    //  2d: 압력 (신규 — 태우님 패널 + 피스톤 A/B/C 모델에서 조립)
+    // ═════════════════════════════════════════════════════════════
+
+    private static bool BuildPressure(GameObject copy)
+    {
+        if (copy.GetComponent<NetworkObject>() == null)
+            copy.AddComponent<NetworkObject>();
+
+        PressureStation station = copy.AddComponent<PressureStation>();
+        SerializedObject so = ConfigureStation(station, MissionEventType.PressureStabilized, CompletionPolicy.ResetForNext, PersonalInteractRange);
+
+        PressureVisual[] visuals = new PressureVisual[PressureStation.PistonCount];
+
+        for (int i = 0; i < PressureStation.PistonCount; i++)
+        {
+            string letter = PressureLetters[i];
+
+            // 피스톤 모델 (태우님 FBX 를 복사해 자식으로, 테스트 씬과 같은 상대 위치)
+            string pistonPath = $"{TaewooModelFolder}/Pressure_piston_{letter}.fbx";
+            GameObject pistonModel = AssetDatabase.LoadAssetAtPath<GameObject>(pistonPath);
+
+            if (pistonModel == null)
+            {
+                Debug.LogError($"[LegacyMissionConverter] 압력 피스톤 모델이 없습니다: {pistonPath}");
+                return false;
+            }
+
+            GameObject piston = Object.Instantiate(pistonModel, copy.transform);
+            piston.name = $"Pressure_piston_{letter}";
+            piston.transform.localPosition = PistonOffsets[i];
+            piston.transform.localRotation = Quaternion.identity;
+
+            // 노드 찾기: 모델 이름에 오타 · 공백이 있어 "토큰" 단위로 찾는다 (예: Pressure_button_A._nteraction)
+            Transform weight = FindByTokens(piston.transform, letter, new[] { "piston", "parts" }, null, false);
+            Transform body = FindByTokens(piston.transform, letter, new[] { "piston" }, new[] { "parts" }, true);
+            Transform gauge = FindByTokens(copy.transform, letter, new[] { "gauge" }, new[] { "needle", "indicator" }, true);
+            Transform needle = FindByTokens(copy.transform, letter, new[] { "needle" }, null, false);
+            Transform button = FindByTokens(copy.transform, letter, new[] { "button", "nteraction" }, null, true);
+
+            if (weight == null || body == null || gauge == null || needle == null || button == null)
+            {
+                Debug.LogError($"[LegacyMissionConverter] 압력 {letter}: 모델 노드를 찾지 못했습니다 " +
+                    $"(추 {Found(weight)}, 원통 {Found(body)}, 압력계 {Found(gauge)}, 바늘 {Found(needle)}, 버튼 {Found(button)}).");
+                return false;
+            }
+
+            // 바늘 회전축 (PR10): 압력계 중심에 만들고 바늘을 그 아래로 옮긴다
+            Renderer gaugeRenderer = gauge.GetComponent<Renderer>();
+            GameObject pivot = new GameObject($"NeedlePivot_{letter}");
+            pivot.transform.SetParent(gauge.parent, false);
+            pivot.transform.position = gaugeRenderer.bounds.center;
+            pivot.transform.rotation = gauge.rotation;
+            needle.SetParent(pivot.transform, true);
+            Vector3 needleAxis = ThinnestAxis(gauge);
+
+            // 추 이동 범위 기본값: 원통 높이의 ±30% (부모 로컬 단위로)
+            Renderer bodyRenderer = body.GetComponent<Renderer>();
+            float parentScale = weight.parent != null ? Mathf.Max(0.0001f, Mathf.Abs(weight.parent.lossyScale.y)) : 1f;
+            float travel = bodyRenderer.bounds.size.y * 0.3f / parentScale;
+            Vector3 weightAxis = weight.parent != null ? weight.parent.InverseTransformDirection(Vector3.up).normalized : Vector3.up;
+
+            // 표시등 (PR11): 압력계 재질 중 이름에 "neon"
+            int lampIndex = FindMaterialIndex(gaugeRenderer, "neon");
+
+            // PR13: 네온 램프 칸이 없으면(지금 모델) 압력계 자체의 첫 재질 칸을 기본색만 칠한다 (발광은 건드리지 않음).
+            //  태우님이 램프를 모델에 넣으면 위에서 네온 칸이 잡혀 원래 설계(네온 초록불)로 자동 전환된다.
+            bool useGaugeTint = lampIndex < 0;
+
+            if (useGaugeTint)
+            {
+                lampIndex = 0;
+                Debug.Log($"[LegacyMissionConverter] 압력 {letter}: 압력계에 네온 램프 칸이 없어 압력계 색(초록 · 빨강)으로 대신 표시합니다.");
+            }
+
+            GameObject visualObject = new GameObject($"Piston_{letter}");
+            visualObject.transform.SetParent(copy.transform, false);
+            PressureVisual visual = visualObject.AddComponent<PressureVisual>();
+            SerializedObject visualSO = new SerializedObject(visual);
+            visualSO.FindProperty("needlePivot").objectReferenceValue = pivot.transform;
+            visualSO.FindProperty("needleAxis").vector3Value = needleAxis;
+            visualSO.FindProperty("weight").objectReferenceValue = weight;
+            visualSO.FindProperty("weightAxis").vector3Value = weightAxis;
+            visualSO.FindProperty("bottomOffset").floatValue = -travel;
+            visualSO.FindProperty("topOffset").floatValue = travel;
+            visualSO.FindProperty("lampRenderer").objectReferenceValue = gaugeRenderer;
+            visualSO.FindProperty("lampMaterialIndex").intValue = lampIndex;
+            visualSO.FindProperty("applyEmission").boolValue = !useGaugeTint;
+
+            if (useGaugeTint)
+            {
+                // 아틀라스 텍스처에 곱해지는 색이라 너무 진하지 않게
+                visualSO.FindProperty("lockedBase").colorValue = new Color(0.45f, 1f, 0.45f);
+                visualSO.FindProperty("stalledBase").colorValue = new Color(1f, 0.4f, 0.4f);
+            }
+            visualSO.ApplyModifiedPropertiesWithoutUndo();
+            visuals[i] = visual;
+
+            // 버튼: 조준 레이어로 옮기고 콜라이더 · StationButton · 외곽선
+            GameObject buttonObject = button.gameObject;
+            buttonObject.layer = InteractableLayer;
+
+            MeshFilter buttonMesh = buttonObject.GetComponent<MeshFilter>();
+            BoxCollider buttonCollider = buttonObject.AddComponent<BoxCollider>();
+
+            if (buttonMesh != null && buttonMesh.sharedMesh != null)
+            {
+                buttonCollider.center = buttonMesh.sharedMesh.bounds.center;
+                buttonCollider.size = buttonMesh.sharedMesh.bounds.size;
+            }
+
+            StationButton stationButton = AddStationButton(buttonObject, station, i);
+            SerializedObject buttonSO = new SerializedObject(stationButton);
+            buttonSO.FindProperty("buttonVisual").objectReferenceValue = button;
+
+            // 눌림: 버튼의 아래쪽(-up) 으로 메시 높이의 30% (부모 로컬 단위)
+            float buttonHeight = buttonMesh != null && buttonMesh.sharedMesh != null ? buttonMesh.sharedMesh.bounds.size.y * Mathf.Abs(button.lossyScale.y) : 0.02f;
+            Vector3 pressWorld = -button.up * buttonHeight * 0.3f;
+            buttonSO.FindProperty("pressOffset").vector3Value = button.parent != null ? button.parent.InverseTransformVector(pressWorld) : pressWorld;
+            buttonSO.FindProperty("pressTime").floatValue = 0.08f;
+            buttonSO.FindProperty("returnTime").floatValue = 0.08f;
+            buttonSO.ApplyModifiedPropertiesWithoutUndo();
+
+            AddCollider(so, buttonCollider);
+            MissionOutlineBuilder.Attach(buttonObject, buttonObject);
+
+            Debug.Log($"[LegacyMissionConverter] 압력 {letter} 추정값: 바늘 축 {needleAxis}, 각도 -120~120, 추 범위 ±{travel:0.000} (축 {weightAxis}), 표시등 칸 {lampIndex}, 눌림 {buttonHeight * 0.3f:0.000}m");
+        }
+
+        SerializedProperty pistonList = so.FindProperty("pistons");
+        pistonList.ClearArray();
+
+        for (int i = 0; i < visuals.Length; i++)
+        {
+            pistonList.InsertArrayElementAtIndex(i);
+            pistonList.GetArrayElementAtIndex(i).objectReferenceValue = visuals[i];
+        }
+
+        so.ApplyModifiedPropertiesWithoutUndo();
+        return true;
+    }
+
+    /// <summary>
+    /// 이름을 영문 · 숫자 토큰으로 나눠 찾는다: 토큰에 letter(a/b/c)가 정확히 있고, required 는 모두 포함(부분 일치), forbidden 은 하나도 없어야 한다.
+    /// 태우님 모델 이름의 오타 · 공백(Pressure_button_A._nteraction, "Pressure _gauge_indicator_needle_A")을 견디기 위해서다.
+    /// </summary>
+    private static Transform FindByTokens(Transform root, string letter, string[] required, string[] forbidden, bool requireRenderer)
+    {
+        string letterToken = letter.ToLowerInvariant();
+
+        foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
+        {
+            string[] tokens = System.Text.RegularExpressions.Regex.Split(t.name.ToLowerInvariant(), "[^a-z0-9]+");
+
+            if (System.Array.IndexOf(tokens, letterToken) < 0)
+                continue;
+
+            if (requireRenderer && t.GetComponent<Renderer>() == null)
+                continue;
+
+            bool ok = true;
+
+            foreach (string word in required)
+            {
+                if (!System.Array.Exists(tokens, token => token.Contains(word)))
+                {
+                    ok = false;
+                    break;
+                }
+            }
+
+            if (ok && forbidden != null)
+            {
+                foreach (string word in forbidden)
+                {
+                    if (System.Array.Exists(tokens, token => token.Contains(word)))
+                    {
+                        ok = false;
+                        break;
+                    }
+                }
+            }
+
+            if (ok)
+                return t;
+        }
+
+        return null;
+    }
+
+    /// <summary>메시의 가장 얇은 축 (원판 모양 압력계의 앞면 방향 = 바늘 회전축). 로컬 단위 벡터.</summary>
+    private static Vector3 ThinnestAxis(Transform meshObject)
+    {
+        MeshFilter meshFilter = meshObject.GetComponent<MeshFilter>();
+
+        if (meshFilter == null || meshFilter.sharedMesh == null)
+            return Vector3.forward;
+
+        Vector3 size = Vector3.Scale(meshFilter.sharedMesh.bounds.size, meshObject.lossyScale);
+        size = new Vector3(Mathf.Abs(size.x), Mathf.Abs(size.y), Mathf.Abs(size.z));
+
+        if (size.x <= size.y && size.x <= size.z)
+            return Vector3.right;
+
+        return size.y <= size.z ? Vector3.up : Vector3.forward;
+    }
+
+    private static int FindMaterialIndex(Renderer renderer, string nameContains)
+    {
+        if (renderer == null)
+            return -1;
+
+        Material[] materials = renderer.sharedMaterials;
+
+        for (int i = 0; i < materials.Length; i++)
+        {
+            if (materials[i] != null && materials[i].name.ToLowerInvariant().Contains(nameContains))
+                return i;
+        }
+
+        return -1;
+    }
+
+    private static string Found(Transform t) => t != null ? t.name : "없음";
 
     // ═════════════════════════════════════════════════════════════
     //  부품 · 콜라이더 · 외곽선
