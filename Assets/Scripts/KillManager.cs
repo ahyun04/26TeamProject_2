@@ -31,7 +31,8 @@ namespace LockdownProtocol.Networking
 
         internal bool usesWeaponAttackInput() //좌클릭을 공격에 사용하는 상태
         {
-            return Object != null && Object.IsValid && IsMurderer && items != null && items.tryGetEquippedWeapon(out _);
+            return Object != null && Object.IsValid && hasAssignedRole(out _) &&
+                   items != null && items.tryGetEquippedWeapon(out _);
         }
 
         public override void Spawned()
@@ -56,17 +57,23 @@ namespace LockdownProtocol.Networking
 
         public override void FixedUpdateNetwork()
         {
-            if (!HasStateAuthority) return;
             if ((_roles == null || _missions == null) && Runner.Tick.Raw % 30 == 0) findMatchSystems();
+            if (!HasStateAuthority) return;
             IsMurderer = hasKillerRole();
             CanKill = IsMurderer && _health != null && _health.CanAct &&
                       hasCompletedKillerMissions() && CooldownTimer.ExpiredOrNotRunning(Runner);
         }
 
+        private bool hasAssignedRole(out PlayerRole role) //대기실과 역할 미배정 상태에서는 공격 차단
+        {
+            role = default;
+            return _roles != null && _roles.Object != null && _roles.Object.IsValid && _roles.Initialized &&
+                   _roles.TryGetRole(Object.InputAuthority, out role);
+        }
+
         private bool hasKillerRole() //호스트의 실제 역할 배정 확인
         {
-            return _roles != null && _roles.Object != null && _roles.Object.IsValid && _roles.Initialized &&
-                   _roles.TryGetRole(Object.InputAuthority, out PlayerRole role) && role == PlayerRole.Killer;
+            return hasAssignedRole(out PlayerRole role) && role == PlayerRole.Killer;
         }
 
         private bool hasCompletedKillerMissions() //미배정 상태에서는 즉사 기술 잠금
@@ -77,7 +84,7 @@ namespace LockdownProtocol.Networking
 
         private bool canRequestAttack() //두 공격 경로에 공통으로 적용하는 호스트 검증
         {
-            return HasStateAuthority && hasKillerRole() && _health != null && _health.CanAct &&
+            return HasStateAuthority && hasAssignedRole(out _) && _health != null && _health.CanAct &&
                    attackTimer.ExpiredOrNotRunning(Runner);
         }
 
@@ -98,7 +105,7 @@ namespace LockdownProtocol.Networking
 
         private void ProcessKillRequest(NetworkId targetId)
         {
-            if (!canRequestAttack() || !hasCompletedKillerMissions() ||
+            if (!canRequestAttack() || !hasKillerRole() || !hasCompletedKillerMissions() ||
                 !CooldownTimer.ExpiredOrNotRunning(Runner)) return;
             if (!tryGetAttackTarget(out PlayerHealth target) || target.Object.Id != targetId) return;
 
@@ -158,7 +165,7 @@ namespace LockdownProtocol.Networking
 
         private void Update()
         {
-            if (Object == null || !Object.IsValid || !HasInputAuthority || !IsMurderer ||
+            if (Object == null || !Object.IsValid || !HasInputAuthority ||
                 _health == null || !_health.CanAct || Cursor.lockState != CursorLockMode.Locked ||
                 SessionDisconnectUIComponent.IsOpen ||
                 (LobbyRoomUI.Instance != null && LobbyRoomUI.Instance.BlocksPlayerInput)) return;
