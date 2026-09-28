@@ -203,7 +203,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   playerCamera: {fileID: 5081197394923011804}
-  audioListener: {fileID: 0}
+  audioListener: {fileID: 910000000000000015}
   cameraPivot: {fileID: 8036499726057783225}
 --- !u!114 &-2949138451040887277
 MonoBehaviour:
@@ -311,6 +311,7 @@ GameObject:
   - component: {fileID: 2058890820584017174}
   - component: {fileID: 5081197394923011804}
   - component: {fileID: 8624384081356785150}
+  - component: {fileID: 910000000000000015}
   m_Layer: 0
   m_Name: Camera
   m_TagString: Untagged
@@ -334,6 +335,14 @@ Transform:
   - {fileID: 3367974328868241516}
   m_Father: {fileID: 8036499726057783225}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!81 &910000000000000015
+AudioListener:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7105434541691375249}
+  m_Enabled: 1
 --- !u!20 &5081197394923011804
 Camera:
   m_ObjectHideFlags: 0
