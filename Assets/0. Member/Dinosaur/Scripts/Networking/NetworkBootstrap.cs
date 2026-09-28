@@ -158,6 +158,7 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
 
         var voiceClient = _runnerObject.AddComponent<FusionVoiceClient>();
         voiceClient.PrimaryRecorder = primaryRecorder;
+        _runner.AddCallbacks(voiceClient); //방 입장·퇴장 알림을 음성 연결에도 전달
         // UsePrimaryRecorder는 읽기 전용이라 코드로 못 바꾼다. AddComponent로 새로 만들면
         // bool 기본값이 false라 원하는 상태(꺼짐) 그대로다 - VoiceNetworkObject가 스폰 시점에 바인딩한다.
 
