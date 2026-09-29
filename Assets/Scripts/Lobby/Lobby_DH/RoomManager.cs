@@ -176,8 +176,42 @@ namespace LockdownProtocol.Lobby
             if (runner != Runner) return;
             if (!Object.HasStateAuthority) return;
 
-            if (player == HostPlayerId)
+            if (player != HostPlayerId) return;
+
+            if (!TryAssignNewHost(player))
+            {
                 SetRoomState(RoomState.Closed);
+            }
+        }
+
+        private bool TryAssignNewHost(PlayerRef leavingHost)
+        {
+            LobbyPlayerController best = null;
+
+            foreach (var controller in FindObjectsByType<LobbyPlayerController>(FindObjectsSortMode.None))
+            {
+                if (controller == null) continue;
+                if (controller.Object == null || !controller.Object.IsValid) continue;
+
+                PlayerRef owner = controller.Object.InputAuthority;
+                if (owner == leavingHost) continue; // 나가는 사람 제외
+                if (owner == PlayerRef.None) continue;
+
+                if (best == null || controller.JoinOrder < best.JoinOrder)
+                {
+                    best = controller;
+                }
+            }
+
+            if (best == null) return false;
+
+            PlayerRef newHost = best.Object.InputAuthority;
+            HostPlayerId = newHost;
+            FindFirstObjectByType<LobbyPlayerSpawner>()?.RefreshHostFlag(newHost);
+            RPC_NotifyHostChanged(newHost);
+
+            Debug.Log($"[RoomManager] 방장 이양: {leavingHost} -> {newHost} (JoinOrder 기준)");
+            return true;
         }
     }
 }
