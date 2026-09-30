@@ -3,21 +3,19 @@ using UnityEngine;
 namespace TrustNoOne.Missions
 {
     /// <summary>
-    /// [역할] 피스톤 하나(A/B/C)의 모습: 압력계 바늘 · 피스톤 추 · 표시등. 상태는 PressureStation 이 매 Render 에 Apply 로 넣어 준다. 2d 명세 3-4.
+    /// [역할] 피스톤 하나(A/B/C)의 모습: 압력계 바늘 · 피스톤 추 · 표시등(피스톤 글자). 상태는 PressureStation 이 매 Render 에 Apply 로 넣어 준다. 2d 명세 3-4.
     ///  - 바늘: 압력계 중심의 회전축 오브젝트(needlePivot)를 높이에 따라 minAngle ~ maxAngle 로 돌린다 (PR10 — 바늘 메시 피벗이 중심이라는 보장이 없어
     ///    변환기가 압력계 중심에 회전축을 만들어 바늘을 그 아래로 옮겼다)
     ///  - 추: 원래 위치 기준 weightAxis 방향으로 bottomOffset ~ topOffset 을 오르내린다
-    ///  - 표시등(PR11): 움직임 = 원래 색 / 멈춤 = 빨강 / 고정 = 초록. MaterialPropertyBlock 으로 그 재질 칸만 칠한다 (재질 복제 없음).
-    ///    색 값은 태우님 Neon_green · Neon_red 재질에서 가져왔다. 표시등 칸이 없으면(-1) 칠하지 않는다.
-    ///    [대체 표시 — PR13] 지금 모델에는 피스톤별 네온 램프가 없어(네온은 패널 본체 하나뿐) 변환기가 압력계 자체(아틀라스 칸)를
-    ///    기본색만 초록 · 빨강으로 칠하게 설정한다 (applyEmission = false). 램프 모델이 들어오면 변환기가 네온 칸을 찾아 자동으로 바뀐다.
+    ///  - 표시등(PR14): 피스톤 원통의 글자(A/B/C). 움직임 = 원래 재질 / 고정 = 초록 / 멈춤 = 빨강.
+    ///    [왜 재질 교체인가] 글자가 쓰는 아틀라스 재질은 발광(_EMISSION)이 꺼져 있어 색만 덧칠하면 빛나지 않는다.
+    ///     Neon_green · Neon_red 는 발광이 켜진 단색 재질이라 그대로 끼우면 기획 의도(초록불 · 빨간불)대로 보인다.
+    ///     렌더러가 "어느 재질을 쓰는지"만 바꾸므로 재질 에셋 자체는 바뀌지 않고, 복제본도 생기지 않는다.
+    ///    [근거] V2 피스톤 모델에서 글자가 Pressure_piston_X_Alphabet 라는 별도 부품으로 분리돼, 원통은 그대로 두고 글자만 재질을 바꿀 수 있다.
     /// [보정] 각도 · 오프셋 기본값은 변환기가 추정해 넣는다. 화면을 보고 인스펙터에서 조정한다 (명세 7장).
     /// </summary>
     public class PressureVisual : MonoBehaviour
     {
-        private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
-        private static readonly int EmissionColorId = Shader.PropertyToID("_EmissionColor");
-
         [Header("바늘")]
         [SerializeField] private Transform needlePivot;
         [Tooltip("회전축 (needlePivot 로컬 방향)")]
@@ -32,25 +30,23 @@ namespace TrustNoOne.Missions
         [SerializeField] private float bottomOffset = -0.3f;
         [SerializeField] private float topOffset = 0.3f;
 
-        [Header("표시등")]
+        [Header("표시등 (피스톤 글자)")]
+        [Tooltip("글자 렌더러 (V2 피스톤 모델의 Pressure_piston_X_Alphabet). 비어 있으면 표시등 없이 동작")]
         [SerializeField] private Renderer lampRenderer;
-        [Tooltip("표시등 재질 칸. -1 이면 표시등 없음")]
-        [SerializeField] private int lampMaterialIndex = -1;
-        [SerializeField] private Color lockedBase = new Color(0.511f, 1f, 0.626f);
-        [ColorUsage(true, true)]
-        [SerializeField] private Color lockedEmission = new Color(0.165f, 2.505f, 0.202f);
-        [SerializeField] private Color stalledBase = new Color(1f, 0.346f, 0.338f);
-        [ColorUsage(true, true)]
-        [SerializeField] private Color stalledEmission = new Color(5.574f, 0.2f, 0.256f);
-
-        [Tooltip("발광색도 바꿀지. 네온 램프 칸이면 true, 압력계 자체를 칠하는 대체 표시(아틀라스 재질)면 false — 아틀라스의 발광을 꺼 버리지 않게")]
-        [SerializeField] private bool applyEmission = true;
+        [Tooltip("고정했을 때 끼울 재질 (Neon_green)")]
+        [SerializeField] private Material lockedMaterial;
+        [Tooltip("멈췄을 때 끼울 재질 (Neon_red)")]
+        [SerializeField] private Material stalledMaterial;
 
         private Quaternion needleStart;
         private Vector3 weightStart;
         private bool initialized;
         private PistonState? shownState;
-        private MaterialPropertyBlock propertyBlock;
+
+        // 상태별 재질 배열을 미리 만들어 둔다 (매번 새 배열을 만들지 않게)
+        private Material[] originalMaterials;
+        private Material[] lockedMaterials;
+        private Material[] stalledMaterials;
 
         private void Awake()
         {
@@ -89,6 +85,13 @@ namespace TrustNoOne.Missions
 
             if (weight != null)
                 weightStart = weight.localPosition;
+
+            if (lampRenderer != null)
+            {
+                originalMaterials = lampRenderer.sharedMaterials;
+                lockedMaterials = Fill(originalMaterials.Length, lockedMaterial);
+                stalledMaterials = Fill(originalMaterials.Length, stalledMaterial);
+            }
         }
 
         private void ApplyLamp(PistonState state)
@@ -98,28 +101,32 @@ namespace TrustNoOne.Missions
 
             shownState = state;
 
-            if (lampRenderer == null || lampMaterialIndex < 0)
+            if (lampRenderer == null || originalMaterials == null)
                 return;
 
-            if (propertyBlock == null)
-                propertyBlock = new MaterialPropertyBlock();
-
-            if (state == PistonState.Moving)
+            Material[] target = state switch
             {
-                // 원래 색: 이 칸의 블록을 비운다
-                propertyBlock.Clear();
-                lampRenderer.SetPropertyBlock(propertyBlock, lampMaterialIndex);
-                return;
-            }
+                PistonState.Locked => lockedMaterials,
+                PistonState.Stalled => stalledMaterials,
+                _ => null,
+            };
 
-            bool locked = state == PistonState.Locked;
-            lampRenderer.GetPropertyBlock(propertyBlock, lampMaterialIndex);
-            propertyBlock.SetColor(BaseColorId, locked ? lockedBase : stalledBase);
+            // 재질이 비어 있는 상태는 원래 재질로 (이전 색이 남지 않게)
+            lampRenderer.sharedMaterials = target ?? originalMaterials;
+        }
 
-            if (applyEmission)
-                propertyBlock.SetColor(EmissionColorId, locked ? lockedEmission : stalledEmission);
+        /// <summary>글자 메시의 모든 재질 칸을 같은 재질로 채운 배열. 재질이 없으면 null.</summary>
+        private static Material[] Fill(int count, Material material)
+        {
+            if (material == null)
+                return null;
 
-            lampRenderer.SetPropertyBlock(propertyBlock, lampMaterialIndex);
+            Material[] result = new Material[Mathf.Max(1, count)];
+
+            for (int i = 0; i < result.Length; i++)
+                result[i] = material;
+
+            return result;
         }
     }
 }

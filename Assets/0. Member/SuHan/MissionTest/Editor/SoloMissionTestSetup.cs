@@ -12,7 +12,7 @@ using Object = UnityEngine.Object;
 ///
 /// [배치] (stage1 명세 5절)
 ///  - 단체 TG001 발전기 작동시키기: 진짜 GeneratorStation 3대 (LegacyMissionConverter 로 옛 발전기 프리팹을 변환)
-///  - 개인 PS001 밸브 / PS002 차단기 / PS003 전선 / PS004 안테나 / PS005 압력 / PS006 필터(+ 청소기 아이템): 진짜 스테이션 (2a~2d, 옛 프리팹 변환 · 압력은 태우님 모델에서 조립, 실패 시 자리 표시)
+///  - 개인 PS001 밸브 / PS002 차단기 / PS003 전선 / PS004 안테나 / PS005 압력 / PS006 필터(+ 청소기 아이템): 진짜 스테이션 (2a~2d, 옛 프리팹 변환 · 압력은 원본 패널 · 피스톤 모델에서 조립, 실패 시 자리 표시)
 ///  - 단체 TG002~TG005: 아직 이식 전이라 "자리 표시" HoldStation 큐브 (F 2초)
 ///      단체는 Lock(완료 후 잠금), 개인은 ResetForNext(완료 후 원래대로) — 명세 S3
 ///  - 개인 행동 목표 AG101 뛰지 않는다: TestRunReporter (Shift 달리기 감지)

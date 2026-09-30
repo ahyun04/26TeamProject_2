@@ -16,7 +16,7 @@ using UnityEngine;
 ///  공통 후처리: 조준 문구(MissionPrompt.promptObject)가 있으면 PromptBillboard 를 붙여 항상 보는 사람 쪽을 향하게 한다
 ///  (옛 밸브 문구가 방향 고정이라 배치에 따라 뒤집혀 보였음 — 2b 테스트에서 발견).
 /// [조준 외곽선] MissionOutlineBuilder 로 붙인다 (1단계 사용자 요청). 부품마다 MissionPrompt 를 두면 조준한 부품만 켜진다 (2a 명세 P7).
-/// [변환 목록] 1단계 발전기 / 2a 밸브 · 안테나 · 차단기 / 2b 전선 / 2c 필터 · 청소기(아이템) / 2d 압력(신규 — 태우님 모델에서 조립). 미니게임을 이식할 때마다 Build… 와 Convert… 를 하나씩 추가한다.
+/// [변환 목록] 1단계 발전기 / 2a 밸브 · 안테나 · 차단기 / 2b 전선 / 2c 필터 · 청소기(아이템) / 2d 압력(신규 — 옛 프리팹이 없어 원본 패널 · 피스톤 모델에서 조립). 미니게임을 이식할 때마다 Build… 와 Convert… 를 하나씩 추가한다.
 /// </summary>
 public static class LegacyMissionConverter
 {
@@ -38,17 +38,19 @@ public static class LegacyMissionConverter
     public const string VacuumToolFirstPersonPath = ItemPrefabFolder + "/Vacuum_Tool_FP.prefab";
     public const string VacuumToolDataPath = ItemDataFolder + "/VacuumToolData.asset";
 
-    // 2d 압력: 옛 프리팹이 없어 태우님 모델에서 조립한다 (원본은 복사해서 쓰고 수정하지 않음)
+    // 2d 압력: 옛 프리팹이 없어 원본 모델(패널 프리팹 · 피스톤 FBX)에서 조립한다 (원본은 복사해서 쓰고 수정하지 않음)
     public const string PressureStationPath = OutputFolder + "/Pressure_Station.prefab";
-    private const string TaewooModelFolder = "Assets/0. Member/Taewoo/Model";
-    private const string PressurePanelPath = TaewooModelFolder + "/Pressure_device_panel.prefab";
+    // 원본 모델 · 재질 폴더 (읽기 전용 — 복사해서 쓰고 원본은 수정하지 않는다)
+    private const string SourceModelFolder = "Assets/0. Member/Taewoo/Model";
+    private const string PressurePanelPath = SourceModelFolder + "/Pressure_device_panel.prefab";
+    private const string SourceMaterialFolder = "Assets/0. Member/Taewoo/Material";
 
-    // 조준 감지 레이어 (ProjectSettings 의 Interactable). 태우님 모델은 기본 레이어라 버튼을 옮겨야 조준된다
+    // 조준 감지 레이어 (ProjectSettings 의 Interactable). 원본 모델은 기본 레이어(0)로 들어와 있어 버튼을 이 레이어로 옮겨야 조준된다
     private const int InteractableLayer = 6;
 
     private static readonly string[] PressureLetters = { "A", "B", "C" };
 
-    // 태우님 테스트 씬 배치를 패널 기준 상대 위치로 옮긴 값 (패널을 마주 보면 왼쪽부터 A · B · C)
+    // 모델 폴더의 테스트 씬에 놓인 배치를 패널 기준 상대 위치로 옮긴 값 (패널을 마주 보면 왼쪽부터 A · B · C)
     private static readonly Vector3[] PistonOffsets =
     {
         new Vector3(3.486f, 0f, -6.761f),
@@ -129,7 +131,7 @@ public static class LegacyMissionConverter
             copy => BuildVacuumTool(copy, itemData), false);
     }
 
-    /// <summary>압력: 태우님 패널 프리팹을 원본으로 조립한다 (명세 PR9). 공통 틀의 저장 · 검증 · 빌보드를 그대로 쓴다.</summary>
+    /// <summary>압력: 원본 패널 프리팹(Pressure_device_panel)을 복사해 조립한다 (명세 PR9). 공통 틀의 저장 · 검증 · 빌보드를 그대로 쓴다.</summary>
     public static NetworkObject CreatePressureStation() =>
         Convert("압력", PressurePanelPath, "Pressure_Station", PressureStationPath, BuildPressure);
 
@@ -794,7 +796,7 @@ public static class LegacyMissionConverter
     }
 
     // ═════════════════════════════════════════════════════════════
-    //  2d: 압력 (신규 — 태우님 패널 + 피스톤 A/B/C 모델에서 조립)
+    //  2d: 압력 (신규 — 원본 패널 + 피스톤 A/B/C 모델에서 조립)
     // ═════════════════════════════════════════════════════════════
 
     private static bool BuildPressure(GameObject copy)
@@ -807,12 +809,20 @@ public static class LegacyMissionConverter
 
         PressureVisual[] visuals = new PressureVisual[PressureStation.PistonCount];
 
+        // 표시등 재질 (PR14): 원본 네온 재질 Neon_green · Neon_red(발광 켜짐 · 단색)를 글자에 그대로 끼운다
+        Material lockedMaterial = AssetDatabase.LoadAssetAtPath<Material>($"{SourceMaterialFolder}/Neon_green.mat");
+        Material stalledMaterial = AssetDatabase.LoadAssetAtPath<Material>($"{SourceMaterialFolder}/Neon_red.mat");
+
+        if (lockedMaterial == null || stalledMaterial == null)
+            Debug.LogWarning("[LegacyMissionConverter] 압력: Neon_green / Neon_red 재질을 찾지 못해 글자 색이 바뀌지 않습니다.");
+
         for (int i = 0; i < PressureStation.PistonCount; i++)
         {
             string letter = PressureLetters[i];
 
-            // 피스톤 모델 (태우님 FBX 를 복사해 자식으로, 테스트 씬과 같은 상대 위치)
-            string pistonPath = $"{TaewooModelFolder}/Pressure_piston_{letter}.fbx";
+            // 피스톤 모델 (원본 FBX 를 복사해 자식으로, 테스트 씬과 같은 상대 위치).
+            //  PR14: 글자(A/B/C)가 별도 부품으로 분리된 V2 모델을 쓴다 — 글자만 따로 초록 · 빨강으로 바꿀 수 있다
+            string pistonPath = $"{SourceModelFolder}/Pressure_piston_{letter}_V2.fbx";
             GameObject pistonModel = AssetDatabase.LoadAssetAtPath<GameObject>(pistonPath);
 
             if (pistonModel == null)
@@ -828,7 +838,9 @@ public static class LegacyMissionConverter
 
             // 노드 찾기: 모델 이름에 오타 · 공백이 있어 "토큰" 단위로 찾는다 (예: Pressure_button_A._nteraction)
             Transform weight = FindByTokens(piston.transform, letter, new[] { "piston", "parts" }, null, false);
-            Transform body = FindByTokens(piston.transform, letter, new[] { "piston" }, new[] { "parts" }, true);
+            // 원통 본체: V2 의 글자(Pressure_piston_A_Alphabet)도 "piston + A" 라서 alphabet 을 빼야 본체가 잡힌다
+            Transform body = FindByTokens(piston.transform, letter, new[] { "piston" }, new[] { "parts", "alphabet" }, true);
+            Transform alphabet = FindByTokens(piston.transform, letter, new[] { "alphabet" }, null, true);
             Transform gauge = FindByTokens(copy.transform, letter, new[] { "gauge" }, new[] { "needle", "indicator" }, true);
             Transform needle = FindByTokens(copy.transform, letter, new[] { "needle" }, null, false);
             Transform button = FindByTokens(copy.transform, letter, new[] { "button", "nteraction" }, null, true);
@@ -855,18 +867,11 @@ public static class LegacyMissionConverter
             float travel = bodyRenderer.bounds.size.y * 0.3f / parentScale;
             Vector3 weightAxis = weight.parent != null ? weight.parent.InverseTransformDirection(Vector3.up).normalized : Vector3.up;
 
-            // 표시등 (PR11): 압력계 재질 중 이름에 "neon"
-            int lampIndex = FindMaterialIndex(gaugeRenderer, "neon");
+            // 표시등 (PR14): 피스톤 글자. 못 찾으면 경고 후 표시등 없이 동작 (게임 규칙에는 영향 없음)
+            Renderer letterRenderer = alphabet != null ? alphabet.GetComponent<Renderer>() : null;
 
-            // PR13: 네온 램프 칸이 없으면(지금 모델) 압력계 자체의 첫 재질 칸을 기본색만 칠한다 (발광은 건드리지 않음).
-            //  태우님이 램프를 모델에 넣으면 위에서 네온 칸이 잡혀 원래 설계(네온 초록불)로 자동 전환된다.
-            bool useGaugeTint = lampIndex < 0;
-
-            if (useGaugeTint)
-            {
-                lampIndex = 0;
-                Debug.Log($"[LegacyMissionConverter] 압력 {letter}: 압력계에 네온 램프 칸이 없어 압력계 색(초록 · 빨강)으로 대신 표시합니다.");
-            }
+            if (letterRenderer == null)
+                Debug.LogWarning($"[LegacyMissionConverter] 압력 {letter}: 피스톤 글자(Alphabet)를 찾지 못해 표시등 없이 동작합니다.");
 
             GameObject visualObject = new GameObject($"Piston_{letter}");
             visualObject.transform.SetParent(copy.transform, false);
@@ -878,16 +883,9 @@ public static class LegacyMissionConverter
             visualSO.FindProperty("weightAxis").vector3Value = weightAxis;
             visualSO.FindProperty("bottomOffset").floatValue = -travel;
             visualSO.FindProperty("topOffset").floatValue = travel;
-            visualSO.FindProperty("lampRenderer").objectReferenceValue = gaugeRenderer;
-            visualSO.FindProperty("lampMaterialIndex").intValue = lampIndex;
-            visualSO.FindProperty("applyEmission").boolValue = !useGaugeTint;
-
-            if (useGaugeTint)
-            {
-                // 아틀라스 텍스처에 곱해지는 색이라 너무 진하지 않게
-                visualSO.FindProperty("lockedBase").colorValue = new Color(0.45f, 1f, 0.45f);
-                visualSO.FindProperty("stalledBase").colorValue = new Color(1f, 0.4f, 0.4f);
-            }
+            visualSO.FindProperty("lampRenderer").objectReferenceValue = letterRenderer;
+            visualSO.FindProperty("lockedMaterial").objectReferenceValue = lockedMaterial;
+            visualSO.FindProperty("stalledMaterial").objectReferenceValue = stalledMaterial;
             visualSO.ApplyModifiedPropertiesWithoutUndo();
             visuals[i] = visual;
 
@@ -919,7 +917,7 @@ public static class LegacyMissionConverter
             AddCollider(so, buttonCollider);
             MissionOutlineBuilder.Attach(buttonObject, buttonObject);
 
-            Debug.Log($"[LegacyMissionConverter] 압력 {letter} 추정값: 바늘 축 {needleAxis}, 각도 -120~120, 추 범위 ±{travel:0.000} (축 {weightAxis}), 표시등 칸 {lampIndex}, 눌림 {buttonHeight * 0.3f:0.000}m");
+            Debug.Log($"[LegacyMissionConverter] 압력 {letter} 추정값: 바늘 축 {needleAxis}, 각도 -120~120, 추 범위 ±{travel:0.000} (축 {weightAxis}), 글자 {Found(alphabet)}, 눌림 {buttonHeight * 0.3f:0.000}m");
         }
 
         SerializedProperty pistonList = so.FindProperty("pistons");
@@ -937,7 +935,7 @@ public static class LegacyMissionConverter
 
     /// <summary>
     /// 이름을 영문 · 숫자 토큰으로 나눠 찾는다: 토큰에 letter(a/b/c)가 정확히 있고, required 는 모두 포함(부분 일치), forbidden 은 하나도 없어야 한다.
-    /// 태우님 모델 이름의 오타 · 공백(Pressure_button_A._nteraction, "Pressure _gauge_indicator_needle_A")을 견디기 위해서다.
+    /// 원본 모델 노드 이름의 오타 · 공백(Pressure_button_A._nteraction, "Pressure _gauge_indicator_needle_A")을 견디기 위해서다.
     /// </summary>
     private static Transform FindByTokens(Transform root, string letter, string[] required, string[] forbidden, bool requireRenderer)
     {
@@ -998,22 +996,6 @@ public static class LegacyMissionConverter
             return Vector3.right;
 
         return size.y <= size.z ? Vector3.up : Vector3.forward;
-    }
-
-    private static int FindMaterialIndex(Renderer renderer, string nameContains)
-    {
-        if (renderer == null)
-            return -1;
-
-        Material[] materials = renderer.sharedMaterials;
-
-        for (int i = 0; i < materials.Length; i++)
-        {
-            if (materials[i] != null && materials[i].name.ToLowerInvariant().Contains(nameContains))
-                return i;
-        }
-
-        return -1;
     }
 
     private static string Found(Transform t) => t != null ? t.name : "없음";

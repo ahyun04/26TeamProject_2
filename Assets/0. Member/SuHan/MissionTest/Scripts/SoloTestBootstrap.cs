@@ -28,7 +28,7 @@ using UnityEngine;
 /// [RoleAssignment를 쓰지 않는 이유] RoleAssignment는 최소 2명이 있어야 역할을 배정한다
 ///  (MinPlayerCount = 2). 혼자 테스트해야 하므로, 스폰이 끝나면 이 스크립트가 직접
 ///  MissionManager.InitializeMissions(나 혼자를 시민으로, 살인마 없음)을 호출한다.
-///  RoleAssignment/실제 게임 로직은 건드리지 않는다 — 이 스크립트는 SuHan 테스트 씬 전용이다.
+///  RoleAssignment/실제 게임 로직은 건드리지 않는다 — 이 스크립트는 혼자 해 보는 테스트 씬 전용이다.
 /// </summary>
 public class SoloTestBootstrap : MonoBehaviour, INetworkRunnerCallbacks
 {

@@ -29,7 +29,7 @@ namespace TrustNoOne.Missions
         [Tooltip("초록 구간 (높이 0~1). 압력계 그림의 초록 부분에 맞춘다")]
         [Range(0f, 1f)]
         [SerializeField] private float zoneMin = 0f;
-        // 압력계 그림(태우님 아틀라스): 바늘 −120°(8시) ~ +120°(4시) 눈금 중 초록 = 8시 ~ 11시(−30°) → 높이 0 ~ 0.37.
+        // 압력계 그림(Texture_Atlas 텍스처): 바늘 −120°(8시) ~ +120°(4시) 눈금 중 초록 = 8시 ~ 11시(−30°) → 높이 0 ~ 0.37.
         //  노랑 11시 ~ 2시 반, 빨강 2시 반 ~ 4시. (2d 테스트 스크린샷으로 확인 — 처음 값 0.6~0.8 은 노란 부분이었다)
         [Range(0f, 1f)]
         [SerializeField] private float zoneMax = 0.37f;
