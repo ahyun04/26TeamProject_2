@@ -12,6 +12,7 @@ public class PlayerStamina : NetworkBehaviour
     [Header("Stamina Settings")]
     [SerializeField] private float maxStamina = 100f;
     [SerializeField] private float drainPerSecond = 20f;
+    [SerializeField, Min(0f)] private float healthDrainPerSecond = 10f; //스태미나 소진 후 초당 체력 소모량
     [SerializeField] private float regenPerSecond = 15f;
     [SerializeField] private float regenDelaySeconds = 1.5f;
 
@@ -20,15 +21,18 @@ public class PlayerStamina : NetworkBehaviour
 
     [Networked] private float RegenDelayTimer { get; set; }
 
+    private PlayerHealth health; //달리기에 사용할 체력
+
     public float MaxStamina => maxStamina;
 
-    /// <summary>스태미너가 0이면 false. PlayerMovement가 스프린트 허용 여부를 판단할 때 참조.</summary>
+    /// <summary>사용할 스태미너가 남아 있는지 확인.</summary>
     public bool HasStamina => CurrentStamina > 0f;
 
     public event Action<float, float> StaminaChanged; // (current, max)
 
     public override void Spawned()
     {
+        health = GetComponent<PlayerHealth>();
         if (Object.HasStateAuthority)
         {
             CurrentStamina = maxStamina;
@@ -41,12 +45,19 @@ public class PlayerStamina : NetworkBehaviour
             return false;
 
         bool isMoving = input.MoveDirection.sqrMagnitude > 0.0001f; //이동 입력 여부
-        bool isSprinting = canMove && isMoving && HasStamina &&
+        bool canSprint = HasStamina || (health != null && health.CurrentHealth > 0f); //체력이 남으면 달리기 지속
+        bool isSprinting = canMove && isMoving && canSprint && (health == null || health.CanAct) &&
                            input.IsPressed(InputButton.Sprint) && !input.IsPressed(InputButton.Crouch); //이번 틱의 달리기 여부
 
         if (isSprinting)
         {
-            Drain(drainPerSecond * Runner.DeltaTime);
+            float staminaCost = drainPerSecond * Runner.DeltaTime; //이번 틱의 스태미나 소모량
+            float healthSprintSeconds = HasStamina
+                ? (drainPerSecond > 0f ? Mathf.Max(0f, staminaCost - CurrentStamina) / drainPerSecond : 0f)
+                : Runner.DeltaTime; //스태미나로 감당하지 못한 달리기 시간
+            Drain(staminaCost);
+            if (healthSprintSeconds > 0f)
+                health?.consumeSprintHealth(healthDrainPerSecond * healthSprintSeconds);
             RegenDelayTimer = regenDelaySeconds;
         }
         else if (RegenDelayTimer > 0f)
@@ -57,7 +68,7 @@ public class PlayerStamina : NetworkBehaviour
         {
             Regen(regenPerSecond * Runner.DeltaTime);
         }
-        return isSprinting;
+        return isSprinting && (health == null || !health.IsDead);
     }
 
     private void Drain(float amount)

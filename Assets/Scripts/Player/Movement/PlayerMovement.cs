@@ -80,6 +80,11 @@ public class PlayerMovement : NetworkBehaviour
         bool isSprinting = stamina != null
             ? stamina.updateStamina(input, true)
             : input.IsPressed(InputButton.Sprint) && isMoving; //이번 틱에 허용된 달리기
+        if (health != null && health.IsDead)
+        {
+            if (HasStateAuthority || HasInputAuthority) simpleKCC.SetActive(false);
+            return;
+        }
         float moveSpeed = DetermineSpeed(input, isSprinting);
 
         Vector3 localDirection = new Vector3(moveInput.x, 0f, moveInput.y);
