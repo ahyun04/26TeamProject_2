@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Fusion;
+using TMPro;
 using TrustNoOne.Missions;
 using UnityEditor;
 using UnityEngine;
@@ -16,7 +17,7 @@ using UnityEngine;
 ///  공통 후처리: 조준 문구(MissionPrompt.promptObject)가 있으면 PromptBillboard 를 붙여 항상 보는 사람 쪽을 향하게 한다
 ///  (옛 밸브 문구가 방향 고정이라 배치에 따라 뒤집혀 보였음 — 2b 테스트에서 발견).
 /// [조준 외곽선] MissionOutlineBuilder 로 붙인다 (1단계 사용자 요청). 부품마다 MissionPrompt 를 두면 조준한 부품만 켜진다 (2a 명세 P7).
-/// [변환 목록] 1단계 발전기 / 2a 밸브 · 안테나 · 차단기 / 2b 전선 / 2c 필터 · 청소기(아이템) / 2d 압력(신규 — 옛 프리팹이 없어 원본 패널 · 피스톤 모델에서 조립). 미니게임을 이식할 때마다 Build… 와 Convert… 를 하나씩 추가한다.
+/// [변환 목록] 1단계 발전기 / 2a 밸브 · 안테나 · 차단기 / 2b 전선 / 2c 필터 · 청소기(아이템) / 2d 압력(신규 — 옛 프리팹이 없어 원본 패널 · 피스톤 모델에서 조립) / 3a 코드 자판(신규 — 원본 자판 모델에서 조립). 미니게임을 이식할 때마다 Build… 와 Convert… 를 하나씩 추가한다.
 /// </summary>
 public static class LegacyMissionConverter
 {
@@ -44,6 +45,16 @@ public static class LegacyMissionConverter
     private const string SourceModelFolder = "Assets/0. Member/Taewoo/Model";
     private const string PressurePanelPath = SourceModelFolder + "/Pressure_device_panel.prefab";
     private const string SourceMaterialFolder = "Assets/0. Member/Taewoo/Material";
+
+    // 3a 코드: 옛 프리팹이 없어 원본 자판 모델(Match_code.fbx)에서 조립한다 (원본은 복사해서 쓰고 수정하지 않음)
+    public const string CodeStationPath = OutputFolder + "/Code_Station.prefab";
+    private const string CodeModelPath = SourceModelFolder + "/Match_code.fbx";
+    private const float CodeInteractRange = 3f;
+
+    // 3a C13 화면: 패널 메시에서 화면 면을 찾는 아틀라스 칸 (TryFindCodeScreen 참고)과 글꼴
+    private static readonly Vector2 CodeScreenAtlasUv = new Vector2(0.3865f, 0.5745f);
+    private const float CodeScreenUvTolerance = 0.004f;
+    private const string TmpDefaultFontPath = "Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset";
 
     // 조준 감지 레이어 (ProjectSettings 의 Interactable). 원본 모델은 기본 레이어(0)로 들어와 있어 버튼을 이 레이어로 옮겨야 조준된다
     private const int InteractableLayer = 6;
@@ -134,6 +145,10 @@ public static class LegacyMissionConverter
     /// <summary>압력: 원본 패널 프리팹(Pressure_device_panel)을 복사해 조립한다 (명세 PR9). 공통 틀의 저장 · 검증 · 빌보드를 그대로 쓴다.</summary>
     public static NetworkObject CreatePressureStation() =>
         Convert("압력", PressurePanelPath, "Pressure_Station", PressureStationPath, BuildPressure);
+
+    /// <summary>코드: 원본 자판 모델(Match_code.fbx)을 복사해 조립한다 (3a 명세 4장). 공통 틀의 저장 · 검증 · 빌보드를 그대로 쓴다.</summary>
+    public static NetworkObject CreateCodeStation() =>
+        Convert("코드", CodeModelPath, "Code_Station", CodeStationPath, BuildCode);
 
     // ═════════════════════════════════════════════════════════════
     //  공통 틀
@@ -889,35 +904,10 @@ public static class LegacyMissionConverter
             visualSO.ApplyModifiedPropertiesWithoutUndo();
             visuals[i] = visual;
 
-            // 버튼: 조준 레이어로 옮기고 콜라이더 · StationButton · 외곽선
-            GameObject buttonObject = button.gameObject;
-            buttonObject.layer = InteractableLayer;
+            // 버튼: 조준 레이어 · 콜라이더 · StationButton · 외곽선 (코드 자판과 같은 공통 함수)
+            float pressDepth = SetupPressButton(so, station, button, i);
 
-            MeshFilter buttonMesh = buttonObject.GetComponent<MeshFilter>();
-            BoxCollider buttonCollider = buttonObject.AddComponent<BoxCollider>();
-
-            if (buttonMesh != null && buttonMesh.sharedMesh != null)
-            {
-                buttonCollider.center = buttonMesh.sharedMesh.bounds.center;
-                buttonCollider.size = buttonMesh.sharedMesh.bounds.size;
-            }
-
-            StationButton stationButton = AddStationButton(buttonObject, station, i);
-            SerializedObject buttonSO = new SerializedObject(stationButton);
-            buttonSO.FindProperty("buttonVisual").objectReferenceValue = button;
-
-            // 눌림: 버튼의 아래쪽(-up) 으로 메시 높이의 30% (부모 로컬 단위)
-            float buttonHeight = buttonMesh != null && buttonMesh.sharedMesh != null ? buttonMesh.sharedMesh.bounds.size.y * Mathf.Abs(button.lossyScale.y) : 0.02f;
-            Vector3 pressWorld = -button.up * buttonHeight * 0.3f;
-            buttonSO.FindProperty("pressOffset").vector3Value = button.parent != null ? button.parent.InverseTransformVector(pressWorld) : pressWorld;
-            buttonSO.FindProperty("pressTime").floatValue = 0.08f;
-            buttonSO.FindProperty("returnTime").floatValue = 0.08f;
-            buttonSO.ApplyModifiedPropertiesWithoutUndo();
-
-            AddCollider(so, buttonCollider);
-            MissionOutlineBuilder.Attach(buttonObject, buttonObject);
-
-            Debug.Log($"[LegacyMissionConverter] 압력 {letter} 추정값: 바늘 축 {needleAxis}, 각도 -120~120, 추 범위 ±{travel:0.000} (축 {weightAxis}), 글자 {Found(alphabet)}, 눌림 {buttonHeight * 0.3f:0.000}m");
+            Debug.Log($"[LegacyMissionConverter] 압력 {letter} 추정값: 바늘 축 {needleAxis}, 각도 -120~120, 추 범위 ±{travel:0.000} (축 {weightAxis}), 글자 {Found(alphabet)}, 눌림 {pressDepth:0.000}m");
         }
 
         SerializedProperty pistonList = so.FindProperty("pistons");
@@ -931,6 +921,313 @@ public static class LegacyMissionConverter
 
         so.ApplyModifiedPropertiesWithoutUndo();
         return true;
+    }
+
+    // ═════════════════════════════════════════════════════════════
+    //  3a: 코드 순서 맞추기 (신규 — 원본 자판 모델에서 조립)
+    // ═════════════════════════════════════════════════════════════
+
+    private static bool BuildCode(GameObject copy)
+    {
+        // 버튼 11개: 부품 번호 0 ~ 8 = 숫자 1 ~ 9, 9 = 빨강, 10 = 파랑 (CodeStation 상수와 같은 순서)
+        string[] buttonNames = new string[CodeStation.BlueButton + 1];
+
+        for (int i = 0; i < CodeRules.DigitCount; i++)
+            buttonNames[i] = $"Match_code_button_{i + 1}";
+
+        buttonNames[CodeStation.RedButton] = "Match_code_button_red";
+        buttonNames[CodeStation.BlueButton] = "Match_code_button_blue";
+
+        Transform[] buttons = new Transform[buttonNames.Length];
+        List<string> missing = new List<string>();
+
+        for (int i = 0; i < buttonNames.Length; i++)
+        {
+            buttons[i] = FindDeep(copy.transform, buttonNames[i]);
+
+            if (buttons[i] == null || buttons[i].GetComponent<Renderer>() == null)
+                missing.Add(buttonNames[i]);
+        }
+
+        if (missing.Count > 0)
+        {
+            Debug.LogError($"[LegacyMissionConverter] 코드: 모델 노드를 찾지 못했습니다 ({string.Join(", ", missing)}).");
+            return false;
+        }
+
+        // 버튼이 있는 쪽을 스테이션 정면(+Z)으로 — 배치할 때 +Z 를 플레이어 쪽으로 돌리기 때문
+        float frontAngle = FaceFront(copy, buttons);
+
+        if (copy.GetComponent<NetworkObject>() == null)
+            copy.AddComponent<NetworkObject>();
+
+        CodeStation station = copy.AddComponent<CodeStation>();
+        SerializedObject so = ConfigureStation(station, MissionEventType.SecurityCodeEntered, CompletionPolicy.Lock, CodeInteractRange);
+
+        float pressDepth = 0f;
+
+        for (int i = 0; i < buttons.Length; i++)
+            pressDepth = SetupPressButton(so, station, buttons[i], i);
+
+        // 불빛: 숫자 1 ~ 9 렌더러 + 원본 네온 재질 3종 (C9)
+        Material litMaterial = AssetDatabase.LoadAssetAtPath<Material>($"{SourceMaterialFolder}/Neon_blue.mat");
+        Material failMaterial = AssetDatabase.LoadAssetAtPath<Material>($"{SourceMaterialFolder}/Neon_red.mat");
+        Material doneMaterial = AssetDatabase.LoadAssetAtPath<Material>($"{SourceMaterialFolder}/Neon_green.mat");
+
+        if (litMaterial == null || failMaterial == null || doneMaterial == null)
+            Debug.LogWarning("[LegacyMissionConverter] 코드: Neon_blue / Neon_red / Neon_green 재질을 찾지 못해 일부 불빛이 보이지 않습니다.");
+
+        CodeKeypadVisual keypad = copy.AddComponent<CodeKeypadVisual>();
+        SerializedObject keypadSO = new SerializedObject(keypad);
+        SerializedProperty renderers = keypadSO.FindProperty("digitRenderers");
+        renderers.ClearArray();
+
+        for (int i = 0; i < CodeRules.DigitCount; i++)
+        {
+            renderers.InsertArrayElementAtIndex(i);
+            renderers.GetArrayElementAtIndex(i).objectReferenceValue = buttons[i].GetComponent<Renderer>();
+        }
+
+        keypadSO.FindProperty("litMaterial").objectReferenceValue = litMaterial;
+        keypadSO.FindProperty("failMaterial").objectReferenceValue = failMaterial;
+        keypadSO.FindProperty("doneMaterial").objectReferenceValue = doneMaterial;
+        keypadSO.ApplyModifiedPropertiesWithoutUndo();
+
+        so.FindProperty("keypad").objectReferenceValue = keypad;
+        so.FindProperty("display").objectReferenceValue = BuildCodeDisplay(copy);
+        so.ApplyModifiedPropertiesWithoutUndo();
+
+        Debug.Log($"[LegacyMissionConverter] 코드: 버튼 {buttons.Length}개 연결, 정면 맞춤 회전 {frontAngle:0}°, 눌림 {pressDepth:0.000}m");
+        return true;
+    }
+
+    /// <summary>
+    /// 코드 자판 화면 글자 (3a 명세 C13): 패널 화면 위에 TextMeshPro 글자를 올리고 CodeDisplay 를 붙인다.
+    /// 화면을 못 찾으면 경고 후 null — 스테이션은 화면 없이 동작한다.
+    /// 크기는 가장 긴 문구(SUCCESS)가 화면 너비의 90% 에 맞도록 한 번 재고 고정한다 (문구마다 글자 크기가 달라지지 않게).
+    /// </summary>
+    private static CodeDisplay BuildCodeDisplay(GameObject root)
+    {
+        MeshFilter panel = root.GetComponent<MeshFilter>();
+
+        if (panel == null || panel.sharedMesh == null ||
+            !TryFindCodeScreen(panel, root.transform, out Vector3 center, out Vector3 normal, out Vector3 up, out Vector2 size))
+        {
+            Debug.LogWarning("[LegacyMissionConverter] 코드: 패널에서 화면(아틀라스 검은 칸 · 앞을 향한 면)을 찾지 못해 화면 글자 없이 동작합니다.");
+            return null;
+        }
+
+        GameObject textObject = new GameObject("Display (화면 글자)");
+        textObject.transform.SetParent(root.transform, false);
+
+        // TextMeshPro 를 붙이면 RectTransform 도 함께 생긴다
+        TextMeshPro text = textObject.AddComponent<TextMeshPro>();
+        RectTransform rect = textObject.GetComponent<RectTransform>();
+        rect.localPosition = center + normal * 0.003f;              // 화면 3mm 앞 (화면 면과 겹쳐 깜빡이지 않게)
+        rect.localRotation = Quaternion.LookRotation(-normal, up);  // 글자 앞면(-Z)이 화면 밖(normal)을 보게, 위는 화면의 위쪽
+        rect.sizeDelta = size * 0.9f;                               // 화면 테두리 여백 10%
+
+        TMP_FontAsset font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(TmpDefaultFontPath);
+
+        if (font != null)
+            text.font = font;
+        else
+            Debug.LogWarning($"[LegacyMissionConverter] 코드: 글꼴을 찾지 못해 TextMeshPro 기본값을 씁니다 ({TmpDefaultFontPath}).");
+
+        text.alignment = TextAlignmentOptions.Center;
+        text.enableWordWrapping = false;
+
+        // 가장 긴 문구로 크기를 한 번 재고 고정
+        text.enableAutoSizing = true;
+        text.fontSizeMin = 0.01f;
+        text.fontSizeMax = 100f;
+        text.text = CodeStation.SuccessText;
+        text.ForceMeshUpdate(true, true);
+        float fitted = text.fontSize;
+
+        if (fitted > 0.01f)
+        {
+            text.enableAutoSizing = false;
+            text.fontSize = fitted;
+        }
+
+        text.text = CodeStation.ReadyText;
+
+        CodeDisplay display = textObject.AddComponent<CodeDisplay>();
+        SerializedObject displaySO = new SerializedObject(display);
+        displaySO.FindProperty("text").objectReferenceValue = text;
+        displaySO.ApplyModifiedPropertiesWithoutUndo();
+
+        float tilt = Vector3.Angle(Vector3.forward, Vector3.ProjectOnPlane(normal, Vector3.right));
+        Debug.Log($"[LegacyMissionConverter] 코드: 화면 찾음 — 크기 {size.x:0.00} × {size.y:0.00}m, 뒤로 기운 각도 {tilt:0}°, 글자 크기 {text.fontSize:0.00}{(text.enableAutoSizing ? " (자동 크기 유지)" : string.Empty)}");
+        return display;
+    }
+
+    /// <summary>
+    /// 패널 메시에서 화면 면을 찾아 루트 기준 중심 · 바깥 방향(normal) · 화면의 위쪽 · 크기(가로, 세로)를 구한다.
+    /// [찾는 규칙 — FBX 분석] 화면은 아틀라스 128×128 의 완전한 검정 칸(UV ≈ 0.3865, 0.5745)을 쓰는 면들 중 앞(+Z)을 향한 면이다.
+    ///  가로 약 127cm · 세로 약 51cm, 뒤로 약 18° 기운 넓은 화면. 화면 둘레의 위아래 경사면도 같은 칸을 쓰지만 앞을 향하지 않아 걸러진다.
+    /// </summary>
+    private static bool TryFindCodeScreen(MeshFilter panel, Transform root, out Vector3 center, out Vector3 normal, out Vector3 up, out Vector2 size)
+    {
+        center = normal = up = Vector3.zero;
+        size = Vector2.zero;
+
+        Mesh mesh = panel.sharedMesh;
+        Vector3[] vertices = mesh.vertices;
+        Vector2[] uvs = mesh.uv;
+        int[] triangles = mesh.triangles;
+
+        if (uvs.Length != vertices.Length)
+            return false;
+
+        List<Vector3> points = new List<Vector3>();
+        Vector3 normalSum = Vector3.zero;
+
+        for (int i = 0; i + 2 < triangles.Length; i += 3)
+        {
+            int a = triangles[i], b = triangles[i + 1], c = triangles[i + 2];
+            Vector2 uvCenter = (uvs[a] + uvs[b] + uvs[c]) / 3f;
+
+            if (Mathf.Abs(uvCenter.x - CodeScreenAtlasUv.x) > CodeScreenUvTolerance ||
+                Mathf.Abs(uvCenter.y - CodeScreenAtlasUv.y) > CodeScreenUvTolerance)
+                continue;
+
+            Vector3 pa = root.InverseTransformPoint(panel.transform.TransformPoint(vertices[a]));
+            Vector3 pb = root.InverseTransformPoint(panel.transform.TransformPoint(vertices[b]));
+            Vector3 pc = root.InverseTransformPoint(panel.transform.TransformPoint(vertices[c]));
+
+            // Unity 메시의 앞면 방향 = Cross(b − a, c − a). 길이는 넓이의 두 배
+            Vector3 cross = Vector3.Cross(pb - pa, pc - pa);
+            float doubleArea = cross.magnitude;
+
+            if (doubleArea < 1e-8f)
+                continue;
+
+            Vector3 faceNormal = cross / doubleArea;
+
+            if (Vector3.Dot(faceNormal, Vector3.forward) < 0.8f)
+                continue;
+
+            normalSum += cross;
+            points.Add(pa);
+            points.Add(pb);
+            points.Add(pc);
+        }
+
+        if (points.Count == 0)
+            return false;
+
+        normal = normalSum.normalized;
+        up = Vector3.ProjectOnPlane(Vector3.up, normal).normalized;
+        Vector3 right = Vector3.Cross(up, normal).normalized;
+
+        float minR = float.MaxValue, maxR = float.MinValue, minU = float.MaxValue, maxU = float.MinValue, depth = 0f;
+
+        foreach (Vector3 p in points)
+        {
+            float r = Vector3.Dot(p, right);
+            float u = Vector3.Dot(p, up);
+            minR = Mathf.Min(minR, r);
+            maxR = Mathf.Max(maxR, r);
+            minU = Mathf.Min(minU, u);
+            maxU = Mathf.Max(maxU, u);
+            depth += Vector3.Dot(p, normal);
+        }
+
+        depth /= points.Count;
+        center = right * (minR + maxR) * 0.5f + up * (minU + maxU) * 0.5f + normal * depth;
+        size = new Vector2(maxR - minR, maxU - minU);
+        return size.x > 0.01f && size.y > 0.01f;
+    }
+
+    /// <summary>
+    /// 모델의 버튼 메시 하나를 누를 수 있는 부품으로 만든다: 조준 레이어 · 메시 크기 콜라이더 · StationButton · 스테이션 콜라이더 목록 · 외곽선.
+    /// 눌림 = 버튼 아래쪽(−up)으로 메시 높이의 30% (0.08초). 압력 · 코드 버튼이 같이 쓴다.
+    /// </summary>
+    /// <returns>눌림 깊이(m) — 로그용</returns>
+    private static float SetupPressButton(SerializedObject stationSO, MissionStation station, Transform button, int partIndex)
+    {
+        GameObject buttonObject = button.gameObject;
+        buttonObject.layer = InteractableLayer;
+
+        MeshFilter buttonMesh = buttonObject.GetComponent<MeshFilter>();
+        BoxCollider buttonCollider = buttonObject.AddComponent<BoxCollider>();
+
+        if (buttonMesh != null && buttonMesh.sharedMesh != null)
+        {
+            buttonCollider.center = buttonMesh.sharedMesh.bounds.center;
+            buttonCollider.size = buttonMesh.sharedMesh.bounds.size;
+        }
+
+        StationButton stationButton = AddStationButton(buttonObject, station, partIndex);
+        SerializedObject buttonSO = new SerializedObject(stationButton);
+        buttonSO.FindProperty("buttonVisual").objectReferenceValue = button;
+
+        // 눌림: 버튼의 아래쪽(-up) 으로 메시 높이의 30% (부모 로컬 단위)
+        float buttonHeight = buttonMesh != null && buttonMesh.sharedMesh != null ? buttonMesh.sharedMesh.bounds.size.y * Mathf.Abs(button.lossyScale.y) : 0.02f;
+        Vector3 pressWorld = -button.up * buttonHeight * 0.3f;
+        buttonSO.FindProperty("pressOffset").vector3Value = button.parent != null ? button.parent.InverseTransformVector(pressWorld) : pressWorld;
+        buttonSO.FindProperty("pressTime").floatValue = 0.08f;
+        buttonSO.FindProperty("returnTime").floatValue = 0.08f;
+        buttonSO.ApplyModifiedPropertiesWithoutUndo();
+
+        AddCollider(stationSO, buttonCollider);
+        MissionOutlineBuilder.Attach(buttonObject, buttonObject);
+        return buttonHeight * 0.3f;
+    }
+
+    /// <summary>이름이 정확히 같은 자식(손자 포함)을 찾는다. 없으면 null.</summary>
+    private static Transform FindDeep(Transform root, string exactName)
+    {
+        foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
+        {
+            if (t.name == exactName)
+                return t;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 모델을 루트 기준으로 수평 회전해 "앞쪽 부품이 있는 쪽"이 루트의 +Z(정면)를 보게 한다.
+    /// [이유] 테스트 씬 · 맵 배치는 스테이션 루트의 +Z 를 플레이어 쪽으로 돌린다. 원본 모델의 앞뒤 방향은 모델마다 달라서 조립할 때 맞춘다.
+    /// [방법] 앞쪽 부품 중심 − 모델 전체 중심(수평 성분) 방향을 +Z 로 돌리는 각도만큼, 루트의 직계 자식을 루트 원점 기준으로 돌린다
+    ///  (루트 자체의 회전은 배치할 때 덮어써지므로 자식을 돌린다).
+    /// </summary>
+    /// <returns>돌린 각도(도). 방향을 알 수 없거나 이미 맞으면 0</returns>
+    private static float FaceFront(GameObject root, Transform[] frontParts)
+    {
+        Renderer[] all = root.GetComponentsInChildren<Renderer>();
+
+        if (all.Length == 0 || frontParts.Length == 0)
+            return 0f;
+
+        Bounds bounds = all[0].bounds;
+
+        for (int i = 1; i < all.Length; i++)
+            bounds.Encapsulate(all[i].bounds);
+
+        Vector3 front = Vector3.zero;
+
+        foreach (Transform part in frontParts)
+            front += part.GetComponent<Renderer>().bounds.center;
+
+        Vector3 direction = front / frontParts.Length - bounds.center;
+        direction.y = 0f;
+
+        if (direction.sqrMagnitude < 1e-6f)
+            return 0f;
+
+        float angle = Vector3.SignedAngle(direction, Vector3.forward, Vector3.up);
+
+        if (Mathf.Abs(angle) < 1f)
+            return 0f;
+
+        foreach (Transform child in root.transform)
+            child.RotateAround(root.transform.position, Vector3.up, angle);
+
+        return angle;
     }
 
     /// <summary>

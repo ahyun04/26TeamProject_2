@@ -8,14 +8,17 @@ namespace TrustNoOne.Missions
     ///    변환기가 압력계 중심에 회전축을 만들어 바늘을 그 아래로 옮겼다)
     ///  - 추: 원래 위치 기준 weightAxis 방향으로 bottomOffset ~ topOffset 을 오르내린다
     ///  - 표시등(PR14): 피스톤 원통의 글자(A/B/C). 움직임 = 원래 재질 / 고정 = 초록 / 멈춤 = 빨강.
-    ///    [왜 재질 교체인가] 글자가 쓰는 아틀라스 재질은 발광(_EMISSION)이 꺼져 있어 색만 덧칠하면 빛나지 않는다.
-    ///     Neon_green · Neon_red 는 발광이 켜진 단색 재질이라 그대로 끼우면 기획 의도(초록불 · 빨간불)대로 보인다.
-    ///     렌더러가 "어느 재질을 쓰는지"만 바꾸므로 재질 에셋 자체는 바뀌지 않고, 복제본도 생기지 않는다.
+    ///    글자가 쓰는 Texture_Atlas 재질은 발광이 꺼져 있어 색만 덧칠하면 빛나지 않는다 → 발광이 켜진 Neon_green · Neon_red 를
+    ///    통째로 끼운다 (MaterialSwapper — 재질 에셋은 바뀌지 않고 복제본도 생기지 않는다).
     ///    [근거] V2 피스톤 모델에서 글자가 Pressure_piston_X_Alphabet 라는 별도 부품으로 분리돼, 원통은 그대로 두고 글자만 재질을 바꿀 수 있다.
     /// [보정] 각도 · 오프셋 기본값은 변환기가 추정해 넣는다. 화면을 보고 인스펙터에서 조정한다 (명세 7장).
     /// </summary>
     public class PressureVisual : MonoBehaviour
     {
+        // MaterialSwapper 변형 번호 (생성자에 넣는 순서)
+        private const int LockedVariant = 0;
+        private const int StalledVariant = 1;
+
         [Header("바늘")]
         [SerializeField] private Transform needlePivot;
         [Tooltip("회전축 (needlePivot 로컬 방향)")]
@@ -42,11 +45,7 @@ namespace TrustNoOne.Missions
         private Vector3 weightStart;
         private bool initialized;
         private PistonState? shownState;
-
-        // 상태별 재질 배열을 미리 만들어 둔다 (매번 새 배열을 만들지 않게)
-        private Material[] originalMaterials;
-        private Material[] lockedMaterials;
-        private Material[] stalledMaterials;
+        private MaterialSwapper lamp;
 
         private void Awake()
         {
@@ -86,12 +85,7 @@ namespace TrustNoOne.Missions
             if (weight != null)
                 weightStart = weight.localPosition;
 
-            if (lampRenderer != null)
-            {
-                originalMaterials = lampRenderer.sharedMaterials;
-                lockedMaterials = Fill(originalMaterials.Length, lockedMaterial);
-                stalledMaterials = Fill(originalMaterials.Length, stalledMaterial);
-            }
+            lamp = new MaterialSwapper(lampRenderer, lockedMaterial, stalledMaterial);
         }
 
         private void ApplyLamp(PistonState state)
@@ -101,32 +95,14 @@ namespace TrustNoOne.Missions
 
             shownState = state;
 
-            if (lampRenderer == null || originalMaterials == null)
-                return;
-
-            Material[] target = state switch
+            int variant = state switch
             {
-                PistonState.Locked => lockedMaterials,
-                PistonState.Stalled => stalledMaterials,
-                _ => null,
+                PistonState.Locked => LockedVariant,
+                PistonState.Stalled => StalledVariant,
+                _ => MaterialSwapper.Original,
             };
 
-            // 재질이 비어 있는 상태는 원래 재질로 (이전 색이 남지 않게)
-            lampRenderer.sharedMaterials = target ?? originalMaterials;
-        }
-
-        /// <summary>글자 메시의 모든 재질 칸을 같은 재질로 채운 배열. 재질이 없으면 null.</summary>
-        private static Material[] Fill(int count, Material material)
-        {
-            if (material == null)
-                return null;
-
-            Material[] result = new Material[Mathf.Max(1, count)];
-
-            for (int i = 0; i < result.Length; i++)
-                result[i] = material;
-
-            return result;
+            lamp.Show(variant);
         }
     }
 }

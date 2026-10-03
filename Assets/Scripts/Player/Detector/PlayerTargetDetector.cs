@@ -5,6 +5,7 @@ using UnityEngine;
 /// <summary>
 /// 플레이어가 현재 무엇을 바라보고 있는지만 감지
 /// </summary>
+[DefaultExecutionOrder(100)] //카메라 각도(PlayerCameraController.LateUpdate)가 정해진 뒤에 감지
 public class PlayerTargetDetector : NetworkBehaviour
 {
     [Header("감지")]
@@ -37,7 +38,9 @@ public class PlayerTargetDetector : NetworkBehaviour
     }
 
 
-    private void Update()
+    //Update 에서는 Fusion 틱이 처리된 프레임에 카메라가 화면과 다른 위치(보간 전)에 있어 조준 대상이 프레임마다 바뀔 수 있다
+    //보간이 끝나고 카메라 각도까지 정해진 LateUpdate 에서 감지해 화면에 보이는 그대로 판정한다
+    private void LateUpdate()
     {
         DetectNow();
     }

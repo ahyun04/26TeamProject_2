@@ -13,7 +13,8 @@ using Object = UnityEngine.Object;
 /// [배치] (stage1 명세 5절)
 ///  - 단체 TG001 발전기 작동시키기: 진짜 GeneratorStation 3대 (LegacyMissionConverter 로 옛 발전기 프리팹을 변환)
 ///  - 개인 PS001 밸브 / PS002 차단기 / PS003 전선 / PS004 안테나 / PS005 압력 / PS006 필터(+ 청소기 아이템): 진짜 스테이션 (2a~2d, 옛 프리팹 변환 · 압력은 원본 패널 · 피스톤 모델에서 조립, 실패 시 자리 표시)
-///  - 단체 TG002~TG005: 아직 이식 전이라 "자리 표시" HoldStation 큐브 (F 2초)
+///  - 단체 TG002 코드 순서 맞추기: 진짜 CodeStation (3a, 원본 자판 모델에서 조립, 실패 시 자리 표시)
+///  - 단체 TG003~TG005: 아직 만들기 전이라 "자리 표시" HoldStation 큐브 (F 2초)
 ///      단체는 Lock(완료 후 잠금), 개인은 ResetForNext(완료 후 원래대로) — 명세 S3
 ///  - 개인 행동 목표 AG101 뛰지 않는다: TestRunReporter (Shift 달리기 감지)
 ///  - 디버그 패널(F9 확정 / F10 공개, 단체 미션 남은 시간), 홀드 게이지 HUD
@@ -109,7 +110,6 @@ public static class SoloMissionTestSetup
 
     private static readonly PlaceholderSpec[] PlaceholderStations =
     {
-        Team("Placeholder_TG002_Code", "코드 순서 맞추기", "TG002", MissionEventType.SecurityCodeEntered, new Vector3(-9f, 0f, 16f)),
         Team("Placeholder_TG003_Assembly", "고장난 장비 조립", "TG003", MissionEventType.EquipmentAssembled, new Vector3(-3f, 0f, 16f)),
         Team("Placeholder_TG004_LifeSupport", "생명 유지 장치 복구", "TG004", MissionEventType.LifeSupportRestored, new Vector3(3f, 0f, 16f)),
         Team("Placeholder_TG005_FireDoor", "대형 방화문 열기", "TG005", MissionEventType.FireDoorOpened, new Vector3(9f, 0f, 16f)),
@@ -129,6 +129,10 @@ public static class SoloMissionTestSetup
         Personal("Placeholder_PS006_Filter", "필터 청소하기", "PS006", MissionEventType.FilterCleaned, new Vector3(12.5f, 0f, -8f));
     private static readonly PlaceholderSpec PressureFallback =
         Personal("Placeholder_PS005_Pressure", "압력 수치 맞추기", "PS005", MissionEventType.PressureStabilized, new Vector3(7.5f, 0f, -8f));
+
+    // 3a 에서 실제 미니게임으로 바뀐 단체 미션. 변환에 실패하면 이 자리 표시로 대체한다.
+    private static readonly PlaceholderSpec CodeFallback =
+        Team("Placeholder_TG002_Code", "코드 순서 맞추기", "TG002", MissionEventType.SecurityCodeEntered, new Vector3(-9f, 0f, 16f));
 
     // 필터 옆 바닥에 청소기 (필터 청소는 청소기를 들어야 한다 — 2c 명세 F1)
     private static readonly Vector3 VacuumToolPosition = new Vector3(10.5f, 0f, -6f);
@@ -153,7 +157,7 @@ public static class SoloMissionTestSetup
 
     private const string InfoText =
         "가까운 앞줄: 발전기 3대 (버튼 클릭 → 3초, 1대 고치면 다음 1대까지 2분)\n" +
-        "먼 앞줄: 단체 미션 자리 표시 (F 2초)  /  뒤: 개인 미션 6종 — 모두 실제 미니게임\n" +
+        "먼 앞줄: 단체 미션 — 코드 순서 맞추기(실제) + 자리 표시 3개 (F 2초)  /  뒤: 개인 미션 6종 — 모두 실제 미니게임\n" +
         "Shift 달리기 = AG101 '뛰지 않는다' 위반   F9 내 행동 확정 / F10 전체 공개";
 
     // ═════════════════════════════════════════════════════════════
@@ -193,6 +197,8 @@ public static class SoloMissionTestSetup
 
         foreach (PlaceholderSpec spec in PlaceholderStations)
             spawns.Add((BuildPlaceholderPrefab(spec), spec.Position));
+
+        AddConvertedOrPlaceholder(spawns, LegacyMissionConverter.CreateCodeStation(), CodeFallback, "코드");
 
         // 밸브 모델은 피벗이 손잡이 중심이라 바닥(y=0)에 두면 절반이 묻힌다 → 벽에 달린 높이로 띄운다
         AddConvertedOrPlaceholder(spawns, LegacyMissionConverter.ConvertValve(), ValveFallback, "밸브", new Vector3(0f, ValveMountHeight, 0f));
@@ -236,6 +242,7 @@ public static class SoloMissionTestSetup
             "Action_MedKit", "Action_ItemCraft", "Action_ItemGive", "Action_LieDetector", "Action_Corpse",
             "TestDoor_MissionInteractable",
             "Placeholder_PS001_Valve", "Placeholder_PS002_Breaker", "Placeholder_PS003_Wiring", "Placeholder_PS004_Antenna", "Placeholder_PS006_Filter", "Placeholder_PS005_Pressure",
+            "Placeholder_TG002_Code",
         };
 
         foreach (string prefab in oldPrefabs)
@@ -500,8 +507,12 @@ public static class SoloMissionTestSetup
             "필터 청소하기 · PS006\n청소기 줍기(좌클릭) → 먼지 조준 → 우클릭 · G 내려놓기");
         CreateInfoLabel(layoutRoot.transform, "Info (압력)", PressureFallback.Position + new Vector3(0f, 2.4f, 0f),
             "압력 수치 맞추기 · PS005\n버튼 클릭 → 초록 구간에서 멈추기 (연결은 무작위)");
+        CreateInfoLabel(layoutRoot.transform, "Info (코드)", CodeFallback.Position + new Vector3(0f, 2.4f, 0f),
+            "코드 순서 맞추기 · TG002\n빨강 → 파란불 순서 기억 → 숫자 입력 → 파랑");
 
         GameObject bootstrapObject = FindOrCreate("SoloTestBootstrap", Vector3.zero);
+        // 지운 테스트 스크립트(예: 임시 진단 컴포넌트)가 씬에 "스크립트 없음" 컴포넌트로 남지 않게 정리한다
+        GameObjectUtility.RemoveMonoBehavioursWithMissingScript(bootstrapObject);
         SoloTestBootstrap bootstrap = GetOrAdd<SoloTestBootstrap>(bootstrapObject);
         GetOrAdd<MissionDebugOverlay>(bootstrapObject);
         GetOrAdd<TestRunReporter>(bootstrapObject);
