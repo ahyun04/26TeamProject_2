@@ -31,6 +31,7 @@ GameObject:
   - component: {fileID: 910000000000000008}
   - component: {fileID: 910000000000000009}
   - component: {fileID: 435993125232472710}
+  - component: {fileID: 4763274131128045633}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -90,6 +91,7 @@ MonoBehaviour:
   - {fileID: 910000000000000006}
   - {fileID: 910000000000000009}
   - {fileID: 435993125232472710}
+  - {fileID: 4763274131128045633}
   - {fileID: 910000000000000014}
   ForceRemoteRenderTimeframe: 0
 --- !u!54 &5758612769849293622
@@ -923,3 +925,16 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &4763274131128045633
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1265554726670306911}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 08b67d4abdb290d43868ae5c7bf2544f, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  hudPrefab: {fileID: 1902827228411714075, guid: 25ad469862e12be44a5c23ee8b7e53fa, type: 3}

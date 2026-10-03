@@ -22,6 +22,8 @@ public class PlayerCameraController : NetworkBehaviour
     private SimpleKCC _kcc;
     private LockdownProtocol.Networking.SpectatorManager _spectator;
     private Vector3 aimOffset; //카메라의 플레이어 기준 조준 위치
+    private PlayerFeedback playerFeedback; //로컬 피격 화면 연출
+    private Quaternion cameraLocalRotation; //흔들림을 누적하지 않을 카메라 기본 회전
 
     internal bool tryGetSimulationAimRay(out Ray ray) //호스트가 처리한 시점으로 공격 방향 계산
     {
@@ -49,6 +51,8 @@ public class PlayerCameraController : NetworkBehaviour
     {
         _kcc = GetComponent<SimpleKCC>();
         _spectator = GetComponent<LockdownProtocol.Networking.SpectatorManager>();
+        playerFeedback = GetComponent<PlayerFeedback>();
+        cameraLocalRotation = playerCamera.transform.localRotation;
         aimOffset = transform.InverseTransformPoint(playerCamera.transform.position);
 
         bool isLocalPlayer = Object.HasInputAuthority;
@@ -88,7 +92,8 @@ public class PlayerCameraController : NetworkBehaviour
             if (targetCamera != null && targetCamera.playerCamera != null && targetCamera._kcc != null)
             {
                 playerCamera.transform.SetPositionAndRotation(targetCamera.playerCamera.transform.position,
-                    Quaternion.Euler(targetCamera._kcc.GetLookRotation()));
+                    Quaternion.Euler(targetCamera._kcc.GetLookRotation()) *
+                    (playerFeedback != null ? playerFeedback.getDamageShakeRotation() : Quaternion.identity));
             }
             return;
         }
@@ -97,5 +102,7 @@ public class PlayerCameraController : NetworkBehaviour
         // Yaw는 PlayerMovement가 이미 캐릭터 몸통(transform) 회전에 반영해뒀으므로 여기선 필요 없다.
         Vector2 pitchRotation = _kcc.GetLookRotation(true, false);
         cameraPivot.localRotation = Quaternion.Euler(pitchRotation);
+        playerCamera.transform.localRotation = cameraLocalRotation *
+            (playerFeedback != null ? playerFeedback.getDamageShakeRotation() : Quaternion.identity);
     }
 }

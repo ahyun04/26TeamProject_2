@@ -48,6 +48,8 @@ public class PlayerHealth : NetworkBehaviour
     [Networked, OnChangedRender(nameof(handleDamage))]
     private int damageSequence { get; set; } //연속 피격과 회복이 같은 프레임에 발생해도 피격 전달
 
+    [Networked] private TickTimer sprintDamageTimer { get; set; } //체력 달리기 피격 연출의 1초 간격
+
     private void handleDamage() //모든 클라이언트에 피격 알림
     {
         Damaged?.Invoke();
@@ -66,11 +68,26 @@ public class PlayerHealth : NetworkBehaviour
 
     public void ApplyDamage(float amount, PlayerRef source = default)
     {
+        applyDamage(amount, true);
+    }
+
+    internal void consumeSprintHealth(float amount) //체력을 사용한 달리기와 주기적인 피격 알림
+    {
+        if (!HasStateAuthority || !CanAct || amount <= 0f) return;
+
+        bool showDamage = sprintDamageTimer.ExpiredOrNotRunning(Runner); //이번 체력 소모의 피격 연출 여부
+        if (showDamage)
+            sprintDamageTimer = TickTimer.CreateFromSeconds(Runner, 1f);
+        applyDamage(amount, showDamage);
+    }
+
+    private void applyDamage(float amount, bool showDamage) //공통 체력 감소와 기존 사망 처리
+    {
         if (!Object.HasStateAuthority) return;
         if (IsDead || IsEscaped || amount <= 0f) return;
 
         CurrentHealth = Mathf.Max(0f, CurrentHealth - amount);
-        damageSequence++;
+        if (showDamage) damageSequence++;
 
         if (CurrentHealth <= 0f)
         {
@@ -115,6 +132,7 @@ public class PlayerHealth : NetworkBehaviour
         if (IsDead || IsEscaped) return;
 
         CurrentHealth = 0f;
+        damageSequence++;
         IsDead = true;
         Died?.Invoke();
     }
