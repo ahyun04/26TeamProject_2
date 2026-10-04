@@ -99,6 +99,10 @@ namespace Photon.Voice.Fusion
 
         protected override Speaker InstantiateSpeakerForRemoteVoice(int playerId, byte voiceId, object userData)
         {
+            if (this.networkRunner == null || !this.networkRunner.IsRunning) //종료된 Fusion 객체에는 음성 연결을 만들지 않음
+            {
+                return null;
+            }
             if (userData == null) // Recorder w/o VoiceNetworkObject: probably created due to this.UsePrimaryRecorder = true
             {
                 this.Logger.Log(LogLevel.Info, "Creating Speaker for remote voice {0}/{1} FusionVoiceClient Primary Recorder (userData == null).", playerId, voiceId);

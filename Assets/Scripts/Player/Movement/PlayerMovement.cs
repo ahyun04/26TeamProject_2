@@ -22,6 +22,7 @@ public class PlayerMovement : NetworkBehaviour
     private SimpleKCC simpleKCC;
     private PlayerStamina stamina;
     private PlayerHealth health;
+    private GameEndSystem gameEndSystem; //능력치 없는 관전자의 게임 종료 중 이동 차단
 
     public bool IsGrounded => simpleKCC != null && simpleKCC.IsGrounded;
 
@@ -42,6 +43,7 @@ public class PlayerMovement : NetworkBehaviour
         simpleKCC = GetComponent<SimpleKCC>();
         stamina = GetComponent<PlayerStamina>();
         health = GetComponent<PlayerHealth>();
+        if (health == null) gameEndSystem = FindFirstObjectByType<GameEndSystem>();
     }
 
     public override void FixedUpdateNetwork()
@@ -56,7 +58,9 @@ public class PlayerMovement : NetworkBehaviour
         RoomManager room = RoomManager.Instance;
         bool isStarting = room != null && room.Object != null && room.Object.IsValid &&
                           room.Runner == Runner && room.CurrentRoomState == RoomManager.RoomState.Starting;
-        if (isStarting || (health != null && !health.CanAct))
+        bool isGameEnded = health == null && gameEndSystem != null && gameEndSystem.Object != null &&
+                           gameEndSystem.Object.IsValid && gameEndSystem.IsGameEnded; //관전자의 종료 상태
+        if (isStarting || isGameEnded || (health != null && !health.CanAct))
         {
             stamina?.updateStamina(default, false);
             if (HasStateAuthority || HasInputAuthority) simpleKCC.Move();

@@ -49,6 +49,11 @@ public class PlayerFeedback : NetworkBehaviour
         return hud != null ? hud.getDamageShakeRotation() : Quaternion.identity;
     }
 
+    internal void setVisible(bool visible) //관전자에게 체력과 스태미나 UI 숨김
+    {
+        if (hud != null) hud.gameObject.SetActive(visible);
+    }
+
     private void handleDamage() //본인의 피격 화면 표시
     {
         if (hud != null) hud.showDamage();

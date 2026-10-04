@@ -17,7 +17,6 @@ using UnityEngine;
 ///
 /// 이 로직은 오직 "나 자신의 송수신 설정"을 바꾸는 것이라 로컬 플레이어에서만 실행한다.
 /// </summary>
-[RequireComponent(typeof(PlayerHealth))]
 [RequireComponent(typeof(VoiceNetworkObject))]
 [RequireComponent(typeof(Recorder))]
 [RequireComponent(typeof(VoiceMuteController))]
@@ -34,6 +33,8 @@ public class PlayerVoiceChannelController : NetworkBehaviour
     private VoiceNetworkObject _voiceObject;
     private VoiceMuteController _muteController;
     private bool _isLobbyPlayer;
+    private bool isSpectatorAvatar; //능력치가 없는 관전자 프리팹 여부
+    private LockdownProtocol.Networking.SpectatorManager spectatorManager; //사망한 몸의 음성 송신 종료
 
     // null이면 "아직 한 번도 채널을 적용 안 함", 그 이후로는 실제 상태 변화가 있을 때만 재적용한다.
     // OpChangeGroups는 호출할 때마다 서버에 네트워크 요청을 보내므로, 매 프레임 호출하면 낭비다.
@@ -46,6 +47,8 @@ public class PlayerVoiceChannelController : NetworkBehaviour
         if (!Object.HasInputAuthority) return;
 
         _health = GetComponent<PlayerHealth>();
+        isSpectatorAvatar = GetComponent<SpectatorVisualComponent>() != null;
+        spectatorManager = GetComponent<LockdownProtocol.Networking.SpectatorManager>();
         _voiceObject = GetComponent<VoiceNetworkObject>();
         _muteController = GetComponent<VoiceMuteController>();
         _muteController.SetTransmissionAllowed(false);
@@ -62,6 +65,13 @@ public class PlayerVoiceChannelController : NetworkBehaviour
     {
         if (Object == null || !Object.IsValid || !Object.HasInputAuthority) return;
         if (_recorder == null || _voiceClient == null || _muteController == null) return;
+        if ((!isSpectatorAvatar && _health == null) ||
+            (spectatorManager != null && spectatorManager.spectatorObject != null))
+        {
+            _muteController.SetTransmissionAllowed(false);
+            _recorder.RecordingEnabled = false;
+            return;
+        }
         if (_voiceObject.RecorderInUse != _recorder || _voiceClient.Client.State != ClientState.Joined)
         {
             _muteController.SetTransmissionAllowed(false);
@@ -97,6 +107,7 @@ public class PlayerVoiceChannelController : NetworkBehaviour
 
     private VoiceChannelState DetermineState()
     {
+        if (isSpectatorAvatar) return VoiceChannelState.Spectator;
         if (_health.IsEscaped) return VoiceChannelState.Escaped;
         if (_health.IsDead) return VoiceChannelState.Spectator;
         return VoiceChannelState.Survivor;

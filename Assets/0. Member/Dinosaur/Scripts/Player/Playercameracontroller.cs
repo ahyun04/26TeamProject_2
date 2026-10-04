@@ -20,7 +20,6 @@ public class PlayerCameraController : NetworkBehaviour
     [SerializeField] private Transform cameraPivot; // 머리 위치, Pitch 회전축
 
     private SimpleKCC _kcc;
-    private LockdownProtocol.Networking.SpectatorManager _spectator;
     private Vector3 aimOffset; //카메라의 플레이어 기준 조준 위치
     private PlayerFeedback playerFeedback; //로컬 피격 화면 연출
     private Quaternion cameraLocalRotation; //흔들림을 누적하지 않을 카메라 기본 회전
@@ -50,7 +49,6 @@ public class PlayerCameraController : NetworkBehaviour
     public override void Spawned()
     {
         _kcc = GetComponent<SimpleKCC>();
-        _spectator = GetComponent<LockdownProtocol.Networking.SpectatorManager>();
         playerFeedback = GetComponent<PlayerFeedback>();
         cameraLocalRotation = playerCamera.transform.localRotation;
         aimOffset = transform.InverseTransformPoint(playerCamera.transform.position);
@@ -63,7 +61,11 @@ public class PlayerCameraController : NetworkBehaviour
 
         if (isLocalPlayer)
         {
-            bool isMenuOpen = LobbyRoomUI.Instance != null && LobbyRoomUI.Instance.BlocksPlayerInput;
+            GameEndSystem gameEndSystem = FindFirstObjectByType<GameEndSystem>(); //관전자 생성 전에 표시된 결과 화면 확인
+            bool isMenuOpen = SessionDisconnectUIComponent.IsOpen ||
+                (LobbyRoomUI.Instance != null && LobbyRoomUI.Instance.BlocksPlayerInput) ||
+                (gameEndSystem != null && gameEndSystem.Object != null &&
+                    gameEndSystem.Object.IsValid && gameEndSystem.IsGameEnded);
             Cursor.lockState = isMenuOpen ? CursorLockMode.None : CursorLockMode.Locked;
             Cursor.visible = isMenuOpen;
             LocalListenerTransform = playerCamera.transform;
@@ -78,26 +80,20 @@ public class PlayerCameraController : NetworkBehaviour
         }
     }
 
+    internal void setCameraActive(bool active) //관전자 전환 시 기존 카메라와 Listener 해제
+    {
+        playerCamera.gameObject.SetActive(active);
+        if (audioListener != null) audioListener.enabled = active;
+        if (!active && LocalListenerTransform == playerCamera.transform)
+            LocalListenerTransform = null;
+    }
+
     private void LateUpdate()
     {
         // LateUpdate를 쓰는 이유: KCC는 Render() 콜백에서 매 렌더 프레임마다 보간된 위치/회전을
         // 먼저 갱신하는데, LateUpdate는 그 이후에 실행되므로 최신 보간 결과를 반영할 수 있다.
         // (Fusion 공식 Simple KCC 샘플과 동일한 패턴)
         if (Object == null || !Object.IsValid || !Object.HasInputAuthority) return;
-        if (_spectator != null && _spectator.IsSpectator)
-        {
-            NetworkObject target = _spectator.CurrentSpectateTarget != PlayerRef.None
-                ? Runner.GetPlayerObject(_spectator.CurrentSpectateTarget) : null;
-            PlayerCameraController targetCamera = target != null ? target.GetComponent<PlayerCameraController>() : null;
-            if (targetCamera != null && targetCamera.playerCamera != null && targetCamera._kcc != null)
-            {
-                playerCamera.transform.SetPositionAndRotation(targetCamera.playerCamera.transform.position,
-                    Quaternion.Euler(targetCamera._kcc.GetLookRotation()) *
-                    (playerFeedback != null ? playerFeedback.getDamageShakeRotation() : Quaternion.identity));
-            }
-            return;
-        }
-
         // KCC에 이미 누적된 Pitch/Yaw 중 Pitch만 꺼내와 카메라 피벗에 반영한다.
         // Yaw는 PlayerMovement가 이미 캐릭터 몸통(transform) 회전에 반영해뒀으므로 여기선 필요 없다.
         Vector2 pitchRotation = _kcc.GetLookRotation(true, false);
