@@ -93,7 +93,7 @@ public class PlayerItemController : NetworkBehaviour
 
     private void Update()
     {
-        if (Object == null || !Object.IsValid || !HasInputAuthority || (health != null && !health.CanAct) ||
+        if (Object == null || !Object.IsValid || !HasInputAuthority || (health != null && !health.CanAct) || GameAudio.blocksPlayerInput ||
             (LobbyRoomUI.Instance != null && LobbyRoomUI.Instance.BlocksPlayerInput))
             return;
 

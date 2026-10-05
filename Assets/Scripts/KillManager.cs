@@ -166,7 +166,7 @@ namespace LockdownProtocol.Networking
         private void Update()
         {
             if (Object == null || !Object.IsValid || !HasInputAuthority ||
-                _health == null || !_health.CanAct || Cursor.lockState != CursorLockMode.Locked ||
+                _health == null || !_health.CanAct || GameAudio.blocksPlayerInput || Cursor.lockState != CursorLockMode.Locked ||
                 SessionDisconnectUIComponent.IsOpen ||
                 (LobbyRoomUI.Instance != null && LobbyRoomUI.Instance.BlocksPlayerInput)) return;
 

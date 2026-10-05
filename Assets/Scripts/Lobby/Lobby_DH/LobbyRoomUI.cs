@@ -42,7 +42,8 @@ namespace LockdownProtocol.Lobby
         private bool _isOpen;
 
         internal static LobbyRoomUI Instance { get; private set; }
-        internal bool BlocksPlayerInput => SessionDisconnectUIComponent.IsOpen || _isOpen ||
+        internal bool IsRoomMenuOpen => _isOpen; //공용 설정 버튼의 표시 조건
+        internal bool BlocksPlayerInput => SessionDisconnectUIComponent.IsOpen || GameAudio.blocksPlayerInput || _isOpen ||
             (_miniHud != null && _miniHud.IsLeaveConfirmationOpen) ||
             (inviteListPanel != null && inviteListPanel.isActiveAndEnabled && inviteListPanel.IsOpen);
 
@@ -90,7 +91,7 @@ namespace LockdownProtocol.Lobby
                 if (_gameStartManager != null)
                     _gameStartManager.StartFailed += HandleStartFailed;
             }
-            if (!SessionDisconnectUIComponent.IsOpen && Input.GetKeyDown(KeyCode.Escape))
+            if (!SessionDisconnectUIComponent.IsOpen && !GameAudio.blocksPlayerInput && Input.GetKeyDown(KeyCode.Escape))
             {
                 SetOpen(!_isOpen);
             }

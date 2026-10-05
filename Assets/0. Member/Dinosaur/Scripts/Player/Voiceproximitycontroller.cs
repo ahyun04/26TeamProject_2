@@ -12,8 +12,8 @@ using UnityEngine;
 /// 엔진이 기본 제공하는 부드러운 감쇠를 그대로 활용한다.
 ///
 /// 이 스크립트가 직접 담당하는 건 "벽에 막혔는지" 판정뿐이다. AudioSource.volume은
-/// Unity가 계산하는 거리 감쇠에 곱해지는 별도의 배수이므로, 여기서는 0(막힘) 또는
-/// 1(안 막힘)만 넣어주면 거리 감쇠와 자연스럽게 함께 적용된다.
+/// Unity가 계산하는 거리 감쇠에 곱해지는 별도의 배수이므로, 막히면 0을 넣고
+/// 안 막히면 로컬 음성 수신 음량을 넣어 거리 감쇠와 함께 적용한다.
 /// </summary>
 [RequireComponent(typeof(AudioSource))]
 public class VoiceProximityController : NetworkBehaviour
@@ -78,7 +78,7 @@ public class VoiceProximityController : NetworkBehaviour
             room.CurrentRoomState != RoomManager.RoomState.Waiting);
         bool blocked = lobbyClosed || Vector3.Distance(transform.position, listener.position) >= maxAudibleDistance ||
             (!_isLobbyPlayer && IsBlockedByObstacle(listener.position));
-        _audioSource.volume = blocked ? 0f : 1f;
+        _audioSource.volume = blocked ? 0f : GameAudio.getVoiceVolume();
     }
 
     private bool IsBlockedByObstacle(Vector3 listenerPosition)

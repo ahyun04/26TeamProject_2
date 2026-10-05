@@ -32,7 +32,7 @@ public class EscapeInteractionController : NetworkBehaviour
 
     private void Update()
     {
-        if (!Object.HasInputAuthority) return;
+        if (Object == null || !Object.IsValid || !Object.HasInputAuthority || GameAudio.blocksPlayerInput) return;
         if (_health.IsDead || _health.IsEscaped) return;
 
         if (FindCurrentZone() != null && Input.GetKeyDown(interactKey))

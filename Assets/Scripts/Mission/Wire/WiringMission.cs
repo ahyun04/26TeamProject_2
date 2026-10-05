@@ -158,7 +158,10 @@ public class WiringMission : MissionMiniGameBase
         WireColor endColor = endPoints[endIndex].Color;
 
         if (startColor != endColor)
+        {
+            playFailureSound(player);
             return;
+        }
 
         ConnectedEnds.Set(startIndex, endIndex);
 

@@ -49,7 +49,7 @@ public class PlayerAnimation : NetworkBehaviour
     private void Update()
     {
         if (Object == null || !Object.IsValid || !HasInputAuthority || !canPlayThumbsUp() ||
-            Cursor.lockState != CursorLockMode.Locked || SessionDisconnectUIComponent.IsOpen ||
+            Cursor.lockState != CursorLockMode.Locked || SessionDisconnectUIComponent.IsOpen || GameAudio.blocksPlayerInput ||
             (LobbyRoomUI.Instance != null && (LobbyRoomUI.Instance.BlocksPlayerInput ||
                 Input.GetKeyDown(KeyCode.Escape))))
             return;

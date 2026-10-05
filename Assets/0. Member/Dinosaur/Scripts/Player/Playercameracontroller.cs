@@ -62,7 +62,7 @@ public class PlayerCameraController : NetworkBehaviour
         if (isLocalPlayer)
         {
             GameEndSystem gameEndSystem = FindFirstObjectByType<GameEndSystem>(); //관전자 생성 전에 표시된 결과 화면 확인
-            bool isMenuOpen = SessionDisconnectUIComponent.IsOpen ||
+            bool isMenuOpen = SessionDisconnectUIComponent.IsOpen || GameAudio.blocksPlayerInput ||
                 (LobbyRoomUI.Instance != null && LobbyRoomUI.Instance.BlocksPlayerInput) ||
                 (gameEndSystem != null && gameEndSystem.Object != null &&
                     gameEndSystem.Object.IsValid && gameEndSystem.IsGameEnded);

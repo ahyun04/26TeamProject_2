@@ -220,6 +220,7 @@ public abstract class MissionMiniGameBase : NetworkBehaviour
             FinishMission();
         }
 
+        RPC_PlayMissionSound(player, true);
         Debug.Log($" ID : {MissionId} 미션 완료");
     }
 
@@ -238,11 +239,24 @@ public abstract class MissionMiniGameBase : NetworkBehaviour
         if (!accepted)
             return false;
 
+        RPC_PlayMissionSound(player, false);
         Debug.Log($"ID : {MissionId} 미션 실패 요청 / Player : {player}");
 
         return true;
     }
 
+
+    protected void playFailureSound(PlayerRef player) //오답 효과음만 전달하고 미션 실패 규칙은 유지
+    {
+        if (!HasStateAuthority || !CanPlayerInteract(player)) return;
+        RPC_PlayMissionSound(player, false);
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_PlayMissionSound([RpcTarget] PlayerRef player, bool completed) //수행한 플레이어에게만 결과음 전달
+    {
+        GameAudio.playMissionResult(completed);
+    }
 
     /// <summary>
     /// 동기화된 완료 상태 변경 시 Guest에서 결과 반영
