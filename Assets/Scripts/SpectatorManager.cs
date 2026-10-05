@@ -7,7 +7,7 @@ namespace LockdownProtocol.Networking
     [RequireComponent(typeof(PlayerHealth))]
     public class SpectatorManager : NetworkBehaviour
     {
-        [SerializeField] private float spectatorDelaySeconds = 5f;
+        [SerializeField, Min(0f)] private float spectatorDelaySeconds = 0f; //사망 후 관전 전환 대기 시간
         [SerializeField] private NetworkObject spectatorPrefab; //체력과 스태미나가 없는 관전자
 
         [Networked] public NetworkBool IsSpectator { get; private set; }
@@ -36,6 +36,11 @@ namespace LockdownProtocol.Networking
             if (spectatorPrefab == null)
             {
                 Debug.LogError("[SpectatorManager] 관전자 프리팹이 연결되지 않았습니다.");
+                return;
+            }
+            if (spectatorDelaySeconds <= 0f)
+            {
+                EnterSpectatorMode();
                 return;
             }
             TransitionTimer = TickTimer.CreateFromSeconds(Runner, spectatorDelaySeconds);
