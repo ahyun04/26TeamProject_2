@@ -1,4 +1,5 @@
 using Fusion;
+using LockdownProtocol.Lobby;
 using UnityEngine;
 
 public class PlayerAnimation : NetworkBehaviour
@@ -10,6 +11,9 @@ public class PlayerAnimation : NetworkBehaviour
     [Header("애니메이션 설정")]
     [SerializeField] private float speedDampTime = 0.1f;
     [SerializeField] private AnimationClip attackClip; //공격 속도 계산에 사용하는 클립
+
+    [Networked, OnChangedRender(nameof(playThumbsUp))]
+    private int thumbsUpSequence { get; set; } //호스트가 승인한 제스처 횟수
 
     private PlayerHealth health; //플레이어 생존 상태
     private static readonly int isDeadHash = Animator.StringToHash("IsDead"); //사망 상태
@@ -44,12 +48,34 @@ public class PlayerAnimation : NetworkBehaviour
 
     private void Update()
     {
-        if (Object == null || !Object.IsValid || !HasInputAuthority || animator == null ||
-            (health != null && !health.CanAct))
+        if (Object == null || !Object.IsValid || !HasInputAuthority || !canPlayThumbsUp() ||
+            Cursor.lockState != CursorLockMode.Locked || SessionDisconnectUIComponent.IsOpen ||
+            (LobbyRoomUI.Instance != null && (LobbyRoomUI.Instance.BlocksPlayerInput ||
+                Input.GetKeyDown(KeyCode.Escape))))
             return;
 
         if (Input.GetKeyDown(KeyCode.Z))
-            animator.SetTrigger(IsThumbsUp);
+            RPC_RequestThumbsUp();
+    }
+
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    private void RPC_RequestThumbsUp() //본인 제스처 요청을 호스트가 확인
+    {
+        if (!HasStateAuthority || !canPlayThumbsUp()) return;
+        thumbsUpSequence++;
+    }
+
+    private bool canPlayThumbsUp() //사망·탈출·결과·씬 전환 중 제스처 차단
+    {
+        if (animator == null || health == null || !health.CanAct) return false;
+        RoomManager room = RoomManager.Instance; //이 세션의 게임 시작 상태
+        return room == null || room.Object == null || !room.Object.IsValid || room.Runner != Runner ||
+            room.CurrentRoomState != RoomManager.RoomState.Starting;
+    }
+
+    private void playThumbsUp() //승인된 제스처를 각 클라이언트에서 한 번 재생
+    {
+        if (canPlayThumbsUp()) animator.SetTrigger(IsThumbsUp);
     }
 
     public override void Render()
