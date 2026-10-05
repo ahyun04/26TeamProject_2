@@ -9,6 +9,12 @@ internal enum AudioVolumeChannel
     Voice
 }
 
+internal enum VoiceInputMode
+{
+    VoiceActivation,
+    PushToTalk
+}
+
 public class AudioSettingsComponent : MonoBehaviour
 {
     private const string preferencePrefix = "TrustNoOne.Audio."; //로컬 음량 저장 키
@@ -18,6 +24,7 @@ public class AudioSettingsComponent : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float defaultVoiceVolume = 1f; //음성 수신 기본 음량
 
     private readonly float[] volumes = new float[4]; //현재 로컬 음량
+    private VoiceInputMode voiceInputMode; //현재 로컬 음성 송신 방식
     internal event Action changed; //음량 변경 알림
 
     internal void initialize() //저장된 음량 불러오기
@@ -28,6 +35,21 @@ public class AudioSettingsComponent : MonoBehaviour
             float saved = PlayerPrefs.GetFloat(preferencePrefix + (AudioVolumeChannel)i, defaults[i]);
             volumes[i] = float.IsNaN(saved) || float.IsInfinity(saved) ? defaults[i] : Mathf.Clamp01(saved);
         }
+        int savedMode = PlayerPrefs.GetInt(preferencePrefix + "VoiceInputMode", (int)VoiceInputMode.VoiceActivation); //저장된 송신 방식
+        voiceInputMode = savedMode == (int)VoiceInputMode.PushToTalk ? VoiceInputMode.PushToTalk : VoiceInputMode.VoiceActivation;
+    }
+
+    internal VoiceInputMode getVoiceInputMode() //본인의 음성 송신 방식 조회
+    {
+        return voiceInputMode;
+    }
+
+    internal void setVoiceInputMode(VoiceInputMode mode) //음성 송신 방식 적용과 저장 값 갱신
+    {
+        if (mode != VoiceInputMode.VoiceActivation && mode != VoiceInputMode.PushToTalk) return;
+        if (voiceInputMode == mode) return;
+        voiceInputMode = mode;
+        PlayerPrefs.SetInt(preferencePrefix + "VoiceInputMode", (int)mode);
     }
 
     internal float getVolume(AudioVolumeChannel channel) //슬라이더에 표시할 음량

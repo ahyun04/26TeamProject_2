@@ -52,6 +52,7 @@ public class PlayerVoiceChannelController : NetworkBehaviour
         _voiceObject = GetComponent<VoiceNetworkObject>();
         _muteController = GetComponent<VoiceMuteController>();
         _muteController.SetTransmissionAllowed(false);
+        _muteController.initializeLocalUI();
         _voiceClient = Runner.GetComponent<FusionVoiceClient>();
         _isLobbyPlayer = LobbyRoomUI.Instance != null;
 
@@ -94,13 +95,17 @@ public class PlayerVoiceChannelController : NetworkBehaviour
         RoomManager room = RoomManager.Instance;
         bool lobbyWaiting = !_isLobbyPlayer || (room != null && room.Object != null && room.Object.IsValid &&
             room.Runner == Runner && room.CurrentRoomState == RoomManager.RoomState.Waiting);
-        _muteController.SetTransmissionAllowed(lobbyWaiting && currentState != VoiceChannelState.Escaped);
         if (!_recorder.RecordingEnabled) _recorder.RecordingEnabled = true;
+        _muteController.SetTransmissionAllowed(lobbyWaiting && currentState != VoiceChannelState.Escaped);
     }
 
     public override void Despawned(NetworkRunner runner, bool hasState)
     {
-        if (_muteController != null) _muteController.SetTransmissionAllowed(false);
+        if (_muteController != null)
+        {
+            _muteController.SetTransmissionAllowed(false);
+            _muteController.releaseLocalUI();
+        }
         if (_recorder != null) _recorder.RecordingEnabled = false;
         _lastAppliedState = null;
     }

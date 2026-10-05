@@ -18,6 +18,9 @@ public class GameSettingsUIComponent : MonoBehaviour
     [SerializeField] private TMP_Text musicValueText; //배경음 음량 표시
     [SerializeField] private TMP_Text effectsValueText; //효과음 음량 표시
     [SerializeField] private TMP_Text voiceValueText; //음성 수신 음량 표시
+    [SerializeField] private Button voiceActivationButton; //음성 인식 송신 선택
+    [SerializeField] private Button pushToTalkButton; //눌러서 말하기 선택
+    [SerializeField] private TMP_Text voiceModeHintText; //선택한 송신 방식의 사용법
     [SerializeField] private EventSystem fallbackEventSystem; //씬에 UI 입력 시스템이 없을 때 사용
 
     private GameAudio owner; //설정 기능 진입점
@@ -36,6 +39,8 @@ public class GameSettingsUIComponent : MonoBehaviour
         musicSlider.onValueChanged.AddListener(setMusicVolume);
         effectsSlider.onValueChanged.AddListener(setEffectsVolume);
         voiceSlider.onValueChanged.AddListener(setVoiceVolume);
+        voiceActivationButton.onClick.AddListener(selectVoiceActivation);
+        pushToTalkButton.onClick.AddListener(selectPushToTalk);
     }
 
     internal void initialize(GameAudio gameAudio) //기능 진입점과 저장된 음량 연결
@@ -156,6 +161,35 @@ public class GameSettingsUIComponent : MonoBehaviour
             sliders[i].SetValueWithoutNotify(volume);
             labels[i].text = formatVolume(volume);
         }
+        refreshVoiceMode();
+    }
+
+    private void selectVoiceActivation() //자동 음성 감지 방식 선택
+    {
+        owner.setVoiceInputMode(VoiceInputMode.VoiceActivation);
+        refreshVoiceMode();
+    }
+
+    private void selectPushToTalk() //T키를 누르는 동안 송신하는 방식 선택
+    {
+        owner.setVoiceInputMode(VoiceInputMode.PushToTalk);
+        refreshVoiceMode();
+    }
+
+    private void refreshVoiceMode() //송신 방식의 선택 표시와 안내 갱신
+    {
+        bool pushToTalk = GameAudio.getVoiceInputMode() == VoiceInputMode.PushToTalk; //현재 선택한 송신 방식
+        setModeButtonColor(voiceActivationButton, !pushToTalk);
+        setModeButtonColor(pushToTalkButton, pushToTalk);
+        voiceModeHintText.text = pushToTalk ? "T키를 누르는 동안 말합니다.  ·  V 음소거" : "목소리를 감지하면 자동으로 송신합니다.  ·  V 음소거";
+    }
+
+    private void setModeButtonColor(Button button, bool selected) //현재 선택한 방식의 버튼 강조
+    {
+        ColorBlock colors = button.colors; //기존 버튼의 입력 상태 색상
+        colors.normalColor = selected ? new Color(0.2f, 0.42f, 0.65f) : new Color(0.18f, 0.21f, 0.27f);
+        colors.selectedColor = colors.normalColor;
+        button.colors = colors;
     }
 
     private string formatVolume(float volume) //음량 퍼센트 문자열
@@ -171,5 +205,7 @@ public class GameSettingsUIComponent : MonoBehaviour
         musicSlider.onValueChanged.RemoveListener(setMusicVolume);
         effectsSlider.onValueChanged.RemoveListener(setEffectsVolume);
         voiceSlider.onValueChanged.RemoveListener(setVoiceVolume);
+        voiceActivationButton.onClick.RemoveListener(selectVoiceActivation);
+        pushToTalkButton.onClick.RemoveListener(selectPushToTalk);
     }
 }

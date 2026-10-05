@@ -3,7 +3,7 @@ using Photon.Voice.Unity;
 using UnityEngine;
 
 /// <summary>
-/// 로컬 플레이어의 음성 송신 음소거(V키)를 처리한다.
+/// 로컬 플레이어의 음성 송신 방식, 음소거(V키), 마이크 상태 UI를 연결한다.
 ///
 /// Recorder.TransmitEnabled만 끄고 켜므로, 음소거해도 다른 사람 목소리는 계속 들린다
 /// (송신만 막고 수신은 막지 않는 것이 일반적인 음소거 동작이며, Photon Voice 공식 문서에도
@@ -16,11 +16,15 @@ using UnityEngine;
 public class VoiceMuteController : MonoBehaviour
 {
     [SerializeField] private KeyCode muteKey = KeyCode.V;
+    [SerializeField] private KeyCode pushToTalkKey = KeyCode.T; //눌러서 말하기 송신 키
+    [SerializeField] private MicrophoneUIComponent microphoneUIPrefab; //본인에게만 표시할 마이크 UI
 
     private Recorder _recorder;
     private NetworkObject _networkObject;
     private bool _transmissionAllowed = true;
     private static bool _localMuted;
+    private MicrophoneUIComponent microphoneUI; //로컬 마이크 상태 표시
+    private bool applicationFocused = true; //창 전환 시 눌러서 말하기 송신 차단
 
     public bool IsMuted { get; private set; }
 
@@ -40,13 +44,14 @@ public class VoiceMuteController : MonoBehaviour
         {
             ToggleMute();
         }
+        applyTransmission(applicationFocused && Input.GetKey(pushToTalkKey));
     }
 
     private void ToggleMute()
     {
         IsMuted = !IsMuted;
         _localMuted = IsMuted;
-        _recorder.TransmitEnabled = _transmissionAllowed && !IsMuted;
+        applyTransmission(applicationFocused && Input.GetKey(pushToTalkKey));
 
         Debug.Log($"[VoiceMuteController] 음소거: {IsMuted}");
     }
@@ -54,6 +59,52 @@ public class VoiceMuteController : MonoBehaviour
     internal void SetTransmissionAllowed(bool allowed)
     {
         _transmissionAllowed = allowed;
-        if (_recorder != null) _recorder.TransmitEnabled = allowed && !IsMuted;
+        applyTransmission(applicationFocused && Input.GetKey(pushToTalkKey));
+    }
+
+    internal void initializeLocalUI() //로컬 네트워크 캐릭터의 마이크 표시 생성
+    {
+        if (_networkObject == null || !_networkObject.IsValid || !_networkObject.HasInputAuthority || !isActiveAndEnabled) return;
+        if (microphoneUI == null && microphoneUIPrefab != null) microphoneUI = Instantiate(microphoneUIPrefab);
+        applyTransmission(applicationFocused && Input.GetKey(pushToTalkKey));
+    }
+
+    internal void releaseLocalUI() //캐릭터 해제 시 본인 마이크 표시 정리
+    {
+        if (microphoneUI != null) Destroy(microphoneUI.gameObject);
+        microphoneUI = null;
+    }
+
+    private void applyTransmission(bool pushToTalkPressed) //모드와 권한·음소거를 함께 적용
+    {
+        if (_recorder == null) return;
+        bool pushToTalk = GameAudio.getVoiceInputMode() == VoiceInputMode.PushToTalk; //현재 송신 방식
+        bool ready = isActiveAndEnabled && _transmissionAllowed && _recorder.RecordingEnabled && _recorder.VoiceDetector != null; //실제 송신 준비 여부
+        if (_recorder.VoiceDetection == pushToTalk) _recorder.VoiceDetection = !pushToTalk;
+        _recorder.TransmitEnabled = ready && !IsMuted && (!pushToTalk || pushToTalkPressed);
+        if (microphoneUI != null) microphoneUI.setState(IsMuted, ready, pushToTalk, pushToTalkPressed, muteKey, pushToTalkKey);
+    }
+
+    private void OnApplicationFocus(bool focused) //창을 벗어나면 눌러서 말하기 송신 중지
+    {
+        applicationFocused = focused;
+        if (_networkObject != null && _networkObject.IsValid && _networkObject.HasInputAuthority)
+            applyTransmission(focused && Input.GetKey(pushToTalkKey));
+    }
+
+    private void OnEnable() //기존 로컬 표시를 다시 활성화
+    {
+        if (microphoneUI != null) microphoneUI.gameObject.SetActive(true);
+    }
+
+    private void OnDisable() //시체의 중복 마이크 표시와 송신 해제
+    {
+        if (_recorder != null) _recorder.TransmitEnabled = false;
+        if (microphoneUI != null) microphoneUI.gameObject.SetActive(false);
+    }
+
+    private void OnDestroy() //씬 종료 시 로컬 마이크 표시 정리
+    {
+        releaseLocalUI();
     }
 }

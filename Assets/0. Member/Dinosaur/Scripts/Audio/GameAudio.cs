@@ -66,6 +66,16 @@ public class GameAudio : MonoBehaviour
         settings.save();
     }
 
+    internal static VoiceInputMode getVoiceInputMode() //로컬 마이크의 송신 방식 조회 진입점
+    {
+        return instance != null ? instance.settings.getVoiceInputMode() : VoiceInputMode.VoiceActivation;
+    }
+
+    internal void setVoiceInputMode(VoiceInputMode mode) //설정창의 송신 방식 변경 진입점
+    {
+        settings.setVoiceInputMode(mode);
+    }
+
     internal static float getEffectsVolume() //플레이어 효과음에 적용할 음량
     {
         return instance != null ? instance.settings.getEffectiveVolume(AudioVolumeChannel.Effects) : 1f;
