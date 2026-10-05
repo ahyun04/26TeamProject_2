@@ -79,6 +79,11 @@ public class PlayerMovement : NetworkBehaviour
 
         UpdateLookRotation(input);
 
+        float jumpImpulse = 0f; //이번 틱에 자원 소모가 승인된 점프
+        if (simpleKCC.IsGrounded && jumpImpulseForce > 0f && input.IsPressed(InputButton.Jump) &&
+            (stamina == null || stamina.tryConsumeJumpStamina()))
+            jumpImpulse = jumpImpulseForce;
+
         Vector2 moveInput = Vector2.ClampMagnitude(input.MoveDirection, 1f);
         bool isMoving = moveInput.sqrMagnitude > 0.0001f;
         bool isSprinting = stamina != null
@@ -93,11 +98,6 @@ public class PlayerMovement : NetworkBehaviour
 
         Vector3 localDirection = new Vector3(moveInput.x, 0f, moveInput.y);
         Vector3 moveVelocity = simpleKCC.TransformRotation * localDirection * moveSpeed;
-
-        float jumpImpulse = 0f;
-
-        if (simpleKCC.IsGrounded && input.IsPressed(InputButton.Jump))
-            jumpImpulse = jumpImpulseForce;
 
         simpleKCC.Move(moveVelocity, jumpImpulse);
     }

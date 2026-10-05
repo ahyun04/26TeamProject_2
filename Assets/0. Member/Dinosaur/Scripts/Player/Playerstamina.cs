@@ -3,8 +3,8 @@ using Fusion;
 using UnityEngine;
 
 /// <summary>
-/// 플레이어 스태미너 관리. 체력과 달리 외부 요청이 아니라 자기 자신의 입력(스프린트 여부)에 반응해
-/// PlayerMovement가 매 틱 실제 이동 가능 상태와 입력을 전달하며 스프린트 허용 여부를 함께 계산한다.
+/// 플레이어 스태미너 관리. PlayerMovement가 실제 이동 입력과 점프 실행을 전달하며
+/// 스프린트와 점프에 사용할 스태미나 및 부족한 자원의 체력 소모를 처리한다.
 /// </summary>
 [RequireComponent(typeof(NetworkObject))]
 public class PlayerStamina : NetworkBehaviour
@@ -13,6 +13,7 @@ public class PlayerStamina : NetworkBehaviour
     [SerializeField] private float maxStamina = 100f;
     [SerializeField] private float drainPerSecond = 20f;
     [SerializeField, Min(0f)] private float healthDrainPerSecond = 10f; //스태미나 소진 후 초당 체력 소모량
+    [SerializeField, Min(0f)] private float jumpStaminaCost = 15f; //점프 한 번에 필요한 스태미나
     [SerializeField] private float regenPerSecond = 15f;
     [SerializeField] private float regenDelaySeconds = 1.5f;
 
@@ -21,7 +22,7 @@ public class PlayerStamina : NetworkBehaviour
 
     [Networked] private float RegenDelayTimer { get; set; }
 
-    private PlayerHealth health; //달리기에 사용할 체력
+    private PlayerHealth health; //스태미나가 부족할 때 사용할 체력
 
     public float MaxStamina => maxStamina;
 
@@ -69,6 +70,20 @@ public class PlayerStamina : NetworkBehaviour
             Regen(regenPerSecond * Runner.DeltaTime);
         }
         return isSprinting && (health == null || !health.IsDead);
+    }
+
+    internal bool tryConsumeJumpStamina() //점프 자원을 소모하고 생존 여부를 반환
+    {
+        if ((!HasStateAuthority && !HasInputAuthority) || (health != null && !health.CanAct))
+            return false;
+
+        float healthCost = Mathf.Max(0f, jumpStaminaCost - CurrentStamina); //스태미나로 감당하지 못한 점프 소모량
+        bool survivesJump = health == null || health.CurrentHealth > healthCost; //클라이언트도 치명적인 점프를 미리 차단
+        Drain(jumpStaminaCost);
+        RegenDelayTimer = regenDelaySeconds;
+        if (healthCost > 0f)
+            health?.ApplyDamage(healthCost);
+        return survivesJump && (health == null || !health.IsDead);
     }
 
     private void Drain(float amount)
