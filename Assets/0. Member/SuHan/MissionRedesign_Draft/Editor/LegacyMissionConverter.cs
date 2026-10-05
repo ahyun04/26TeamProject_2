@@ -17,7 +17,7 @@ using UnityEngine;
 ///  공통 후처리: 조준 문구(MissionPrompt.promptObject)가 있으면 PromptBillboard 를 붙여 항상 보는 사람 쪽을 향하게 한다
 ///  (옛 밸브 문구가 방향 고정이라 배치에 따라 뒤집혀 보였음 — 2b 테스트에서 발견).
 /// [조준 외곽선] MissionOutlineBuilder 로 붙인다 (1단계 사용자 요청). 부품마다 MissionPrompt 를 두면 조준한 부품만 켜진다 (2a 명세 P7).
-/// [변환 목록] 1단계 발전기 / 2a 밸브 · 안테나 · 차단기 / 2b 전선 / 2c 필터 · 청소기(아이템) / 2d 압력(신규 — 옛 프리팹이 없어 원본 패널 · 피스톤 모델에서 조립) / 3a 코드 자판(신규 — 원본 자판 모델에서 조립). 미니게임을 이식할 때마다 Build… 와 Convert… 를 하나씩 추가한다.
+/// [변환 목록] 1단계 발전기 / 2a 밸브 · 안테나 · 차단기 / 2b 전선 / 2c 필터 · 청소기(아이템) / 2d 압력(신규 — 옛 프리팹이 없어 원본 패널 · 피스톤 모델에서 조립) / 3a 코드 자판(신규 — 원본 자판 모델에서 조립) / 3b 산소 밸브(신규 — 원본 배관 · 손잡이 모델에서 조립). 미니게임을 이식할 때마다 Build… 와 Convert… 를 하나씩 추가한다.
 /// </summary>
 public static class LegacyMissionConverter
 {
@@ -56,6 +56,20 @@ public static class LegacyMissionConverter
     private const float CodeScreenUvTolerance = 0.004f;
     private const string TmpDefaultFontPath = "Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset";
 
+    // 3b 산소 밸브: 옛 프리팹이 없어 원본 배관(Pipe.fbx) + 손잡이(Valve.fbx) 모델에서 조립한다 (원본은 복사해서 쓰고 수정하지 않음)
+    public const string OxygenValveStationPath = OutputFolder + "/OxygenValve_Station.prefab";
+    private const string OxygenValvePipeModelPath = SourceModelFolder + "/Pipe.fbx";
+    private const string OxygenValveWheelModelPath = SourceModelFolder + "/Valve.fbx";
+    private const float OxygenValveInteractRange = 3f;
+
+    // 손잡이 자리 = Valve.fbx 노드 위치 (0, 106.6, 37.5)cm 를 m 로 — 배관 기준 (3b 명세 L3)
+    private static readonly Vector3 OxygenValveWheelOffset = new Vector3(0f, 1.066f, 0.375f);
+
+    // 상태 램프 (L5): 지름, 손잡이 위쪽 끝에서 띄우는 높이, 배관 표면을 찾을 때 광선을 시작하는 앞쪽 거리
+    private const float OxygenLampDiameter = 0.07f;
+    private const float OxygenLampGap = 0.08f;
+    private const float OxygenLampProbeDistance = 1f;
+
     // 조준 감지 레이어 (ProjectSettings 의 Interactable). 원본 모델은 기본 레이어(0)로 들어와 있어 버튼을 이 레이어로 옮겨야 조준된다
     private const int InteractableLayer = 6;
 
@@ -91,6 +105,8 @@ public static class LegacyMissionConverter
         Report("필터", ConvertFilter());
         Report("청소기", ConvertVacuumTool());
         Report("압력", CreatePressureStation());
+        Report("코드", CreateCodeStation());
+        Report("산소 밸브", CreateOxygenValveStation());
         AssetDatabase.SaveAssets();
 
         // 새 NetworkObject 프리팹을 Fusion 네트워크 프리팹 목록에 즉시 반영 (안 하면 Runner.Spawn 이 실패한다)
@@ -149,6 +165,10 @@ public static class LegacyMissionConverter
     /// <summary>코드: 원본 자판 모델(Match_code.fbx)을 복사해 조립한다 (3a 명세 4장). 공통 틀의 저장 · 검증 · 빌보드를 그대로 쓴다.</summary>
     public static NetworkObject CreateCodeStation() =>
         Convert("코드", CodeModelPath, "Code_Station", CodeStationPath, BuildCode);
+
+    /// <summary>산소 밸브: 원본 배관 모델(Pipe.fbx)을 복사해 손잡이 · 조준 영역 · 상태 램프를 붙여 조립한다 (3b 명세 4장).</summary>
+    public static NetworkObject CreateOxygenValveStation() =>
+        Convert("산소 밸브", OxygenValvePipeModelPath, "OxygenValve_Station", OxygenValveStationPath, BuildOxygenValve);
 
     // ═════════════════════════════════════════════════════════════
     //  공통 틀
@@ -1140,6 +1160,145 @@ public static class LegacyMissionConverter
         size = new Vector2(maxR - minR, maxU - minU);
         return size.x > 0.01f && size.y > 0.01f;
     }
+
+    // ═════════════════════════════════════════════════════════════
+    //  3b: 산소 밸브 (신규 — 원본 배관 · 손잡이 모델에서 조립)
+    // ═════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// 산소 밸브 (3b 명세 4장): 배관 복사본(루트, 배관 메시)에 손잡이 · 조준 영역 · 상태 램프를 붙이고 OxygenValveStation 을 설정한다.
+    /// 두 모델 모두 앞이 +Z 이고 손잡이가 배관 +Z 쪽에 붙으므로 정면 맞춤(FaceFront)은 하지 않는다 (L9).
+    /// </summary>
+    private static bool BuildOxygenValve(GameObject copy)
+    {
+        GameObject wheelModel = AssetDatabase.LoadAssetAtPath<GameObject>(OxygenValveWheelModelPath);
+
+        if (wheelModel == null)
+        {
+            Debug.LogError($"[LegacyMissionConverter] 산소 밸브: 손잡이 모델이 없습니다: {OxygenValveWheelModelPath}");
+            return false;
+        }
+
+        // 손잡이: 원본 손잡이 모델의 노드 위치가 곧 배관 기준 손잡이 자리다 (L3)
+        GameObject wheel = Object.Instantiate(wheelModel, copy.transform);
+        wheel.name = "Valve (손잡이)";
+        wheel.transform.localPosition = OxygenValveWheelOffset;
+        wheel.transform.localRotation = Quaternion.identity;
+
+        // 회전 부품 = 메시가 달린 오브젝트 (메시 원점 = 원판 중심이라 제자리에서 돈다)
+        MeshFilter wheelMesh = wheel.GetComponentInChildren<MeshFilter>();
+
+        if (wheelMesh == null || wheelMesh.sharedMesh == null)
+        {
+            Debug.LogError("[LegacyMissionConverter] 산소 밸브: 손잡이 모델에 메시가 없습니다.");
+            return false;
+        }
+
+        Transform wheelPart = wheelMesh.transform;
+
+        // 여는 방향: 정면(+Z)에서 볼 때 반시계. Unity 는 축 끝에서 볼 때 양의 회전이 시계 방향이라 원판 두께 축을 뒤집는다
+        Vector3 axis = -ThinnestAxis(wheelPart);
+
+        // 조준 영역 (L7): 손잡이의 처음 자리 · 크기를 그대로 두고 돌리지 않는다 (같이 돌면 상자 모서리가 돌며 가장자리 판정이 흔들린다)
+        GameObject grip = new GameObject("Grip (조준 영역)");
+        grip.layer = InteractableLayer;
+        grip.transform.SetParent(wheelPart.parent, false);
+        grip.transform.localPosition = wheelPart.localPosition;
+        grip.transform.localRotation = wheelPart.localRotation;
+        grip.transform.localScale = wheelPart.localScale;
+        BoxCollider gripCollider = grip.AddComponent<BoxCollider>();
+        gripCollider.center = wheelMesh.sharedMesh.bounds.center;
+        gripCollider.size = wheelMesh.sharedMesh.bounds.size;
+
+        if (copy.GetComponent<NetworkObject>() == null)
+            copy.AddComponent<NetworkObject>();
+
+        OxygenValveStation station = copy.AddComponent<OxygenValveStation>();
+        SerializedObject so = ConfigureStation(station, MissionEventType.LifeSupportRestored, CompletionPolicy.Lock, OxygenValveInteractRange);
+        so.FindProperty("rotatingPart").objectReferenceValue = wheelPart;
+        so.FindProperty("rotationAxis").vector3Value = axis;
+        AddCollider(so, gripCollider);
+
+        // 상태 램프 (L5): 원본 네온 재질. 없으면 경고 후 램프 없이 (미션 동작에는 영향 없음)
+        Material closedMaterial = AssetDatabase.LoadAssetAtPath<Material>($"{SourceMaterialFolder}/Neon_red.mat");
+        Material openMaterial = AssetDatabase.LoadAssetAtPath<Material>($"{SourceMaterialFolder}/Neon_green.mat");
+        Renderer lampRenderer = null;
+        string lampWhere = "없음";
+
+        if (closedMaterial == null || openMaterial == null)
+            Debug.LogWarning("[LegacyMissionConverter] 산소 밸브: Neon_red / Neon_green 재질을 찾지 못해 상태 램프 없이 동작합니다.");
+        else
+            lampRenderer = BuildOxygenLamp(copy, wheelMesh, closedMaterial, out lampWhere);
+
+        so.FindProperty("lampRenderer").objectReferenceValue = lampRenderer;
+        so.FindProperty("closedMaterial").objectReferenceValue = closedMaterial;
+        so.FindProperty("openMaterial").objectReferenceValue = openMaterial;
+        so.ApplyModifiedPropertiesWithoutUndo();
+
+        // 외곽선: 손잡이 메시로 만든다 (외곽선 복제본이 손잡이 자식이라 같이 돈다)
+        MissionOutlineBuilder.Attach(copy, wheelPart.gameObject);
+
+        Vector3 wheelSize = wheelMesh.GetComponent<Renderer>().bounds.size;
+        Debug.Log($"[LegacyMissionConverter] 산소 밸브: 회전축 {axis}, 손잡이 위치 {wheel.transform.localPosition} (지름 {Mathf.Max(wheelSize.x, wheelSize.y):0.00}m), 램프 {lampWhere}");
+        return true;
+    }
+
+    /// <summary>
+    /// 상태 램프 (3b 명세 L5): 손잡이 위쪽 배관 표면에 작은 발광 구를 붙인다. 구의 콜라이더는 지운다 (조준 · 충돌에 끼지 않게).
+    /// 표면 찾기: 배관 메시에 임시 MeshCollider 를 붙이고 앞(+Z)에서 뒤로 광선을 쏜다 — 배관 모양이 높이마다 달라 고정값을 쓰지 않는다.
+    /// 안 맞으면 손잡이 중심과 같은 깊이에 두고 경고한다.
+    /// </summary>
+    /// <param name="where">로그용 — 루트 기준 램프 위치와 찾은 방법</param>
+    private static Renderer BuildOxygenLamp(GameObject root, MeshFilter wheelMesh, Material material, out string where)
+    {
+        Transform rootTransform = root.transform;
+        Bounds wheelBounds = wheelMesh.GetComponent<Renderer>().bounds;
+        float radius = OxygenLampDiameter * 0.5f;
+
+        // 손잡이 위쪽 끝 + 여유 높이, 깊이는 우선 손잡이 중심
+        Vector3 position = wheelBounds.center + rootTransform.up * (wheelBounds.extents.y + OxygenLampGap + radius);
+        bool onSurface = false;
+
+        MeshFilter pipeMesh = root.GetComponent<MeshFilter>();
+
+        if (pipeMesh != null && pipeMesh.sharedMesh != null)
+        {
+            MeshCollider probe = root.AddComponent<MeshCollider>();
+            probe.sharedMesh = pipeMesh.sharedMesh;
+            Physics.SyncTransforms();
+
+            Ray ray = new Ray(position + rootTransform.forward * OxygenLampProbeDistance, -rootTransform.forward);
+
+            if (probe.Raycast(ray, out RaycastHit hit, OxygenLampProbeDistance * 2f))
+            {
+                position = hit.point + hit.normal * radius;
+                onSurface = true;
+            }
+
+            Object.DestroyImmediate(probe);
+        }
+
+        if (!onSurface)
+            Debug.LogWarning("[LegacyMissionConverter] 산소 밸브: 램프 자리의 배관 표면을 찾지 못해 손잡이와 같은 깊이에 둡니다.");
+
+        GameObject lamp = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        lamp.name = "Status Lamp (상태 램프)";
+        Object.DestroyImmediate(lamp.GetComponent<Collider>());
+        lamp.transform.SetParent(rootTransform, false);
+        lamp.transform.position = position;
+        lamp.transform.localScale = Vector3.one * OxygenLampDiameter;
+
+        // 편집 화면에서도 잠김(빨강)으로 보이게 처음부터 빨강 재질
+        Renderer lampRenderer = lamp.GetComponent<Renderer>();
+        lampRenderer.sharedMaterial = material;
+
+        where = $"{rootTransform.InverseTransformPoint(position)} ({(onSurface ? "배관 표면" : "추정")})";
+        return lampRenderer;
+    }
+
+    // ═════════════════════════════════════════════════════════════
+    //  원본 모델 조립 도우미 (압력 · 코드 · 산소 밸브가 같이 쓴다)
+    // ═════════════════════════════════════════════════════════════
 
     /// <summary>
     /// 모델의 버튼 메시 하나를 누를 수 있는 부품으로 만든다: 조준 레이어 · 메시 크기 콜라이더 · StationButton · 스테이션 콜라이더 목록 · 외곽선.
