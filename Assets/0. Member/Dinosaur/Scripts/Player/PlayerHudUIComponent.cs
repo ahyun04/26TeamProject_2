@@ -9,6 +9,7 @@ public class PlayerHudUIComponent : MonoBehaviour
     [SerializeField] private TMP_Text healthText; //현재 체력과 최대 체력
     [SerializeField] private Image staminaFill; //스태미나 게이지
     [SerializeField] private TMP_Text staminaText; //현재 스태미나와 최대 스태미나
+    [SerializeField] private GameObject crosshair; //화면 중앙의 작은 흰색 십자
     [SerializeField] private PlayerDamageFeedbackComponent damageFeedback; //피격 화면 연출
     [SerializeField] private CanvasGroup rolePanel; //검은 배경 역할 안내
     [SerializeField] private TMP_Text roleText; //본인의 역할
@@ -29,6 +30,7 @@ public class PlayerHudUIComponent : MonoBehaviour
         if (health != null) refreshHealth(health.CurrentHealth, health.MaxHealth);
         if (stamina != null) refreshStamina(stamina.CurrentStamina, stamina.MaxStamina);
         hideRole();
+        setCrosshairVisible(false);
     }
 
     private void OnEnable() //표시 재활성화 시 이벤트와 값 복원
@@ -42,6 +44,7 @@ public class PlayerHudUIComponent : MonoBehaviour
     {
         unsubscribe();
         hideRole();
+        setCrosshairVisible(false);
     }
 
     private void subscribe() //본인 능력치 변경 구독
@@ -85,6 +88,13 @@ public class PlayerHudUIComponent : MonoBehaviour
         if (damageFeedback != null) damageFeedback.showDamage();
     }
 
+    internal void setCrosshairVisible(bool visible) //역할 안내와 메뉴 상태에 맞춰 조준점 표시
+    {
+        if (crosshair == null) return;
+        bool show = visible && isActiveAndEnabled && (rolePanel == null || !rolePanel.gameObject.activeSelf); //본인 시점에서만 표시
+        if (crosshair.activeSelf != show) crosshair.SetActive(show);
+    }
+
     internal Quaternion getDamageShakeRotation() //카메라가 적용할 피격 회전
     {
         return damageFeedback != null ? damageFeedback.getShakeRotation() : Quaternion.identity;
@@ -96,6 +106,7 @@ public class PlayerHudUIComponent : MonoBehaviour
         hideRole();
         roleText.text = role == PlayerRole.Killer ? "당신은 살인마입니다" : "당신은 시민입니다";
         rolePanel.gameObject.SetActive(true);
+        setCrosshairVisible(false);
         rolePanel.alpha = 1f;
         roleRoutine = StartCoroutine(fadeRole());
     }

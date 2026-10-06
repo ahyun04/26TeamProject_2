@@ -1,4 +1,5 @@
 using Fusion;
+using LockdownProtocol.Lobby;
 using UnityEngine;
 
 [RequireComponent(typeof(PlayerHealth), typeof(PlayerStamina))]
@@ -27,6 +28,11 @@ public class PlayerFeedback : NetworkBehaviour
     public override void Render() //Client에도 역할 정보가 도착한 뒤 한 번 안내
     {
         if (hud == null) return;
+
+        bool canShowCrosshair = health != null && health.CanAct && !GameAudio.blocksPlayerInput &&
+            !SessionDisconnectUIComponent.IsOpen &&
+            (LobbyRoomUI.Instance == null || !LobbyRoomUI.Instance.BlocksPlayerInput); //현재 화면에서 조준 가능한 상태
+        hud.setCrosshairVisible(canShowCrosshair);
 
         if (gameEndSystem != null && gameEndSystem.Object != null &&
             gameEndSystem.Object.IsValid && gameEndSystem.IsGameEnded)

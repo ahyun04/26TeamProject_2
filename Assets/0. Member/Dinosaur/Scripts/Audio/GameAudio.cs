@@ -66,6 +66,26 @@ public class GameAudio : MonoBehaviour
         settings.save();
     }
 
+    internal void beginSettingsEditing() //설정창의 임시 변경 시작 진입점
+    {
+        settings.beginEditing();
+    }
+
+    internal bool applySettings() //적용 버튼의 확정과 저장 진입점
+    {
+        return settings.applyChanges();
+    }
+
+    internal void cancelSettings() //미적용 변경 취소 진입점
+    {
+        settings.cancelChanges();
+    }
+
+    internal void restoreDefaultSettings() //임시 설정의 기본값 복원 진입점
+    {
+        settings.restoreDefaults();
+    }
+
     internal static VoiceInputMode getVoiceInputMode() //로컬 마이크의 송신 방식 조회 진입점
     {
         return instance != null ? instance.settings.getVoiceInputMode() : VoiceInputMode.VoiceActivation;

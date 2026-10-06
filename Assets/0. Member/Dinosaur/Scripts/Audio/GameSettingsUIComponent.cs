@@ -2,6 +2,7 @@ using LockdownProtocol.Lobby;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.Events;
 using UnityEngine.UI;
 
 [DefaultExecutionOrder(-100)]
@@ -21,6 +22,23 @@ public class GameSettingsUIComponent : MonoBehaviour
     [SerializeField] private Button voiceActivationButton; //음성 인식 송신 선택
     [SerializeField] private Button pushToTalkButton; //눌러서 말하기 선택
     [SerializeField] private TMP_Text voiceModeHintText; //선택한 송신 방식의 사용법
+    [SerializeField] private Button soundTabButton; //사운드 탭 선택
+    [SerializeField] private Button controlsTabButton; //조작키 탭 선택
+    [SerializeField] private TMP_Text soundTabText; //사운드 탭 글자
+    [SerializeField] private TMP_Text controlsTabText; //조작키 탭 글자
+    [SerializeField] private GameObject soundTabIndicator; //사운드 탭의 선택 밑줄
+    [SerializeField] private GameObject controlsTabIndicator; //조작키 탭의 선택 밑줄
+    [SerializeField] private GameObject soundPage; //음량과 송신 방식 페이지
+    [SerializeField] private GameObject controlsPage; //현재 조작키 안내 페이지
+    [SerializeField] private Button applyButton; //설정 적용과 저장
+    [SerializeField] private Button cancelButton; //미적용 설정 취소
+    [SerializeField] private Button defaultsButton; //임시 설정 기본값 복원
+    [SerializeField] private TMP_Text saveHintText; //저장 방법과 저장 실패 안내
+    [SerializeField] private TMP_InputField[] volumeInputs; //음량의 정수 입력 칸
+    [SerializeField] private Button[] decreaseButtons; //음량 1퍼센트 감소
+    [SerializeField] private Button[] increaseButtons; //음량 1퍼센트 증가
+    [SerializeField] private Sprite selectedButtonSprite; //선택한 송신 방식의 버튼 리소스
+    [SerializeField] private Sprite neutralButtonSprite; //일반 송신 방식의 버튼 리소스
     [SerializeField] private EventSystem fallbackEventSystem; //씬에 UI 입력 시스템이 없을 때 사용
 
     private GameAudio owner; //설정 기능 진입점
@@ -28,6 +46,10 @@ public class GameSettingsUIComponent : MonoBehaviour
     private string sceneName; //현재 게임 씬
     private bool isOpen; //현재 설정창 상태
     private int toggleFrame = -1; //Esc로 닫은 프레임의 입력 재사용 방지
+    private bool soundSelected = true; //현재 열린 설정 탭
+    private UnityAction<string>[] volumeInputActions; //숫자 입력 구독 해제에 사용할 함수
+    private UnityAction[] decreaseActions; //감소 버튼 구독 해제에 사용할 함수
+    private UnityAction[] increaseActions; //증가 버튼 구독 해제에 사용할 함수
     internal bool blocksPlayerInput => isOpen || toggleFrame == Time.frameCount; //로컬 게임 입력 차단
 
     private void Awake() //버튼과 슬라이더 입력 연결
@@ -41,6 +63,13 @@ public class GameSettingsUIComponent : MonoBehaviour
         voiceSlider.onValueChanged.AddListener(setVoiceVolume);
         voiceActivationButton.onClick.AddListener(selectVoiceActivation);
         pushToTalkButton.onClick.AddListener(selectPushToTalk);
+        soundTabButton?.onClick.AddListener(showSoundTab);
+        controlsTabButton?.onClick.AddListener(showControlsTab);
+        applyButton?.onClick.AddListener(apply);
+        cancelButton?.onClick.AddListener(close);
+        defaultsButton?.onClick.AddListener(restoreDefaults);
+        connectVolumeInputs();
+        refreshTab();
     }
 
     internal void initialize(GameAudio gameAudio) //기능 진입점과 저장된 음량 연결
@@ -103,22 +132,47 @@ public class GameSettingsUIComponent : MonoBehaviour
 
     private void open() //설정창 열기와 본인의 게임 입력 차단
     {
-        if (owner == null || SessionDisconnectUIComponent.IsOpen || isGameEnded()) return;
+        if (isOpen || owner == null || SessionDisconnectUIComponent.IsOpen || isGameEnded()) return;
+        owner.beginSettingsEditing();
         isOpen = true;
         toggleFrame = Time.frameCount;
         refreshValues();
+        refreshTab();
+        if (saveHintText != null) saveHintText.text = "적용을 누르면 변경 사항이 저장됩니다.";
         panel.SetActive(true);
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
     }
 
-    private void close() //설정 저장과 현재 화면에 맞는 커서 복원
+    private void close() //X·Esc·취소·씬 전환에서 미적용 설정 복원
     {
         if (!isOpen) return;
+        finishVolumeInput();
+        owner.cancelSettings();
+        finishClose();
+    }
+
+    private void apply() //입력 중인 숫자도 반영한 뒤 설정 저장
+    {
+        if (!isOpen) return;
+        finishVolumeInput();
+        if (owner.applySettings()) finishClose();
+        else if (saveHintText != null) saveHintText.text = "저장하지 못했습니다. 다시 적용해 주세요.";
+    }
+
+    private void restoreDefaults() //기본값은 적용 전까지 미리 듣기에만 반영
+    {
+        if (!isOpen) return;
+        finishVolumeInput();
+        owner.restoreDefaultSettings();
+        refreshValues();
+    }
+
+    private void finishClose() //입력 차단 해제와 현재 화면의 커서 복원
+    {
         isOpen = false;
         toggleFrame = Time.frameCount;
         panel.SetActive(false);
-        owner.saveSettings();
         bool showCursor = PlayerCameraController.LocalListenerTransform == null ||
             SessionDisconnectUIComponent.IsOpen || isGameEnded() ||
             (LobbyRoomUI.Instance != null && LobbyRoomUI.Instance.BlocksPlayerInput);
@@ -130,38 +184,117 @@ public class GameSettingsUIComponent : MonoBehaviour
     private void setMasterVolume(float volume) //전체 음량 변경 전달
     {
         owner.setVolume(AudioVolumeChannel.Master, volume);
-        masterValueText.text = formatVolume(volume);
+        refreshVolumeRow(AudioVolumeChannel.Master);
     }
 
     private void setMusicVolume(float volume) //배경음 음량 변경 전달
     {
         owner.setVolume(AudioVolumeChannel.Music, volume);
-        musicValueText.text = formatVolume(volume);
+        refreshVolumeRow(AudioVolumeChannel.Music);
     }
 
     private void setEffectsVolume(float volume) //효과음 음량 변경 전달
     {
         owner.setVolume(AudioVolumeChannel.Effects, volume);
-        effectsValueText.text = formatVolume(volume);
+        refreshVolumeRow(AudioVolumeChannel.Effects);
     }
 
     private void setVoiceVolume(float volume) //음성 수신 음량 변경 전달
     {
         owner.setVolume(AudioVolumeChannel.Voice, volume);
-        voiceValueText.text = formatVolume(volume);
+        refreshVolumeRow(AudioVolumeChannel.Voice);
     }
 
     private void refreshValues() //저장값을 슬라이더와 숫자에 표시
     {
-        Slider[] sliders = { masterSlider, musicSlider, effectsSlider, voiceSlider };
-        TMP_Text[] labels = { masterValueText, musicValueText, effectsValueText, voiceValueText };
-        for (int i = 0; i < sliders.Length; i++)
-        {
-            float volume = owner.getVolume((AudioVolumeChannel)i);
-            sliders[i].SetValueWithoutNotify(volume);
-            labels[i].text = formatVolume(volume);
-        }
+        for (int i = 0; i < 4; i++) refreshVolumeRow((AudioVolumeChannel)i);
         refreshVoiceMode();
+    }
+
+    private void refreshVolumeRow(AudioVolumeChannel channel) //슬라이더·숫자·증감 버튼을 같은 값으로 표시
+    {
+        int index = (int)channel; //표시할 음량 행
+        float volume = owner.getVolume(channel); //미리 듣는 음량
+        Slider[] sliders = { masterSlider, musicSlider, effectsSlider, voiceSlider }; //기존 음량 슬라이더
+        TMP_Text[] labels = { masterValueText, musicValueText, effectsValueText, voiceValueText }; //기존 값 표시 참조
+        sliders[index].SetValueWithoutNotify(volume);
+        if (volumeInputs != null && volumeInputs.Length > index && volumeInputs[index] != null)
+            volumeInputs[index].SetTextWithoutNotify(Mathf.RoundToInt(volume * 100f).ToString());
+        else labels[index].text = formatVolume(volume);
+        if (decreaseButtons != null && decreaseButtons.Length > index && decreaseButtons[index] != null)
+            decreaseButtons[index].interactable = volume > 0f;
+        if (increaseButtons != null && increaseButtons.Length > index && increaseButtons[index] != null)
+            increaseButtons[index].interactable = volume < 1f;
+    }
+
+    private void connectVolumeInputs() //숫자 입력과 증감 버튼 연결
+    {
+        if (volumeInputs == null || decreaseButtons == null || increaseButtons == null) return;
+        volumeInputActions = new UnityAction<string>[4];
+        decreaseActions = new UnityAction[4];
+        increaseActions = new UnityAction[4];
+        for (int i = 0; i < 4; i++)
+        {
+            int index = i; //행별 입력 대상
+            volumeInputActions[i] = value => setVolumeInput((AudioVolumeChannel)index, value);
+            decreaseActions[i] = () => adjustVolume((AudioVolumeChannel)index, -0.01f);
+            increaseActions[i] = () => adjustVolume((AudioVolumeChannel)index, 0.01f);
+            volumeInputs[i].onEndEdit.AddListener(volumeInputActions[i]);
+            decreaseButtons[i].onClick.AddListener(decreaseActions[i]);
+            increaseButtons[i].onClick.AddListener(increaseActions[i]);
+        }
+    }
+
+    private void setVolumeInput(AudioVolumeChannel channel, string value) //숫자 입력을 0~100 범위로 적용
+    {
+        if (!isOpen || owner == null) return;
+        if (int.TryParse(value, out int percent)) owner.setVolume(channel, Mathf.Clamp(percent, 0, 100) / 100f);
+        refreshVolumeRow(channel);
+    }
+
+    private void adjustVolume(AudioVolumeChannel channel, float amount) //음량을 1퍼센트 단위로 증감
+    {
+        if (!isOpen) return;
+        finishVolumeInput();
+        owner.setVolume(channel, owner.getVolume(channel) + amount);
+        refreshVolumeRow(channel);
+    }
+
+    private void finishVolumeInput() //탭 전환이나 버튼 처리 전에 편집 중인 숫자 확정
+    {
+        if (volumeInputs == null) return;
+        for (int i = 0; i < volumeInputs.Length; i++)
+            if (volumeInputs[i].isFocused)
+            {
+                setVolumeInput((AudioVolumeChannel)i, volumeInputs[i].text);
+                volumeInputs[i].DeactivateInputField();
+            }
+    }
+
+    private void showSoundTab() //임시 설정을 유지하면서 사운드 탭 선택
+    {
+        finishVolumeInput();
+        soundSelected = true;
+        refreshTab();
+    }
+
+    private void showControlsTab() //현재 키 안내 탭 선택
+    {
+        finishVolumeInput();
+        soundSelected = false;
+        refreshTab();
+    }
+
+    private void refreshTab() //첫 예시의 글자 강조와 얇은 선택 밑줄 적용
+    {
+        if (soundPage != null) soundPage.SetActive(soundSelected);
+        if (controlsPage != null) controlsPage.SetActive(!soundSelected);
+        if (soundTabIndicator != null) soundTabIndicator.SetActive(soundSelected);
+        if (controlsTabIndicator != null) controlsTabIndicator.SetActive(!soundSelected);
+        Color selected = new Color(0.48f, 0.82f, 1f); //선택된 탭 글자
+        Color neutral = new Color(0.64f, 0.69f, 0.76f); //선택되지 않은 탭 글자
+        if (soundTabText != null) soundTabText.color = soundSelected ? selected : neutral;
+        if (controlsTabText != null) controlsTabText.color = soundSelected ? neutral : selected;
     }
 
     private void selectVoiceActivation() //자동 음성 감지 방식 선택
@@ -187,7 +320,12 @@ public class GameSettingsUIComponent : MonoBehaviour
     private void setModeButtonColor(Button button, bool selected) //현재 선택한 방식의 버튼 강조
     {
         ColorBlock colors = button.colors; //기존 버튼의 입력 상태 색상
-        colors.normalColor = selected ? new Color(0.2f, 0.42f, 0.65f) : new Color(0.18f, 0.21f, 0.27f);
+        if (selectedButtonSprite != null && neutralButtonSprite != null)
+        {
+            button.image.sprite = selected ? selectedButtonSprite : neutralButtonSprite;
+            colors.normalColor = Color.white;
+        }
+        else colors.normalColor = selected ? new Color(0.2f, 0.42f, 0.65f) : new Color(0.18f, 0.21f, 0.27f);
         colors.selectedColor = colors.normalColor;
         button.colors = colors;
     }
@@ -207,5 +345,17 @@ public class GameSettingsUIComponent : MonoBehaviour
         voiceSlider.onValueChanged.RemoveListener(setVoiceVolume);
         voiceActivationButton.onClick.RemoveListener(selectVoiceActivation);
         pushToTalkButton.onClick.RemoveListener(selectPushToTalk);
+        soundTabButton?.onClick.RemoveListener(showSoundTab);
+        controlsTabButton?.onClick.RemoveListener(showControlsTab);
+        applyButton?.onClick.RemoveListener(apply);
+        cancelButton?.onClick.RemoveListener(close);
+        defaultsButton?.onClick.RemoveListener(restoreDefaults);
+        if (volumeInputActions == null) return;
+        for (int i = 0; i < 4; i++)
+        {
+            volumeInputs[i].onEndEdit.RemoveListener(volumeInputActions[i]);
+            decreaseButtons[i].onClick.RemoveListener(decreaseActions[i]);
+            increaseButtons[i].onClick.RemoveListener(increaseActions[i]);
+        }
     }
 }
