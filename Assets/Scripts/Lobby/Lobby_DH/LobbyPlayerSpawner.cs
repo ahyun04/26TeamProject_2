@@ -87,6 +87,13 @@ namespace LockdownProtocol.Lobby
             }
         }
 
+        /// <summary>호스트 마이그레이션 직후 호출: 옛 세션의 오브젝트 참조와 입장 순서 카운터를 초기화.</summary>
+        public void ResetForHostMigration()
+        {
+            _spawnedPlayers.Clear();
+            _joinOrderCounter = 0;
+        }
+
         /// <summary>방장이 바뀌었을 때 RoomManager가 호출해서 새 방장의 LobbyPlayerController를 갱신.</summary>
         public void RefreshHostFlag(PlayerRef newHost)
         {

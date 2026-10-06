@@ -68,7 +68,10 @@ namespace LockdownProtocol.Lobby
         {
             Instance = this;
 
-            if (Object.HasStateAuthority)
+            // MaxPlayerCount가 0일 때(= 갓 만든 방)만 기본값으로 채운다.
+            // 호스트 마이그레이션으로 복구된 RoomManager는 이미 값이 복사되어 있는데,
+            // 여기서 무조건 덮어쓰면 방 최대 인원이 기본값으로 되돌아간다.
+            if (Object.HasStateAuthority && MaxPlayerCount == 0)
             {
                 CurrentRoomState = RoomState.Waiting;
                 MaxPlayerCount = defaultMaxPlayerCount;
@@ -114,6 +117,18 @@ namespace LockdownProtocol.Lobby
             SetRoomState(RoomState.Waiting);
             FindFirstObjectByType<LobbyPlayerSpawner>()?.RefreshHostFlag(hostPlayer);
             RPC_NotifyHostChanged(hostPlayer);
+        }
+
+        /// <summary>
+        /// 호스트 마이그레이션 직후 새 Host에서 호출. 옛 방장의 PlayerRef가 남아있으므로
+        /// 새 Host(= 남은 사람 중 Photon이 뽑은 사람)를 방장으로 지정하고, 시작 중이었다면 Waiting으로 되돌린다.
+        /// </summary>
+        public void RecoverAfterHostMigration(PlayerRef newHost)
+        {
+            if (!Object.HasStateAuthority) return;
+
+            HostPlayerId = newHost;
+            SetRoomState(RoomState.Waiting);
         }
 
         // ================== 방 나가기 ==================

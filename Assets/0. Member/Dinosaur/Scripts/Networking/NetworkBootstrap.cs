@@ -47,6 +47,7 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
     private bool sessionConnected; //실제 방 입장 여부
     private bool disconnected; //연결 종료 안내 중복 방지
     private bool returningToRoom; //대기실 복귀 중복 방지
+    private bool _isMigrating; //방장 이탈로 호스트 마이그레이션 진행 중 (이 동안은 연결 종료 안내를 띄우지 않음)
     private SessionDisconnectUIComponent disconnectUI; //현재 연결 종료 안내창
 
     public static event Action<NetworkRunner, PlayerRef> OnPlayerJoinedEvent;
@@ -267,12 +268,18 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
 
     public void OnShutdown(NetworkRunner runner, ShutdownReason shutdownReason)
     {
+        Debug.Log($"[NetworkBootstrap] OnShutdown: {shutdownReason}");
+        if (_isMigrating || shutdownReason == ShutdownReason.HostMigration)
+            return;
         if (runner == _runner && sessionConnected)
             showDisconnect("방장과의 연결이 종료되었습니다.\n로비로 돌아가 다시 참가해 주세요.");
     }
     public void OnConnectedToServer(NetworkRunner runner) { }
     public void OnDisconnectedFromServer(NetworkRunner runner, NetDisconnectReason reason)
     {
+        Debug.Log($"[NetworkBootstrap] OnDisconnectedFromServer: {reason}");
+        if (_isMigrating)
+            return;
         if (runner == _runner && sessionConnected)
             showDisconnect("방장과의 연결이 종료되었습니다.\n로비로 돌아가 다시 참가해 주세요.");
     }
@@ -283,10 +290,83 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
     public void OnSimulationMessage(NetworkRunner runner, SimulationMessagePtr message) { }
     public void OnSessionListUpdated(NetworkRunner runner, List<SessionInfo> sessionList) { }
     public void OnCustomAuthenticationResponse(NetworkRunner runner, Dictionary<string, object> data) { }
-    public void OnHostMigration(NetworkRunner runner, HostMigrationToken hostMigrationToken)
+    /// <summary>
+    /// 방장(Fusion Host)이 나가면 남은 사람 중 한 명이 새 Host로 승격되고 모든 피어에서 이 콜백이 불린다.
+    /// 기존 Runner를 끄고 마이그레이션 토큰으로 새 Runner(+음성 클라이언트)를 시작해 방을 이어간다.
+    /// 마이그레이션 자체가 실패하면 예전처럼 연결 종료 안내를 띄운다.
+    /// (NetworkProjectConfig의 "Enable Host Migration"이 켜져 있어야 이 콜백이 불린다)
+    /// </summary>
+    public async void OnHostMigration(NetworkRunner runner, HostMigrationToken hostMigrationToken)
     {
-        if (runner == _runner && sessionConnected)
+        Debug.Log($"[NetworkBootstrap] OnHostMigration 호출됨 (새 역할: {hostMigrationToken.GameMode})");
+        if (runner != _runner || !sessionConnected || _leaving || disconnected || _isMigrating)
+            return;
+
+        _isMigrating = true;
+        try
+        {
+            // 이 오브젝트(NetworkBootstrap)가 같이 파괴되지 않도록 destroyGameObject: false
+            await runner.Shutdown(destroyGameObject: false, shutdownReason: ShutdownReason.HostMigration);
+
+            // 옛 세션의 오브젝트는 모두 사라졌으므로 스포너가 들고 있던 참조/입장 순서를 초기화
+            FindFirstObjectByType<LobbyPlayerSpawner>()?.ResetForHostMigration();
+
+            PrepareRunner(); // 옛 Runner 오브젝트를 지우고 새 Runner + FusionVoiceClient 생성
+
+            StartGameResult result = await _runner.StartGame(new StartGameArgs
+            {
+                HostMigrationToken = hostMigrationToken,
+                HostMigrationResume = HostMigrationResume,
+                SceneManager = _runnerObject.GetComponent<NetworkSceneManagerDefault>()
+            });
+
+            if (!result.Ok)
+            {
+                _isMigrating = false;
+                showDisconnect("방장이 퇴장하여 방이 종료되었습니다.\n로비로 돌아가 다시 참가해 주세요.");
+            }
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception);
+            _isMigrating = false;
             showDisconnect("방장이 퇴장하여 방이 종료되었습니다.\n로비로 돌아가 다시 참가해 주세요.");
+        }
+        finally
+        {
+            _isMigrating = false;
+        }
+    }
+
+    /// <summary>새 Host에서만, 시뮬레이션 재개 직전에 불린다. 방 싱글턴(RoomManager 프리팹)만 복구한다.
+    /// 플레이어 오브젝트는 복구하지 않는다 - 새 세션에서 OnPlayerJoined가 다시 불리면
+    /// LobbyPlayerSpawner가 새로 스폰한다(옛 PlayerRef/입력 권한을 그대로 믿을 수 없음).</summary>
+    private void HostMigrationResume(NetworkRunner runner)
+    {
+        foreach (var resumeNO in runner.GetResumeSnapshotNetworkObjects())
+        {
+            if (!resumeNO.TryGetBehaviour<RoomManager>(out _)) continue;
+
+            NetworkObject spawned = runner.Spawn(resumeNO, onBeforeSpawned: (r, newNO) =>
+            {
+                newNO.CopyStateFrom(resumeNO);
+            });
+
+            var room = spawned.GetComponent<RoomManager>();
+            if (room != null)
+            {
+                // 새 Host가 원래 클라이언트였다면 _roomName/_maxPlayers/_isPrivate가 비어 있거나 기본값이다.
+                // OnSceneLoadDone에서 InitializeRoom이 다시 불려도 값이 덮어써지지 않도록 복구된 값으로 맞춰둔다.
+                _roomName = room.RoomName.ToString();
+                _maxPlayers = room.MaxPlayerCount;
+                _isPrivate = room.IsPrivate;
+                room.RecoverAfterHostMigration(runner.LocalPlayer);
+            }
+
+            spawned.GetComponent<LobbyGameStartManager>()?.ResetAfterMigration();
+            Debug.Log($"[NetworkBootstrap] 방 정보 복구 완료. 새 방장: {runner.LocalPlayer}");
+            break;
+        }
     }
     public void OnReliableDataReceived(NetworkRunner runner, PlayerRef player, ReliableKey key, ArraySegment<byte> data) { }
     public void OnReliableDataProgress(NetworkRunner runner, PlayerRef player, ReliableKey key, float progress) { }

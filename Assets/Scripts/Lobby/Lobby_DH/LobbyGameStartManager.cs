@@ -111,6 +111,13 @@ namespace LockdownProtocol.Lobby
             StartCountdown = TickTimer.CreateFromSeconds(Runner, startCountdownSeconds);
         }
 
+        /// <summary>호스트 마이그레이션 직후: 옛 Runner 기준의 카운트다운 타이머는 의미가 없으므로 비운다.</summary>
+        public void ResetAfterMigration()
+        {
+            if (!Object.HasStateAuthority) return;
+            StartCountdown = TickTimer.None;
+        }
+
         private void BeginGameSceneTransition()
         {
             if (!Object.HasStateAuthority) return;
