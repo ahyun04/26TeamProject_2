@@ -271,6 +271,33 @@ namespace TrustNoOne.Missions
             }
         }
 
+        /// <summary>
+        /// 진행만 알린다 (호스트 전용, 3b 명세 LS11). 완료 이벤트와 같은 종류를 보내지만 잠금 · 초기화는 하지 않는다.
+        /// 한 장치가 미션을 여러 번 진행시킬 때 쓴다 (예: 생명 유지 장치 — 정상 산소통 1개 공급마다 1, 마지막은 CompleteBy).
+        /// </summary>
+        protected void PublishProgress(PlayerRef actor)
+        {
+            if (!HasStateAuthority || actor.IsNone)
+                return;
+
+            EnsureManager();
+            manager?.Publish(new MissionEvent(completionEvent, actor, objectId));
+        }
+
+        /// <summary>
+        /// 이 장치의 미션을 실패(처음부터)시켜 달라고 요청한다 (호스트 전용, 3b 명세 LS11 — 생명 유지 장치 폭발).
+        /// 받아들여지면 제한 시간 초과와 같은 알림(OnMissionReset)으로 이 장치의 ResetStation 이 이미 불린 뒤다.
+        /// </summary>
+        /// <returns>미션이 처음부터로 돌아갔으면 true (그 미션이 이번 판에 없거나 이미 끝났으면 false)</returns>
+        protected bool RequestMissionFailure()
+        {
+            if (!HasStateAuthority)
+                return false;
+
+            EnsureManager();
+            return manager != null && manager.ResetMission(completionEvent) > 0;
+        }
+
         /// <summary>원래 상태로 되돌린다 (호스트 전용). 사용 중이면 먼저 취소하고, 잠금을 풀고, 하위 클래스 상태를 되돌린다.</summary>
         protected void ResetStation()
         {

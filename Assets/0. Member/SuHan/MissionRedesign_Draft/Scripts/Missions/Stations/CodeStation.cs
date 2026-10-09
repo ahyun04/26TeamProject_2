@@ -33,7 +33,7 @@ namespace TrustNoOne.Missions
         [Header("연출")]
         [SerializeField] private CodeKeypadVisual keypad;
         [Tooltip("화면 글자. 비어 있으면 화면 없이 동작")]
-        [SerializeField] private CodeDisplay display;
+        [SerializeField] private LcdDisplay display;
 
         [Header("점등 시간 (초)")]
         [Tooltip("빨간 버튼을 누른 뒤 첫 숫자가 켜지기 전 쉬는 시간")]

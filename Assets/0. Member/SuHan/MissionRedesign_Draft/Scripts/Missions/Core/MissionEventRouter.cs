@@ -82,6 +82,30 @@ namespace TrustNoOne.Missions
             }
         }
 
+        /// <summary>
+        /// 장치 요청으로 trigger 미션을 실패(처음부터)시킨다 (3b 명세 LS11). 제한 시간 초과(Tick)와 같은 순서로
+        /// ObjectiveChanged → ObjectiveReset 을 보낸다 → MissionManager 가 동기화하고 장치들에 초기화를 알린다.
+        /// </summary>
+        /// <returns>처음부터로 되돌린 목표 수</returns>
+        public int ResetObjectives(MissionEventType trigger)
+        {
+            int count = 0;
+
+            for (int i = 0; i < objectives.Count; i++)
+            {
+                IMissionObjective objective = objectives[i];
+
+                if (objective.Definition.Trigger != trigger || !objective.ResetProgress())
+                    continue;
+
+                ObjectiveChanged?.Invoke(objective);
+                ObjectiveReset?.Invoke(objective);
+                count++;
+            }
+
+            return count;
+        }
+
         /// <summary>그 플레이어의 행동이 끝났다 (탈출/사망/시간 종료). 종료 판정 목표를 확정한다.</summary>
         public void FinalizePlayer(PlayerRef player)
         {

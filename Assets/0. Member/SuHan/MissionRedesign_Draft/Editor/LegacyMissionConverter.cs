@@ -17,7 +17,7 @@ using UnityEngine;
 ///  공통 후처리: 조준 문구(MissionPrompt.promptObject)가 있으면 PromptBillboard 를 붙여 항상 보는 사람 쪽을 향하게 한다
 ///  (옛 밸브 문구가 방향 고정이라 배치에 따라 뒤집혀 보였음 — 2b 테스트에서 발견).
 /// [조준 외곽선] MissionOutlineBuilder 로 붙인다 (1단계 사용자 요청). 부품마다 MissionPrompt 를 두면 조준한 부품만 켜진다 (2a 명세 P7).
-/// [변환 목록] 1단계 발전기 / 2a 밸브 · 안테나 · 차단기 / 2b 전선 / 2c 필터 · 청소기(아이템) / 2d 압력(신규 — 옛 프리팹이 없어 원본 패널 · 피스톤 모델에서 조립) / 3a 코드 자판(신규 — 원본 자판 모델에서 조립) / 3b 산소 밸브(신규 — 원본 배관 · 손잡이 모델에서 조립). 미니게임을 이식할 때마다 Build… 와 Convert… 를 하나씩 추가한다.
+/// [변환 목록] 1단계 발전기 / 2a 밸브 · 안테나 · 차단기 / 2b 전선 / 2c 필터 · 청소기(아이템) / 2d 압력(신규 — 옛 프리팹이 없어 원본 패널 · 피스톤 모델에서 조립) / 3a 코드 자판(신규 — 원본 자판 모델에서 조립) / 3b 생명 유지 장치 · 산소통(신규 — 모델이 없어 기본 도형으로 조립) / 3c 장비 조립(신규 — 원본 본체 · 부품 모델에서 조립). 미니게임을 이식할 때마다 Build… 와 Convert… 를 하나씩 추가한다.
 /// </summary>
 public static class LegacyMissionConverter
 {
@@ -56,19 +56,46 @@ public static class LegacyMissionConverter
     private const float CodeScreenUvTolerance = 0.004f;
     private const string TmpDefaultFontPath = "Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset";
 
-    // 3b 산소 밸브: 옛 프리팹이 없어 원본 배관(Pipe.fbx) + 손잡이(Valve.fbx) 모델에서 조립한다 (원본은 복사해서 쓰고 수정하지 않음)
-    public const string OxygenValveStationPath = OutputFolder + "/OxygenValve_Station.prefab";
-    private const string OxygenValvePipeModelPath = SourceModelFolder + "/Pipe.fbx";
-    private const string OxygenValveWheelModelPath = SourceModelFolder + "/Valve.fbx";
-    private const float OxygenValveInteractRange = 3f;
+    // 3b 생명 유지 장치 · 산소통: 모델이 없어 기본 도형으로 조립한다 (명세 LS9 — 모델이 생기면 Build 함수만 바꾼다)
+    public const string LifeSupportStationPath = OutputFolder + "/LifeSupport_Station.prefab";
+    public const string OxygenTankPath = ItemPrefabFolder + "/OxygenTank_Item.prefab";
+    private const string OxygenTankFirstPersonPath = ItemPrefabFolder + "/OxygenTank_FP.prefab";
+    private const string OxygenTankDataPath = ItemDataFolder + "/OxygenTankData.asset";
+    private const string DraftMaterialFolder = "Assets/0. Member/SuHan/MissionRedesign_Draft/Materials";
+    private const float LifeSupportInteractRange = 3f;
 
-    // 손잡이 자리 = Valve.fbx 노드 위치 (0, 106.6, 37.5)cm 를 m 로 — 배관 기준 (3b 명세 L3)
-    private static readonly Vector3 OxygenValveWheelOffset = new Vector3(0f, 1.066f, 0.375f);
+    // 산소통 아이템 번호: 기존 아이템 데이터(10 청소기 · 11 · 12 · 13)와 겹치지 않게
+    private const int OxygenTankItemId = 20;
 
-    // 상태 램프 (L5): 지름, 손잡이 위쪽 끝에서 띄우는 높이, 배관 표면을 찾을 때 광선을 시작하는 앞쪽 거리
-    private const float OxygenLampDiameter = 0.07f;
-    private const float OxygenLampGap = 0.08f;
-    private const float OxygenLampProbeDistance = 1f;
+    // 크기 (m): 산소통 지름 0.25 · 높이 0.6, 본체 1 × 1.6 × 0.6, 화면 0.8 × 0.35 (명세 4장)
+    private const float OxygenTankDiameter = 0.25f;
+    private const float OxygenTankHeight = 0.6f;
+    private static readonly Vector3 LifeSupportBodySize = new Vector3(1f, 1.6f, 0.6f);
+    private static readonly Vector2 LifeSupportScreenSize = new Vector2(0.8f, 0.35f);
+    private const float LifeSupportScreenHeight = 1.25f;
+    private const float LifeSupportShelfHeight = 0.35f;
+
+    // 자리 표시 색
+    private static readonly Color OxygenTankColor = new Color(0.75f, 0.12f, 0.1f);
+    private static readonly Color LampOffColor = new Color(0.35f, 0.35f, 0.35f);
+    private static readonly Color LifeSupportBodyColor = new Color(0.22f, 0.24f, 0.27f);
+    private static readonly Color SocketColor = new Color(0.08f, 0.08f, 0.09f);
+
+    // 3c 장비 조립: 원본 본체 · 부품 모델에서 조립한다 (원본은 복사해서 쓰고 수정하지 않음)
+    public const string AssemblyStationPath = OutputFolder + "/Assembly_Station.prefab";
+    private const string AssemblyMachineModelPath = SourceModelFolder + "/Equipment_repair_machine_main.fbx";
+    private const float AssemblyZoneRadius = 2.5f;      // 조립 위치 원 반경 (3c EA1)
+    private const float AssemblyZoneGap = 2.5f;         // 장비 앞면에서 원 중심까지 (m)
+    private const float AssemblyFlyStartHeight = 1.2f;  // 날아오기 시작 높이 (EA12)
+
+    // 부품 아이템 번호: 21 파랑 · 22 회색 · 23 빨강 · 24 노랑 (기존 10 ~ 13 · 20 과 겹치지 않게, EA10)
+    private const int EquipmentPartFirstItemId = 21;
+
+    // 색 순서 = AssemblyRules 색 번호. 모델 · 자리 노드 이름 / 프리팹 이름 / 로그 · 아이템 이름
+    private static readonly string[] EquipmentPartColors = { "blue", "gray", "red", "yellow" };
+    private static readonly string[] EquipmentPartNames = { "Blue", "Gray", "Red", "Yellow" };
+    private static readonly string[] EquipmentPartKoreanNames = { "파랑", "회색", "빨강", "노랑" };
+    private static readonly Color AssemblyZoneColor = new Color(0.1f, 0.55f, 0.55f);
 
     // 조준 감지 레이어 (ProjectSettings 의 Interactable). 원본 모델은 기본 레이어(0)로 들어와 있어 버튼을 이 레이어로 옮겨야 조준된다
     private const int InteractableLayer = 6;
@@ -106,7 +133,8 @@ public static class LegacyMissionConverter
         Report("청소기", ConvertVacuumTool());
         Report("압력", CreatePressureStation());
         Report("코드", CreateCodeStation());
-        Report("산소 밸브", CreateOxygenValveStation());
+        Report("생명 유지 장치", CreateLifeSupportStation());
+        Report("장비 조립", CreateAssemblyStation());
         AssetDatabase.SaveAssets();
 
         // 새 NetworkObject 프리팹을 Fusion 네트워크 프리팹 목록에 즉시 반영 (안 하면 Runner.Spawn 이 실패한다)
@@ -166,9 +194,82 @@ public static class LegacyMissionConverter
     public static NetworkObject CreateCodeStation() =>
         Convert("코드", CodeModelPath, "Code_Station", CodeStationPath, BuildCode);
 
-    /// <summary>산소 밸브: 원본 배관 모델(Pipe.fbx)을 복사해 손잡이 · 조준 영역 · 상태 램프를 붙여 조립한다 (3b 명세 4장).</summary>
-    public static NetworkObject CreateOxygenValveStation() =>
-        Convert("산소 밸브", OxygenValvePipeModelPath, "OxygenValve_Station", OxygenValveStationPath, BuildOxygenValve);
+    /// <summary>
+    /// 생명 유지 장치 본체 (3b 명세 4장): 산소통 아이템을 먼저 만들고, 빈 루트에서 본체를 조립한다.
+    /// 모델이 없어 기본 도형 자리 표시다 (LS9).
+    /// </summary>
+    public static NetworkObject CreateLifeSupportStation()
+    {
+        NetworkObject tankPrefab = CreateOxygenTank();
+
+        if (tankPrefab == null)
+        {
+            Debug.LogError("[LegacyMissionConverter] 생명 유지 장치: 산소통을 만들지 못해 본체를 조립하지 않습니다.");
+            return null;
+        }
+
+        return Assemble("생명 유지 장치", "LifeSupport_Station", LifeSupportStationPath, copy => BuildLifeSupport(copy, tankPrefab));
+    }
+
+    /// <summary>산소통 아이템 (3b 명세 4장): 1인칭 모델 → 아이템 데이터 → 월드 아이템 순서로 만든다 (청소기와 같은 순서).</summary>
+    public static NetworkObject CreateOxygenTank()
+    {
+        GameObject firstPerson = AssemblePrefab("산소통 1인칭", "OxygenTank_FP", OxygenTankFirstPersonPath, BuildOxygenTankFirstPerson, false);
+
+        if (firstPerson == null)
+            return null;
+
+        ItemData data = CreateOxygenTankData(firstPerson);
+
+        if (data == null)
+            return null;
+
+        return Assemble("산소통", "OxygenTank_Item", OxygenTankPath, copy => BuildOxygenTank(copy, data), false);
+    }
+
+    /// <summary>
+    /// 장비 (3c 명세 4장): 부품 4종을 먼저 만들고, 원본 본체 모델을 복사해 자리 · 조립 위치 · 연출을 조립한다.
+    /// 장비에는 조준 입력이 없어 조준 검증은 끈다 (EA14).
+    /// </summary>
+    public static NetworkObject CreateAssemblyStation()
+    {
+        NetworkObject[] partPrefabs = new NetworkObject[AssemblyRules.PartCount];
+
+        for (int c = 0; c < partPrefabs.Length; c++)
+        {
+            partPrefabs[c] = CreateEquipmentPart(c);
+
+            if (partPrefabs[c] == null)
+            {
+                Debug.LogError($"[LegacyMissionConverter] 장비: {EquipmentPartKoreanNames[c]} 부품을 만들지 못해 장비를 조립하지 않습니다.");
+                return null;
+            }
+        }
+
+        return Convert("장비", AssemblyMachineModelPath, "Assembly_Station", AssemblyStationPath, copy => BuildAssembly(copy, partPrefabs), false);
+    }
+
+    /// <summary>장비 부품 아이템 한 색 (3c 명세 4장): 1인칭 모델 → 아이템 데이터 → 월드 아이템 (산소통과 같은 순서).</summary>
+    public static NetworkObject CreateEquipmentPart(int color)
+    {
+        string label = EquipmentPartNames[color];
+        string koreanName = EquipmentPartKoreanNames[color];
+
+        GameObject firstPerson = AssemblePrefab($"부품 1인칭 ({koreanName})", $"EquipmentPart_{label}_FP",
+            $"{ItemPrefabFolder}/EquipmentPart_{label}_FP.prefab", copy => BuildEquipmentPartFirstPerson(copy, color), false);
+
+        if (firstPerson == null)
+            return null;
+
+        ItemData data = CreateItemData($"{ItemDataFolder}/EquipmentPart_{label}Data.asset", EquipmentPartFirstItemId + color,
+            $"장비 부품 ({koreanName})", firstPerson);
+
+        if (data == null)
+            return null;
+
+        return Assemble($"부품 ({koreanName})", $"EquipmentPart_{label}", $"{ItemPrefabFolder}/EquipmentPart_{label}.prefab",
+            copy => BuildEquipmentPart(copy, color, data), false);
+    }
 
     // ═════════════════════════════════════════════════════════════
     //  공통 틀
@@ -199,7 +300,28 @@ public static class LegacyMissionConverter
 
         GameObject copy = Object.Instantiate(legacy);
         copy.name = outputName;
+        return FinishPrefab(what, copy, outputPath, build, verifyTargets);
+    }
 
+    /// <summary>원본 없이 빈 루트에서 조립한다 (3b — 모델이 없어 기본 도형으로). 검증 · 저장은 Convert 와 같다.</summary>
+    private static NetworkObject Assemble(string what, string outputName, string outputPath,
+        System.Func<GameObject, bool> build, bool verifyTargets = true)
+    {
+        GameObject saved = AssemblePrefab(what, outputName, outputPath, build, verifyTargets);
+        return saved != null ? saved.GetComponent<NetworkObject>() : null;
+    }
+
+    private static GameObject AssemblePrefab(string what, string outputName, string outputPath,
+        System.Func<GameObject, bool> build, bool verifyTargets)
+    {
+        EnsureFolder(System.IO.Path.GetDirectoryName(outputPath).Replace('\\', '/'));
+        return FinishPrefab(what, new GameObject(outputName), outputPath, build, verifyTargets);
+    }
+
+    /// <summary>공통 뒷부분: 조립 → 안내 빌보드 → 검증 2가지 → 저장 → 복사본 파괴. 하나라도 실패하면 저장하지 않는다.</summary>
+    private static GameObject FinishPrefab(string what, GameObject copy, string outputPath,
+        System.Func<GameObject, bool> build, bool verifyTargets)
+    {
         try
         {
             if (!build(copy))
@@ -826,6 +948,13 @@ public static class LegacyMissionConverter
         CopyFloat(oldSO, "suctionDuration", so, "suctionDuration");
         so.ApplyModifiedPropertiesWithoutUndo();
 
+        // 조준하면 외곽선 (미션 아이템 공통 — 3c 테스트 후 추가 EA16). 옛 청소기 프리팹에는 외곽선이 없어 모델 메시로 만든다
+        if (!HasHighlight(copy))
+        {
+            Transform model = FindDeep(copy.transform, "Vacuum_Model");
+            MissionOutlineBuilder.Attach(copy, model != null ? model.gameObject : copy);
+        }
+
         Object.DestroyImmediate(oldItem);
         return true;
     }
@@ -1022,11 +1151,10 @@ public static class LegacyMissionConverter
     }
 
     /// <summary>
-    /// 코드 자판 화면 글자 (3a 명세 C13): 패널 화면 위에 TextMeshPro 글자를 올리고 CodeDisplay 를 붙인다.
+    /// 코드 자판 화면 글자 (3a 명세 C13): 패널 화면 위에 LCD 글자(LcdDisplay)를 올린다.
     /// 화면을 못 찾으면 경고 후 null — 스테이션은 화면 없이 동작한다.
-    /// 크기는 가장 긴 문구(SUCCESS)가 화면 너비의 90% 에 맞도록 한 번 재고 고정한다 (문구마다 글자 크기가 달라지지 않게).
     /// </summary>
-    private static CodeDisplay BuildCodeDisplay(GameObject root)
+    private static LcdDisplay BuildCodeDisplay(GameObject root)
     {
         MeshFilter panel = root.GetComponent<MeshFilter>();
 
@@ -1037,22 +1165,40 @@ public static class LegacyMissionConverter
             return null;
         }
 
+        // 화면 3mm 앞 (화면 면과 겹쳐 깜빡이지 않게), 글자 앞면(−Z)이 화면 밖(normal)을 보게, 테두리 여백 10%
+        LcdDisplay display = CreateLcdText(root.transform, center + normal * 0.003f, Quaternion.LookRotation(-normal, up), size * 0.9f,
+            CodeStation.SuccessText, CodeStation.ReadyText);
+
+        TMP_Text text = display.GetComponent<TMP_Text>();
+        float tilt = Vector3.Angle(Vector3.forward, Vector3.ProjectOnPlane(normal, Vector3.right));
+        Debug.Log($"[LegacyMissionConverter] 코드: 화면 찾음 — 크기 {size.x:0.00} × {size.y:0.00}m, 뒤로 기운 각도 {tilt:0}°, 글자 크기 {text.fontSize:0.00}{(text.enableAutoSizing ? " (자동 크기 유지)" : string.Empty)}");
+        return display;
+    }
+
+    /// <summary>
+    /// LCD 글자 (3a C13 · 3b LS16): parent 아래에 TextMeshPro 글자 + LcdDisplay 를 만든다.
+    /// 크기는 가장 긴 문구(longestText)가 영역(size)에 맞도록 한 번 재고 고정한다 (문구마다 글자 크기가 달라지지 않게).
+    /// </summary>
+    /// <param name="localRotation">글자 앞면(−Z)이 보는 쪽을 정하는 회전</param>
+    private static LcdDisplay CreateLcdText(Transform parent, Vector3 localPosition, Quaternion localRotation, Vector2 size,
+        string longestText, string initialText)
+    {
         GameObject textObject = new GameObject("Display (화면 글자)");
-        textObject.transform.SetParent(root.transform, false);
+        textObject.transform.SetParent(parent, false);
 
         // TextMeshPro 를 붙이면 RectTransform 도 함께 생긴다
         TextMeshPro text = textObject.AddComponent<TextMeshPro>();
         RectTransform rect = textObject.GetComponent<RectTransform>();
-        rect.localPosition = center + normal * 0.003f;              // 화면 3mm 앞 (화면 면과 겹쳐 깜빡이지 않게)
-        rect.localRotation = Quaternion.LookRotation(-normal, up);  // 글자 앞면(-Z)이 화면 밖(normal)을 보게, 위는 화면의 위쪽
-        rect.sizeDelta = size * 0.9f;                               // 화면 테두리 여백 10%
+        rect.localPosition = localPosition;
+        rect.localRotation = localRotation;
+        rect.sizeDelta = size;
 
         TMP_FontAsset font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(TmpDefaultFontPath);
 
         if (font != null)
             text.font = font;
         else
-            Debug.LogWarning($"[LegacyMissionConverter] 코드: 글꼴을 찾지 못해 TextMeshPro 기본값을 씁니다 ({TmpDefaultFontPath}).");
+            Debug.LogWarning($"[LegacyMissionConverter] 글꼴을 찾지 못해 TextMeshPro 기본값을 씁니다 ({TmpDefaultFontPath}).");
 
         text.alignment = TextAlignmentOptions.Center;
         text.enableWordWrapping = false;
@@ -1061,7 +1207,7 @@ public static class LegacyMissionConverter
         text.enableAutoSizing = true;
         text.fontSizeMin = 0.01f;
         text.fontSizeMax = 100f;
-        text.text = CodeStation.SuccessText;
+        text.text = longestText;
         text.ForceMeshUpdate(true, true);
         float fitted = text.fontSize;
 
@@ -1071,15 +1217,12 @@ public static class LegacyMissionConverter
             text.fontSize = fitted;
         }
 
-        text.text = CodeStation.ReadyText;
+        text.text = initialText;
 
-        CodeDisplay display = textObject.AddComponent<CodeDisplay>();
+        LcdDisplay display = textObject.AddComponent<LcdDisplay>();
         SerializedObject displaySO = new SerializedObject(display);
         displaySO.FindProperty("text").objectReferenceValue = text;
         displaySO.ApplyModifiedPropertiesWithoutUndo();
-
-        float tilt = Vector3.Angle(Vector3.forward, Vector3.ProjectOnPlane(normal, Vector3.right));
-        Debug.Log($"[LegacyMissionConverter] 코드: 화면 찾음 — 크기 {size.x:0.00} × {size.y:0.00}m, 뒤로 기운 각도 {tilt:0}°, 글자 크기 {text.fontSize:0.00}{(text.enableAutoSizing ? " (자동 크기 유지)" : string.Empty)}");
         return display;
     }
 
@@ -1162,142 +1305,442 @@ public static class LegacyMissionConverter
     }
 
     // ═════════════════════════════════════════════════════════════
-    //  3b: 산소 밸브 (신규 — 원본 배관 · 손잡이 모델에서 조립)
+    //  3b: 생명 유지 장치 · 산소통 (신규 — 모델이 없어 기본 도형으로 조립)
     // ═════════════════════════════════════════════════════════════
 
-    /// <summary>
-    /// 산소 밸브 (3b 명세 4장): 배관 복사본(루트, 배관 메시)에 손잡이 · 조준 영역 · 상태 램프를 붙이고 OxygenValveStation 을 설정한다.
-    /// 두 모델 모두 앞이 +Z 이고 손잡이가 배관 +Z 쪽에 붙으므로 정면 맞춤(FaceFront)은 하지 않는다 (L9).
-    /// </summary>
-    private static bool BuildOxygenValve(GameObject copy)
+    /// <summary>산소통 1인칭 모델: 화면 오른쪽 아래에 보이는 작은 빨간 원기둥 (콜라이더 없음). 위치는 에디터 확인 후 조정.</summary>
+    private static bool BuildOxygenTankFirstPerson(GameObject copy)
     {
-        GameObject wheelModel = AssetDatabase.LoadAssetAtPath<GameObject>(OxygenValveWheelModelPath);
+        Material body = GetOrCreateColorMaterial("LifeSupport_TankBody", OxygenTankColor);
+        CreateShape(PrimitiveType.Cylinder, "Body (몸통)", copy.transform, new Vector3(0.25f, -0.25f, 0.55f), new Vector3(0.12f, 0.18f, 0.12f), body, false);
+        return true;
+    }
 
-        if (wheelModel == null)
+    /// <summary>산소통 아이템 데이터 (팀원 ItemData): 번호 20 · 이름 · 1인칭 모델 (3b).</summary>
+    private static ItemData CreateOxygenTankData(GameObject firstPersonPrefab)
+    {
+        return CreateItemData(OxygenTankDataPath, OxygenTankItemId, "산소통", firstPersonPrefab);
+    }
+
+    /// <summary>
+    /// 미션 아이템 데이터 (팀원 ItemData — 3b 산소통 · 3c 장비 부품): 번호 · 이름 · 1인칭 모델. 이미 있으면 값만 갱신한다.
+    /// 다른 아이템 데이터가 같은 번호를 쓰면 경고한다.
+    /// </summary>
+    private static ItemData CreateItemData(string path, int id, string itemName, GameObject firstPersonPrefab)
+    {
+        EnsureFolder(System.IO.Path.GetDirectoryName(path).Replace('\\', '/'));
+
+        ItemData data = AssetDatabase.LoadAssetAtPath<ItemData>(path);
+
+        if (data == null)
         {
-            Debug.LogError($"[LegacyMissionConverter] 산소 밸브: 손잡이 모델이 없습니다: {OxygenValveWheelModelPath}");
+            data = ScriptableObject.CreateInstance<ItemData>();
+            AssetDatabase.CreateAsset(data, path);
+        }
+
+        SerializedObject so = new SerializedObject(data);
+        so.FindProperty("id").intValue = id;
+        so.FindProperty("itemName").stringValue = itemName;
+        so.FindProperty("firstPersonPrefab").objectReferenceValue = firstPersonPrefab;
+        so.ApplyModifiedPropertiesWithoutUndo();
+        EditorUtility.SetDirty(data);
+
+        foreach (string guid in AssetDatabase.FindAssets("t:ItemData"))
+        {
+            string otherPath = AssetDatabase.GUIDToAssetPath(guid);
+            ItemData other = otherPath != path ? AssetDatabase.LoadAssetAtPath<ItemData>(otherPath) : null;
+
+            if (other != null && other.Id == id)
+                Debug.LogWarning($"[LegacyMissionConverter] {itemName}: 아이템 번호 {id} 를 {otherPath} 도 쓰고 있습니다.");
+        }
+
+        return data;
+    }
+
+    /// <summary>
+    /// 산소통 (3b 명세 4장): 빨간 원기둥 몸통(바닥이 루트 원점) + 압력계 구. 루트에 NetworkObject · ItemWorldView · OxygenTank.
+    /// 압력계는 원래 재질이 회색이고 가까이 가면 Neon_green / Neon_red 로 바뀐다 (LS1).
+    /// </summary>
+    private static bool BuildOxygenTank(GameObject copy, ItemData data)
+    {
+        Material safe = AssetDatabase.LoadAssetAtPath<Material>($"{SourceMaterialFolder}/Neon_green.mat");
+        Material danger = AssetDatabase.LoadAssetAtPath<Material>($"{SourceMaterialFolder}/Neon_red.mat");
+
+        if (safe == null || danger == null)
+        {
+            Debug.LogError("[LegacyMissionConverter] 산소통: Neon_green / Neon_red 재질이 없어 압력계로 정상 · 위험을 구분할 수 없습니다.");
             return false;
         }
 
-        // 손잡이: 원본 손잡이 모델의 노드 위치가 곧 배관 기준 손잡이 자리다 (L3)
-        GameObject wheel = Object.Instantiate(wheelModel, copy.transform);
-        wheel.name = "Valve (손잡이)";
-        wheel.transform.localPosition = OxygenValveWheelOffset;
-        wheel.transform.localRotation = Quaternion.identity;
+        copy.layer = InteractableLayer;
+        copy.AddComponent<NetworkObject>();
 
-        // 회전 부품 = 메시가 달린 오브젝트 (메시 원점 = 원판 중심이라 제자리에서 돈다)
-        MeshFilter wheelMesh = wheel.GetComponentInChildren<MeshFilter>();
+        // 기본 원기둥은 지름 1 · 높이 2 → 크기 (지름, 높이 / 2, 지름). 조준 · 줍기용 콜라이더는 그대로 둔다
+        GameObject body = CreateShape(PrimitiveType.Cylinder, "Body (몸통)", copy.transform,
+            new Vector3(0f, OxygenTankHeight * 0.5f, 0f), new Vector3(OxygenTankDiameter, OxygenTankHeight * 0.5f, OxygenTankDiameter),
+            GetOrCreateColorMaterial("LifeSupport_TankBody", OxygenTankColor), true);
+        body.layer = InteractableLayer;
 
-        if (wheelMesh == null || wheelMesh.sharedMesh == null)
-        {
-            Debug.LogError("[LegacyMissionConverter] 산소 밸브: 손잡이 모델에 메시가 없습니다.");
-            return false;
-        }
+        GameObject gauge = CreateShape(PrimitiveType.Sphere, "Gauge (압력계)", copy.transform,
+            new Vector3(0f, OxygenTankHeight + 0.03f, 0f), Vector3.one * 0.08f,
+            GetOrCreateColorMaterial("LifeSupport_Off", LampOffColor), false);
 
-        Transform wheelPart = wheelMesh.transform;
+        ItemWorldView view = copy.AddComponent<ItemWorldView>();
+        SerializedObject viewSO = new SerializedObject(view);
+        SetObjectArray(viewSO.FindProperty("renderers"), body.GetComponent<Renderer>(), gauge.GetComponent<Renderer>());
+        SetObjectArray(viewSO.FindProperty("colliders"), body.GetComponent<Collider>());
+        viewSO.ApplyModifiedPropertiesWithoutUndo();
 
-        // 여는 방향: 정면(+Z)에서 볼 때 반시계. Unity 는 축 끝에서 볼 때 양의 회전이 시계 방향이라 원판 두께 축을 뒤집는다
-        Vector3 axis = -ThinnestAxis(wheelPart);
-
-        // 조준 영역 (L7): 손잡이의 처음 자리 · 크기를 그대로 두고 돌리지 않는다 (같이 돌면 상자 모서리가 돌며 가장자리 판정이 흔들린다)
-        GameObject grip = new GameObject("Grip (조준 영역)");
-        grip.layer = InteractableLayer;
-        grip.transform.SetParent(wheelPart.parent, false);
-        grip.transform.localPosition = wheelPart.localPosition;
-        grip.transform.localRotation = wheelPart.localRotation;
-        grip.transform.localScale = wheelPart.localScale;
-        BoxCollider gripCollider = grip.AddComponent<BoxCollider>();
-        gripCollider.center = wheelMesh.sharedMesh.bounds.center;
-        gripCollider.size = wheelMesh.sharedMesh.bounds.size;
-
-        if (copy.GetComponent<NetworkObject>() == null)
-            copy.AddComponent<NetworkObject>();
-
-        OxygenValveStation station = copy.AddComponent<OxygenValveStation>();
-        SerializedObject so = ConfigureStation(station, MissionEventType.LifeSupportRestored, CompletionPolicy.Lock, OxygenValveInteractRange);
-        so.FindProperty("rotatingPart").objectReferenceValue = wheelPart;
-        so.FindProperty("rotationAxis").vector3Value = axis;
-        AddCollider(so, gripCollider);
-
-        // 상태 램프 (L5): 원본 네온 재질. 없으면 경고 후 램프 없이 (미션 동작에는 영향 없음)
-        Material closedMaterial = AssetDatabase.LoadAssetAtPath<Material>($"{SourceMaterialFolder}/Neon_red.mat");
-        Material openMaterial = AssetDatabase.LoadAssetAtPath<Material>($"{SourceMaterialFolder}/Neon_green.mat");
-        Renderer lampRenderer = null;
-        string lampWhere = "없음";
-
-        if (closedMaterial == null || openMaterial == null)
-            Debug.LogWarning("[LegacyMissionConverter] 산소 밸브: Neon_red / Neon_green 재질을 찾지 못해 상태 램프 없이 동작합니다.");
-        else
-            lampRenderer = BuildOxygenLamp(copy, wheelMesh, closedMaterial, out lampWhere);
-
-        so.FindProperty("lampRenderer").objectReferenceValue = lampRenderer;
-        so.FindProperty("closedMaterial").objectReferenceValue = closedMaterial;
-        so.FindProperty("openMaterial").objectReferenceValue = openMaterial;
+        OxygenTank tank = copy.AddComponent<OxygenTank>();
+        SerializedObject so = new SerializedObject(tank);
+        so.FindProperty("data").objectReferenceValue = data;
+        so.FindProperty("gaugeRenderer").objectReferenceValue = gauge.GetComponent<Renderer>();
+        so.FindProperty("safeMaterial").objectReferenceValue = safe;
+        so.FindProperty("dangerMaterial").objectReferenceValue = danger;
         so.ApplyModifiedPropertiesWithoutUndo();
 
-        // 외곽선: 손잡이 메시로 만든다 (외곽선 복제본이 손잡이 자식이라 같이 돈다)
-        MissionOutlineBuilder.Attach(copy, wheelPart.gameObject);
+        // 조준하면 외곽선 (미션 아이템 공통 — 3c 테스트 후 추가 EA16). 몸통만 — 압력계 구는 빼서 외곽선이 압력계 색을 가리지 않게
+        MissionOutlineBuilder.Attach(copy, body);
 
-        Vector3 wheelSize = wheelMesh.GetComponent<Renderer>().bounds.size;
-        Debug.Log($"[LegacyMissionConverter] 산소 밸브: 회전축 {axis}, 손잡이 위치 {wheel.transform.localPosition} (지름 {Mathf.Max(wheelSize.x, wheelSize.y):0.00}m), 램프 {lampWhere}");
+        Debug.Log($"[LegacyMissionConverter] 산소통: 아이템 번호 {OxygenTankItemId}, 지름 {OxygenTankDiameter}m · 높이 {OxygenTankHeight}m");
         return true;
     }
 
     /// <summary>
-    /// 상태 램프 (3b 명세 L5): 손잡이 위쪽 배관 표면에 작은 발광 구를 붙인다. 구의 콜라이더는 지운다 (조준 · 충돌에 끼지 않게).
-    /// 표면 찾기: 배관 메시에 임시 MeshCollider 를 붙이고 앞(+Z)에서 뒤로 광선을 쏜다 — 배관 모양이 높이마다 달라 고정값을 쓰지 않는다.
-    /// 안 맞으면 손잡이 중심과 같은 깊이에 두고 경고한다.
+    /// 생명 유지 장치 본체 (3b 명세 4장): 상자 몸체(바닥이 원점, 앞 = +Z) + 앞면 화면 · LCD 글자 + 받침 · 꽂는 자리 · 꽂힌 통 + 경고 램프 + 폭발 섬광.
+    /// 콜라이더 둘: 몸체(단단함, 기본 레이어 — 플레이어가 통과하지 않게) / 조준 영역(트리거, 조준 레이어 — 내 미션이 아니면 공통 틀이 끈다).
     /// </summary>
-    /// <param name="where">로그용 — 루트 기준 램프 위치와 찾은 방법</param>
-    private static Renderer BuildOxygenLamp(GameObject root, MeshFilter wheelMesh, Material material, out string where)
+    private static bool BuildLifeSupport(GameObject copy, NetworkObject tankPrefab)
     {
-        Transform rootTransform = root.transform;
-        Bounds wheelBounds = wheelMesh.GetComponent<Renderer>().bounds;
-        float radius = OxygenLampDiameter * 0.5f;
+        Material warning = AssetDatabase.LoadAssetAtPath<Material>($"{SourceMaterialFolder}/Neon_red.mat");
+        Material done = AssetDatabase.LoadAssetAtPath<Material>($"{SourceMaterialFolder}/Neon_green.mat");
 
-        // 손잡이 위쪽 끝 + 여유 높이, 깊이는 우선 손잡이 중심
-        Vector3 position = wheelBounds.center + rootTransform.up * (wheelBounds.extents.y + OxygenLampGap + radius);
-        bool onSurface = false;
+        if (warning == null || done == null)
+            Debug.LogWarning("[LegacyMissionConverter] 생명 유지 장치: Neon_red / Neon_green 재질을 찾지 못해 경고 램프 · 섬광이 보이지 않습니다.");
 
-        MeshFilter pipeMesh = root.GetComponent<MeshFilter>();
+        Material bodyMaterial = GetOrCreateColorMaterial("LifeSupport_Body", LifeSupportBodyColor);
+        Transform root = copy.transform;
+        copy.AddComponent<NetworkObject>();
 
-        if (pipeMesh != null && pipeMesh.sharedMesh != null)
+        Vector3 size = LifeSupportBodySize;
+        float front = size.z * 0.5f;
+        GameObject body = CreateShape(PrimitiveType.Cube, "Body (몸체)", root, new Vector3(0f, size.y * 0.5f, 0f), size, bodyMaterial, true);
+
+        GameObject aim = new GameObject("Aim (조준 영역)");
+        aim.layer = InteractableLayer;
+        aim.transform.SetParent(root, false);
+        aim.transform.localPosition = body.transform.localPosition;
+        BoxCollider aimCollider = aim.AddComponent<BoxCollider>();
+        aimCollider.isTrigger = true;
+        aimCollider.size = size + Vector3.one * 0.04f;
+
+        // 화면: 앞면 위쪽 검은 판 + 3mm 앞 LCD 글자 (글자 앞면(−Z)이 +Z 를 보게)
+        CreateShape(PrimitiveType.Cube, "Screen (화면)", root, new Vector3(0f, LifeSupportScreenHeight, front + 0.01f),
+            new Vector3(LifeSupportScreenSize.x, LifeSupportScreenSize.y, 0.02f), GetOrCreateColorMaterial("LifeSupport_Screen", Color.black), false);
+        LcdDisplay display = CreateLcdText(root, new Vector3(0f, LifeSupportScreenHeight, front + 0.023f), Quaternion.LookRotation(Vector3.back, Vector3.up),
+            LifeSupportScreenSize * 0.9f, LifeSupportStation.LongestScreenText, LifeSupportStation.IdleText(0, 3));
+
+        // 꽂는 자리: 앞으로 튀어나온 받침 + 짙은 원판. 꽂힌 통 = 산소통 몸통과 같은 모양 (평소 숨김)
+        Vector3 shelfCenter = new Vector3(0f, LifeSupportShelfHeight, front + 0.15f);
+        CreateShape(PrimitiveType.Cube, "Shelf (받침)", root, shelfCenter, new Vector3(0.45f, 0.06f, 0.3f), bodyMaterial, false);
+        Vector3 socketCenter = shelfCenter + Vector3.up * 0.04f;
+        CreateShape(PrimitiveType.Cylinder, "Socket (꽂는 자리)", root, socketCenter, new Vector3(0.32f, 0.01f, 0.32f),
+            GetOrCreateColorMaterial("LifeSupport_Socket", SocketColor), false);
+        GameObject inserted = CreateShape(PrimitiveType.Cylinder, "Inserted Tank (꽂힌 산소통)", root,
+            socketCenter + Vector3.up * (OxygenTankHeight * 0.5f + 0.01f), new Vector3(OxygenTankDiameter, OxygenTankHeight * 0.5f, OxygenTankDiameter),
+            GetOrCreateColorMaterial("LifeSupport_TankBody", OxygenTankColor), false);
+        inserted.SetActive(false);
+
+        GameObject lamp = CreateShape(PrimitiveType.Sphere, "Warning Lamp (경고 램프)", root, new Vector3(0f, size.y + 0.06f, 0f), Vector3.one * 0.12f,
+            GetOrCreateColorMaterial("LifeSupport_Off", LampOffColor), false);
+
+        GameObject flash = CreateShape(PrimitiveType.Sphere, "Flash (폭발 섬광)", root, new Vector3(0f, size.y * 0.5f, 0f), Vector3.one, warning, false);
+        flash.SetActive(false);
+
+        LifeSupportVisual visual = copy.AddComponent<LifeSupportVisual>();
+        SerializedObject visualSO = new SerializedObject(visual);
+        visualSO.FindProperty("insertedTank").objectReferenceValue = inserted;
+        visualSO.FindProperty("warningLamp").objectReferenceValue = lamp.GetComponent<Renderer>();
+        visualSO.FindProperty("warningMaterial").objectReferenceValue = warning;
+        visualSO.FindProperty("doneMaterial").objectReferenceValue = done;
+        visualSO.FindProperty("flash").objectReferenceValue = flash.transform;
+        visualSO.ApplyModifiedPropertiesWithoutUndo();
+
+        LifeSupportStation station = copy.AddComponent<LifeSupportStation>();
+        SerializedObject so = ConfigureStation(station, MissionEventType.LifeSupportRestored, CompletionPolicy.Lock, LifeSupportInteractRange);
+        so.FindProperty("tankPrefab").objectReferenceValue = tankPrefab;
+        so.FindProperty("visual").objectReferenceValue = visual;
+        so.FindProperty("display").objectReferenceValue = display;
+        AddCollider(so, aimCollider);
+        so.ApplyModifiedPropertiesWithoutUndo();
+
+        MissionOutlineBuilder.Attach(copy, body);
+
+        Debug.Log($"[LegacyMissionConverter] 생명 유지 장치: 몸체 {size}, 화면 높이 {LifeSupportScreenHeight}m, 꽂는 자리 {socketCenter}, 산소통 프리팹 {tankPrefab.name}");
+        return true;
+    }
+
+    /// <summary>기본 도형 부품을 만든다. keepCollider 가 false 면 도형의 기본 콜라이더를 지운다 (조준 · 충돌에 끼지 않게).</summary>
+    private static GameObject CreateShape(PrimitiveType type, string name, Transform parent, Vector3 localPosition, Vector3 localScale,
+        Material material, bool keepCollider)
+    {
+        GameObject shape = GameObject.CreatePrimitive(type);
+        shape.name = name;
+
+        if (!keepCollider)
+            Object.DestroyImmediate(shape.GetComponent<Collider>());
+
+        shape.transform.SetParent(parent, false);
+        shape.transform.localPosition = localPosition;
+        shape.transform.localScale = localScale;
+
+        if (material != null)
+            shape.GetComponent<Renderer>().sharedMaterial = material;
+
+        return shape;
+    }
+
+    /// <summary>
+    /// 단색 재질을 우리 폴더(MissionRedesign_Draft/Materials)에서 읽고, 없으면 만든다 (원본 재질은 수정하지 않는다).
+    /// URP Lit 이 없으면 Standard. 색은 Material.color(셰이더의 주 색)와 _BaseColor 둘 다 넣는다.
+    /// </summary>
+    private static Material GetOrCreateColorMaterial(string fileName, Color color)
+    {
+        string path = $"{DraftMaterialFolder}/{fileName}.mat";
+        Material material = AssetDatabase.LoadAssetAtPath<Material>(path);
+
+        if (material != null)
+            return material;
+
+        Shader shader = Shader.Find("Universal Render Pipeline/Lit");
+
+        if (shader == null)
+            shader = Shader.Find("Standard");
+
+        material = new Material(shader) { name = fileName };
+        material.color = color;
+
+        if (material.HasProperty("_BaseColor"))
+            material.SetColor("_BaseColor", color);
+
+        EnsureFolder(DraftMaterialFolder);
+        AssetDatabase.CreateAsset(material, path);
+        return material;
+    }
+
+    /// <summary>직렬화된 배열(SerializedProperty)을 items 로 채운다.</summary>
+    private static void SetObjectArray(SerializedProperty list, params Object[] items)
+    {
+        list.ClearArray();
+
+        for (int i = 0; i < items.Length; i++)
         {
-            MeshCollider probe = root.AddComponent<MeshCollider>();
-            probe.sharedMesh = pipeMesh.sharedMesh;
-            Physics.SyncTransforms();
-
-            Ray ray = new Ray(position + rootTransform.forward * OxygenLampProbeDistance, -rootTransform.forward);
-
-            if (probe.Raycast(ray, out RaycastHit hit, OxygenLampProbeDistance * 2f))
-            {
-                position = hit.point + hit.normal * radius;
-                onSurface = true;
-            }
-
-            Object.DestroyImmediate(probe);
+            list.InsertArrayElementAtIndex(i);
+            list.GetArrayElementAtIndex(i).objectReferenceValue = items[i];
         }
-
-        if (!onSurface)
-            Debug.LogWarning("[LegacyMissionConverter] 산소 밸브: 램프 자리의 배관 표면을 찾지 못해 손잡이와 같은 깊이에 둡니다.");
-
-        GameObject lamp = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        lamp.name = "Status Lamp (상태 램프)";
-        Object.DestroyImmediate(lamp.GetComponent<Collider>());
-        lamp.transform.SetParent(rootTransform, false);
-        lamp.transform.position = position;
-        lamp.transform.localScale = Vector3.one * OxygenLampDiameter;
-
-        // 편집 화면에서도 잠김(빨강)으로 보이게 처음부터 빨강 재질
-        Renderer lampRenderer = lamp.GetComponent<Renderer>();
-        lampRenderer.sharedMaterial = material;
-
-        where = $"{rootTransform.InverseTransformPoint(position)} ({(onSurface ? "배관 표면" : "추정")})";
-        return lampRenderer;
     }
 
     // ═════════════════════════════════════════════════════════════
-    //  원본 모델 조립 도우미 (압력 · 코드 · 산소 밸브가 같이 쓴다)
+    //  3c: 고장난 장비 조립 (신규 — 원본 본체 · 부품 모델에서 조립)
+    // ═════════════════════════════════════════════════════════════
+
+    /// <summary>원본 부품 모델(색)을 읽는다. 없으면 오류.</summary>
+    private static GameObject LoadEquipmentPartModel(int color)
+    {
+        string path = $"{SourceModelFolder}/Equipment_repair_machine_parts_{EquipmentPartColors[color]}.fbx";
+        GameObject model = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+
+        if (model == null)
+            Debug.LogError($"[LegacyMissionConverter] 장비 부품 모델이 없습니다: {path}");
+
+        return model;
+    }
+
+    /// <summary>부품 1인칭 모델: 빈 루트 + 부품 모델 사본(크기 0.6, 화면 오른쪽 아래). 콜라이더 없음. 위치는 에디터 확인 후 조정.</summary>
+    private static bool BuildEquipmentPartFirstPerson(GameObject copy, int color)
+    {
+        GameObject model = LoadEquipmentPartModel(color);
+
+        if (model == null)
+            return false;
+
+        GameObject view = Object.Instantiate(model, copy.transform);
+        view.name = "Model (모델)";
+        view.transform.localPosition = new Vector3(0.25f, -0.25f, 0.55f);
+        view.transform.localRotation = Quaternion.identity;
+        view.transform.localScale = Vector3.one * 0.6f;
+        return true;
+    }
+
+    /// <summary>
+    /// 부품 아이템 (3c 명세 4장): 빈 루트(바닥 원점) + 부품 모델 사본을 반 높이만큼 위로 (EA11).
+    /// 루트 · 모델을 조준 레이어로, 모델 메시 크기 BoxCollider, 루트에 NetworkObject · ItemWorldView · EquipmentPart.
+    /// </summary>
+    private static bool BuildEquipmentPart(GameObject copy, int color, ItemData data)
+    {
+        GameObject model = LoadEquipmentPartModel(color);
+
+        if (model == null)
+            return false;
+
+        copy.layer = InteractableLayer;
+        copy.AddComponent<NetworkObject>();
+
+        GameObject view = Object.Instantiate(model, copy.transform);
+        view.name = "Model (모델)";
+        view.transform.localRotation = Quaternion.identity;
+
+        MeshFilter meshFilter = view.GetComponentInChildren<MeshFilter>();
+        Renderer renderer = view.GetComponentInChildren<Renderer>();
+
+        if (meshFilter == null || meshFilter.sharedMesh == null || renderer == null)
+        {
+            Debug.LogError($"[LegacyMissionConverter] 부품 ({EquipmentPartKoreanNames[color]}): 모델에 메시가 없습니다.");
+            return false;
+        }
+
+        // 원점이 부품 중심이라 그대로 두면 반쯤 묻힌다 → 메시 아래쪽이 루트 원점(바닥)에 오게 올린다 (EA11, 메시는 모델 루트에 있다)
+        Bounds bounds = meshFilter.sharedMesh.bounds;
+        view.transform.localPosition = Vector3.up * -bounds.min.y;
+
+        GameObject colliderObject = meshFilter.gameObject;
+        colliderObject.layer = InteractableLayer;
+        BoxCollider box = colliderObject.AddComponent<BoxCollider>();
+        box.center = bounds.center;
+        box.size = bounds.size;
+
+        ItemWorldView worldView = copy.AddComponent<ItemWorldView>();
+        SerializedObject viewSO = new SerializedObject(worldView);
+        SetObjectArray(viewSO.FindProperty("renderers"), renderer);
+        SetObjectArray(viewSO.FindProperty("colliders"), box);
+        viewSO.ApplyModifiedPropertiesWithoutUndo();
+
+        EquipmentPart part = copy.AddComponent<EquipmentPart>();
+        SerializedObject so = new SerializedObject(part);
+        so.FindProperty("data").objectReferenceValue = data;
+        so.FindProperty("colorIndex").intValue = color;
+        so.ApplyModifiedPropertiesWithoutUndo();
+
+        // 조준하면 외곽선 (미션 아이템 공통 — 3c 테스트 후 추가 EA16). 외곽선 복제본은 모델 자식이라 아이템과 같이 움직이고,
+        // 들고 있으면 팀원 아이템 코드가 콜라이더를 꺼서 조준되지 않으므로 나타나지 않는다
+        MissionOutlineBuilder.Attach(copy, view);
+
+        Debug.Log($"[LegacyMissionConverter] 부품 ({EquipmentPartKoreanNames[color]}): 아이템 번호 {EquipmentPartFirstItemId + color}, 크기 {bounds.size}, 바닥 위로 {-bounds.min.y:0.000}m");
+        return true;
+    }
+
+    /// <summary>
+    /// 장비 (3c 명세 4장): 본체 복사본에 자리 4개(부품 모델 사본, 숨김 — EA9) · 몸체 충돌 상자 · 조립 위치 원 · 날아오기 시작점 · 장치 · 연출.
+    /// 정면 맞춤은 하지 않는다 — 자리 노드가 +Z(앞) 쪽에 있다 (명세 1장). 뒤쪽이면 경고한다.
+    /// </summary>
+    private static bool BuildAssembly(GameObject copy, NetworkObject[] partPrefabs)
+    {
+        Transform root = copy.transform;
+        Transform[] slots = new Transform[AssemblyRules.PartCount];
+        List<string> missing = new List<string>();
+
+        for (int c = 0; c < slots.Length; c++)
+        {
+            string slotName = $"Parts_{EquipmentPartColors[c]}_axes";
+            slots[c] = FindDeep(root, slotName);
+
+            if (slots[c] == null)
+                missing.Add(slotName);
+        }
+
+        if (missing.Count > 0)
+        {
+            Debug.LogError($"[LegacyMissionConverter] 장비: 자리 노드를 찾지 못했습니다 ({string.Join(", ", missing)}).");
+            return false;
+        }
+
+        // 몸체 메시는 부품 사본을 붙이기 전에 찾는다 (사본도 메시를 가져서)
+        MeshFilter body = root.GetComponentInChildren<MeshFilter>();
+
+        if (body == null || body.sharedMesh == null)
+        {
+            Debug.LogError("[LegacyMissionConverter] 장비: 본체 메시를 찾지 못했습니다.");
+            return false;
+        }
+
+        // 몸체 충돌 상자 (기본 레이어 — 플레이어가 통과하지 않게, 조준 대상 아님 — EA14)
+        BoxCollider bodyCollider = body.gameObject.AddComponent<BoxCollider>();
+        bodyCollider.center = body.sharedMesh.bounds.center;
+        bodyCollider.size = body.sharedMesh.bounds.size;
+
+        // 앞면 · 중심 (루트 기준): 복사본은 원점 · 회전 0 이라 몸체 렌더러 경계(월드)를 루트 기준으로 바로 쓴다
+        Bounds bodyBounds = body.GetComponent<Renderer>().bounds;
+        float front = root.InverseTransformPoint(bodyBounds.center + Vector3.forward * bodyBounds.extents.z).z;
+        float centerZ = root.InverseTransformPoint(bodyBounds.center).z;
+        float slotZ = 0f;
+
+        foreach (Transform slot in slots)
+            slotZ += root.InverseTransformPoint(slot.position).z / slots.Length;
+
+        if (slotZ <= centerZ)
+            Debug.LogWarning($"[LegacyMissionConverter] 장비: 자리 노드(z {slotZ:0.00})가 몸체 중심(z {centerZ:0.00})보다 뒤에 있습니다 — 조립 위치가 반대편일 수 있습니다.");
+
+        // 자리마다 그 색 부품 모델 사본 (로컬 0, 숨김 — 붙으면 보임, EA9)
+        Transform[] attached = new Transform[slots.Length];
+
+        for (int c = 0; c < slots.Length; c++)
+        {
+            GameObject model = LoadEquipmentPartModel(c);
+
+            if (model == null)
+                return false;
+
+            GameObject attachedPart = Object.Instantiate(model, slots[c]);
+            attachedPart.name = $"Attached ({EquipmentPartKoreanNames[c]})";
+            attachedPart.transform.localPosition = Vector3.zero;
+            attachedPart.transform.localRotation = Quaternion.identity;
+            attachedPart.transform.localScale = Vector3.one;
+            attachedPart.SetActive(false);
+            attached[c] = attachedPart.transform;
+        }
+
+        // 조립 위치: 앞면 + 2.5m 앞 바닥 원판 (지름 5m · 두께 2cm, 콜라이더 없음) + 그 1.2m 위 날아오기 시작점
+        GameObject zone = new GameObject("Zone (조립 위치)");
+        zone.transform.SetParent(root, false);
+        zone.transform.localPosition = new Vector3(0f, 0f, front + AssemblyZoneGap);
+        CreateShape(PrimitiveType.Cylinder, "Ring (바닥 원)", zone.transform, new Vector3(0f, 0.01f, 0f),
+            new Vector3(AssemblyZoneRadius * 2f, 0.01f, AssemblyZoneRadius * 2f), GetOrCreateColorMaterial("Assembly_Zone", AssemblyZoneColor), false);
+
+        GameObject flyStart = new GameObject("FlyStart (날아오기 시작)");
+        flyStart.transform.SetParent(zone.transform, false);
+        flyStart.transform.localPosition = Vector3.up * AssemblyFlyStartHeight;
+
+        if (copy.GetComponent<NetworkObject>() == null)
+            copy.AddComponent<NetworkObject>();
+
+        Material done = AssetDatabase.LoadAssetAtPath<Material>($"{SourceMaterialFolder}/Neon_green.mat");
+
+        if (done == null)
+            Debug.LogWarning("[LegacyMissionConverter] 장비: Neon_green 재질을 찾지 못해 완료 발광이 보이지 않습니다.");
+
+        AssemblyVisual visual = copy.AddComponent<AssemblyVisual>();
+        SerializedObject visualSO = new SerializedObject(visual);
+        SetObjectArray(visualSO.FindProperty("attachedParts"), attached);
+        visualSO.FindProperty("flyStart").objectReferenceValue = flyStart.transform;
+        visualSO.FindProperty("doneMaterial").objectReferenceValue = done;
+        visualSO.ApplyModifiedPropertiesWithoutUndo();
+
+        // 범위 = 원 반경 + 0.3m, 범위 기준점 = 원 중심 → 공통 범위 검사가 곧 "원 안" (EA8)
+        AssemblyStation station = copy.AddComponent<AssemblyStation>();
+        SerializedObject so = ConfigureStation(station, MissionEventType.EquipmentAssembled, CompletionPolicy.Lock, AssemblyZoneRadius + 0.3f);
+        so.FindProperty("rangeCenter").objectReferenceValue = zone.transform;
+        SetObjectArray(so.FindProperty("partPrefabs"), partPrefabs);
+        so.FindProperty("zoneCenter").objectReferenceValue = zone.transform;
+        so.FindProperty("zoneRadius").floatValue = AssemblyZoneRadius;
+        so.FindProperty("visual").objectReferenceValue = visual;
+        so.ApplyModifiedPropertiesWithoutUndo();
+
+        Debug.Log($"[LegacyMissionConverter] 장비: 자리 4개 찾음 (평균 z {slotZ:0.00} > 몸체 중심 z {centerZ:0.00}), 앞면 z {front:0.00}, 조립 위치 {zone.transform.localPosition} 반경 {AssemblyZoneRadius}m, 부품 프리팹 4종");
+        return true;
+    }
+
+    // ═════════════════════════════════════════════════════════════
+    //  원본 모델 조립 도우미 (압력 · 코드가 같이 쓴다)
     // ═════════════════════════════════════════════════════════════
 
     /// <summary>

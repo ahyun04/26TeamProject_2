@@ -54,6 +54,12 @@ namespace TrustNoOne.Missions
             return false;
         }
 
+        /// <summary>기본: 실패 요청에 반응하지 않는다 (개수형 CountObjective 만 처음부터로 되돌린다 — 3b 명세 LS11).</summary>
+        public virtual bool ResetProgress()
+        {
+            return false;
+        }
+
         public virtual bool OnPlayerFinalized(PlayerRef player)
         {
             return false;

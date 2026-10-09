@@ -290,6 +290,28 @@ namespace TrustNoOne.Missions
             return HasStateAuthority && router != null && Initialized && router.HasActiveObjective(actor, eventType);
         }
 
+        /// <summary>
+        /// 장치가 자기 미션을 실패(처음부터)시킨다 (호스트 전용, 3b 명세 LS11 — 생명 유지 장치 폭발).
+        /// 결과는 제한 시간 초과와 같다: 진행 0 · 마감 사라짐 · OnMissionReset 알림 → 같은 이벤트를 쓰는 장치들이 ResetStation.
+        /// </summary>
+        /// <returns>처음부터로 되돌린 목표 수 (0 이면 알림도 없다)</returns>
+        public int ResetMission(MissionEventType trigger)
+        {
+            if (!HasStateAuthority || router == null || !Initialized)
+                return 0;
+
+            resettingByRequest = true;
+
+            try
+            {
+                return router.ResetObjectives(trigger);
+            }
+            finally
+            {
+                resettingByRequest = false;
+            }
+        }
+
         // ═════════════════════════════════════════════════════════════
         //  GameEndSystem 이 묻는 "사실" (호스트 전용) — 승패 결정은 하지 않는다
         // ═════════════════════════════════════════════════════════════
@@ -366,13 +388,17 @@ namespace TrustNoOne.Missions
         // ═════════════════════════════════════════════════════════════
 
         /// <summary>라우터가 "이 목표의 상태가 바뀌었다"고 알렸을 때: 알맞은 범위로 동기화하고 집계를 갱신한다.</summary>
+        // ResetMission 이 부른 초기화인가 (로그 이유 구분용 — 시간 초과 로그는 그대로 둔다)
+        private bool resettingByRequest;
+
         /// <summary>
-        /// 라우터가 "제한 시간 초과로 이 목표가 0 으로 돌아갔다"고 알렸을 때.
+        /// 라우터가 "이 목표가 0 으로 돌아갔다"고 알렸을 때 (제한 시간 초과 또는 장치 요청 — 3b 명세 LS11).
         /// 상태 동기화는 직전의 OnObjectiveChanged 가 이미 했으므로, 여기서는 미션 오브젝트들에게 초기화만 알린다.
         /// </summary>
         private void OnObjectiveReset(IMissionObjective objective)
         {
-            Debug.Log($"[MissionManager] 제한 시간 초과 → 처음부터 다시: {objective.Definition.Id} {objective.Definition.DisplayName}");
+            string reason = resettingByRequest ? "장치 요청으로 실패" : "제한 시간 초과";
+            Debug.Log($"[MissionManager] {reason} → 처음부터 다시: {objective.Definition.Id} {objective.Definition.DisplayName}");
             OnMissionReset?.Invoke(objective.Definition.Trigger);
         }
 

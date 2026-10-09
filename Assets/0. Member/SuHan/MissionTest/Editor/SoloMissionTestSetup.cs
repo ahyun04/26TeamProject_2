@@ -14,8 +14,9 @@ using Object = UnityEngine.Object;
 ///  - 단체 TG001 발전기 작동시키기: 진짜 GeneratorStation 3대 (LegacyMissionConverter 로 옛 발전기 프리팹을 변환)
 ///  - 개인 PS001 밸브 / PS002 차단기 / PS003 전선 / PS004 안테나 / PS005 압력 / PS006 필터(+ 청소기 아이템): 진짜 스테이션 (2a~2d, 옛 프리팹 변환 · 압력은 원본 패널 · 피스톤 모델에서 조립, 실패 시 자리 표시)
 ///  - 단체 TG002 코드 순서 맞추기: 진짜 CodeStation (3a, 원본 자판 모델에서 조립, 실패 시 자리 표시)
-///  - 단체 TG004 생명 유지 장치 복구: 진짜 OxygenValveStation 4개 — 네 모서리, 첫 밸브부터 90초 (3b, 원본 배관 · 손잡이 모델에서 조립, 실패 시 자리 표시)
-///  - 단체 TG003 · TG005: 아직 만들기 전이라 "자리 표시" HoldStation 큐브 (F 2초)
+///  - 단체 TG004 생명 유지 장치 복구: 진짜 LifeSupportStation (3b, 기본 도형 자리 표시) + 산소통 자리 후보 10곳 — 실행 중 본체가 6곳에 산소통을 놓는다. 실패 시 자리 표시
+///  - 단체 TG003 고장난 장비 조립: 진짜 AssemblyStation (3c, 원본 본체 · 부품 모델에서 조립) + 부품 자리 후보 2묶음(주변 4 · 맵 8) — 실행 중 장비가 부품 4개를 놓는다. 실패 시 자리 표시
+///  - 단체 TG005: 아직 만들기 전이라 "자리 표시" HoldStation 큐브 (F 2초)
 ///      단체는 Lock(완료 후 잠금), 개인은 ResetForNext(완료 후 원래대로) — 명세 S3
 ///  - 개인 행동 목표 AG101 뛰지 않는다: TestRunReporter (Shift 달리기 감지)
 ///  - 디버그 패널(F9 확정 / F10 공개, 단체 미션 남은 시간), 홀드 게이지 HUD
@@ -45,8 +46,8 @@ public static class SoloMissionTestSetup
     // 발전기 제한 시간(초). 초기화를 빨리 보려면 TG001 에셋의 Time Limit Seconds 를 줄여서 테스트한다.
     private const float GeneratorTimeLimit = 120f;
 
-    // 생명 유지 장치 제한 시간(초): 첫 밸브가 열린 순간부터 (3b 명세 L2). 실패를 빨리 보려면 TG004 에셋의 Time Limit Seconds 를 줄여서 테스트한다.
-    private const float LifeSupportTimeLimit = 90f;
+    // 생명 유지 장치 제한 시간(초): 첫 공급 완료부터 (3b 명세 LS6). 실패를 빨리 보려면 TG004 에셋의 Time Limit Seconds 를 줄여서 테스트한다.
+    private const float LifeSupportTimeLimit = 120f;
 
     // 밸브 손잡이 중심 높이 (모델 피벗 = 손잡이 중심). 옛 게임 씬에서도 벽에 달려 있다.
     private const float ValveMountHeight = 1.2f;
@@ -79,8 +80,8 @@ public static class SoloMissionTestSetup
     {
         new DefSpec { Id = "TG001", Name = "발전기 작동시키기", Category = MissionCategory.Team, Kind = ObjectiveKind.Count, Trigger = MissionEventType.GeneratorRepaired, Required = 3, TimeLimit = GeneratorTimeLimit },
         new DefSpec { Id = "TG002", Name = "코드 순서 맞추기", Category = MissionCategory.Team, Kind = ObjectiveKind.Count, Trigger = MissionEventType.SecurityCodeEntered },
-        new DefSpec { Id = "TG003", Name = "고장난 장비 조립", Category = MissionCategory.Team, Kind = ObjectiveKind.Count, Trigger = MissionEventType.EquipmentAssembled },
-        new DefSpec { Id = "TG004", Name = "생명 유지 장치 복구", Category = MissionCategory.Team, Kind = ObjectiveKind.Count, Trigger = MissionEventType.LifeSupportRestored, Required = 4, TimeLimit = LifeSupportTimeLimit, TimeLimitMode = TimeLimitMode.SinceFirstProgress },
+        new DefSpec { Id = "TG003", Name = "고장난 장비 조립", Category = MissionCategory.Team, Kind = ObjectiveKind.Count, Trigger = MissionEventType.EquipmentAssembled, Required = 4 },
+        new DefSpec { Id = "TG004", Name = "생명 유지 장치 복구", Category = MissionCategory.Team, Kind = ObjectiveKind.Count, Trigger = MissionEventType.LifeSupportRestored, Required = 3, TimeLimit = LifeSupportTimeLimit, TimeLimitMode = TimeLimitMode.SinceFirstProgress },
         new DefSpec { Id = "TG005", Name = "대형 방화문 열기", Category = MissionCategory.Team, Kind = ObjectiveKind.Count, Trigger = MissionEventType.FireDoorOpened },
 
         new DefSpec { Id = "PS001", Name = "밸브 잠그기", Category = MissionCategory.Personal, Kind = ObjectiveKind.Count, Trigger = MissionEventType.ValveClosed },
@@ -114,7 +115,6 @@ public static class SoloMissionTestSetup
 
     private static readonly PlaceholderSpec[] PlaceholderStations =
     {
-        Team("Placeholder_TG003_Assembly", "고장난 장비 조립", "TG003", MissionEventType.EquipmentAssembled, new Vector3(-3f, 0f, 16f)),
         Team("Placeholder_TG005_FireDoor", "대형 방화문 열기", "TG005", MissionEventType.FireDoorOpened, new Vector3(9f, 0f, 16f)),
 
     };
@@ -137,10 +137,33 @@ public static class SoloMissionTestSetup
     private static readonly PlaceholderSpec CodeFallback =
         Team("Placeholder_TG002_Code", "코드 순서 맞추기", "TG002", MissionEventType.SecurityCodeEntered, new Vector3(-9f, 0f, 16f));
 
-    // 3b 산소 밸브 4개: 바닥(100 × 100m) 네 모서리 쪽, 다른 스테이션과 겹치지 않는다. 한 바퀴 약 120m (혼자면 90초 안에 빠듯하게)
-    private static readonly Vector3[] OxygenValvePositions =
+    // 3b 생명 유지 장치 본체: 옛 TG004 자리 표시 자리 (먼 앞줄). 변환에 실패하면 이 자리 표시로 대체한다.
+    private static readonly PlaceholderSpec LifeSupportFallback =
+        Team("Placeholder_TG004_LifeSupport", "생명 유지 장치 복구", "TG004", MissionEventType.LifeSupportRestored, new Vector3(3f, 0f, 16f));
+
+    // 3b 산소통 자리 후보 10곳 (명세 5장): 바닥 곳곳, 다른 스테이션과 겹치지 않는다. 판마다 본체가 이 중 6곳을 고른다 (LS7)
+    private static readonly Vector3[] OxygenTankSpotPositions =
     {
         new Vector3(-20f, 0f, 24f), new Vector3(20f, 0f, 24f), new Vector3(-20f, 0f, -16f), new Vector3(20f, 0f, -16f),
+        new Vector3(-24f, 0f, 4f), new Vector3(24f, 0f, 4f), new Vector3(0f, 0f, 28f),
+        new Vector3(-12f, 0f, -20f), new Vector3(12f, 0f, -20f), new Vector3(0f, 0f, -24f),
+    };
+
+    // 3c 장비 조립: TG003 자리 표시 자리 (먼 앞줄). 변환에 실패하면 이 자리 표시로 대체한다.
+    private static readonly PlaceholderSpec AssemblyFallback =
+        Team("Placeholder_TG003_Assembly", "고장난 장비 조립", "TG003", MissionEventType.EquipmentAssembled, new Vector3(-3f, 0f, 16f));
+
+    // 3c 부품 자리 후보 (명세 5장, EA4): 주변 묶음 — 조립 위치 원 밖, 장비에서 4 ~ 5m, 다른 장치와 3.5m 이상
+    private static readonly Vector3[] EquipmentNearSpotPositions =
+    {
+        new Vector3(-7f, 0f, 13f), new Vector3(1.5f, 0f, 12.5f), new Vector3(-6f, 0f, 19.5f), new Vector3(0f, 0f, 19.5f),
+    };
+
+    // 맵 묶음 — 산소통 자리와 10m 이상
+    private static readonly Vector3[] EquipmentFarSpotPositions =
+    {
+        new Vector3(-30f, 0f, 12f), new Vector3(30f, 0f, 12f), new Vector3(-28f, 0f, -24f), new Vector3(28f, 0f, -24f),
+        new Vector3(-10f, 0f, 32f), new Vector3(10f, 0f, 32f), new Vector3(-32f, 0f, -4f), new Vector3(32f, 0f, -4f),
     };
 
     // 필터 옆 바닥에 청소기 (필터 청소는 청소기를 들어야 한다 — 2c 명세 F1)
@@ -166,8 +189,9 @@ public static class SoloMissionTestSetup
 
     private const string InfoText =
         "가까운 앞줄: 발전기 3대 (버튼 클릭 → 3초, 1대 고치면 다음 1대까지 2분)\n" +
-        "먼 앞줄: 단체 미션 — 코드 순서 맞추기(실제) + 자리 표시 2개 (F 2초)  /  뒤: 개인 미션 6종 — 모두 실제 미니게임\n" +
-        "네 모서리: 산소 밸브 ×4 (TG004 — F 유지로 열기, 첫 밸브가 열린 순간부터 90초 안에 모두)\n" +
+        "먼 앞줄: 단체 미션 — 코드 · 장비 조립 · 생명 유지 장치(실제) + 자리 표시 1개(방화문, F 2초)  /  뒤: 개인 미션 6종 — 모두 실제 미니게임\n" +
+        "장비 조립(먼 앞줄 왼쪽): 부품 4개(1개는 장비 주변)를 찾아 들고 장비 앞 바닥 원 안으로 → 자동으로 붙음\n" +
+        "생명 유지 장치(먼 앞줄): 산소통 6개 중 정상 3개만 본체에 — 가까이서 압력계 확인 → 들기(좌클릭) → 본체에 우클릭, 첫 공급부터 120초\n" +
         "Shift 달리기 = AG101 '뛰지 않는다' 위반   F9 내 행동 확정 / F10 전체 공개";
 
     // ═════════════════════════════════════════════════════════════
@@ -210,17 +234,8 @@ public static class SoloMissionTestSetup
 
         AddConvertedOrPlaceholder(spawns, LegacyMissionConverter.CreateCodeStation(), CodeFallback, "코드");
 
-        // 산소 밸브 4개 (3b). 변환에 실패하면 발전기처럼 네 자리에 자리 표시 큐브
-        NetworkObject oxygenValvePrefab = LegacyMissionConverter.CreateOxygenValveStation();
-
-        if (oxygenValvePrefab == null)
-        {
-            Debug.LogWarning("[SoloMissionTestSetup] 산소 밸브 변환에 실패해 자리 표시 큐브로 대체합니다 (위의 LegacyMissionConverter 오류 확인).");
-            oxygenValvePrefab = BuildPlaceholderPrefab(Team("Placeholder_TG004_OxygenValve", "산소 밸브", "TG004", MissionEventType.LifeSupportRestored, Vector3.zero));
-        }
-
-        foreach (Vector3 position in OxygenValvePositions)
-            spawns.Add((oxygenValvePrefab, position));
+        AddConvertedOrPlaceholder(spawns, LegacyMissionConverter.CreateLifeSupportStation(), LifeSupportFallback, "생명 유지 장치");
+        AddConvertedOrPlaceholder(spawns, LegacyMissionConverter.CreateAssemblyStation(), AssemblyFallback, "장비 조립");
 
         // 밸브 모델은 피벗이 손잡이 중심이라 바닥(y=0)에 두면 절반이 묻힌다 → 벽에 달린 높이로 띄운다
         AddConvertedOrPlaceholder(spawns, LegacyMissionConverter.ConvertValve(), ValveFallback, "밸브", new Vector3(0f, ValveMountHeight, 0f));
@@ -264,11 +279,14 @@ public static class SoloMissionTestSetup
             "Action_MedKit", "Action_ItemCraft", "Action_ItemGive", "Action_LieDetector", "Action_Corpse",
             "TestDoor_MissionInteractable",
             "Placeholder_PS001_Valve", "Placeholder_PS002_Breaker", "Placeholder_PS003_Wiring", "Placeholder_PS004_Antenna", "Placeholder_PS006_Filter", "Placeholder_PS005_Pressure",
-            "Placeholder_TG002_Code", "Placeholder_TG004_LifeSupport",
+            "Placeholder_TG002_Code", "Placeholder_TG004_OxygenValve",
         };
 
         foreach (string prefab in oldPrefabs)
             yield return $"{PrefabFolder}/{prefab}.prefab";
+
+        // 3b 밸브 버전(기획 변경으로 폐기)의 프리팹 — 변환기 출력 폴더에 있다
+        yield return "Assets/0. Member/SuHan/MissionRedesign_Draft/Prefabs/Missions/OxygenValve_Station.prefab";
     }
 
     // ═════════════════════════════════════════════════════════════
@@ -531,9 +549,15 @@ public static class SoloMissionTestSetup
             "압력 수치 맞추기 · PS005\n버튼 클릭 → 초록 구간에서 멈추기 (연결은 무작위)");
         CreateInfoLabel(layoutRoot.transform, "Info (코드)", CodeFallback.Position + new Vector3(0f, 2.4f, 0f),
             "코드 순서 맞추기 · TG002\n빨강 → 파란불 순서 기억 → 숫자 입력 → 파랑");
-        foreach (Vector3 position in OxygenValvePositions)
-            CreateInfoLabel(layoutRoot.transform, "Info (산소 밸브)", position + new Vector3(0f, 3.4f, 0f),
-                $"산소 밸브 · TG004\nF 유지로 열기 · 첫 밸브부터 {LifeSupportTimeLimit:0}초 안에 4개");
+        CreateInfoLabel(layoutRoot.transform, "Info (생명 유지 장치)", LifeSupportFallback.Position + new Vector3(0f, 2.4f, 0f),
+            "생명 유지 장치 · TG004\n산소통 들기(좌클릭) → 가까이서 압력계 확인 → 본체에 우클릭");
+        CreateInfoLabel(layoutRoot.transform, "Info (장비 조립)", AssemblyFallback.Position + new Vector3(0f, 3f, 0f),
+            "고장난 장비 조립 · TG003\n부품 4개를 들고 바닥 원 안으로");
+
+        // 아이템 자리 후보 (네트워크 오브젝트 아님 — 장치가 실행 중에 묶음 이름으로 찾는다)
+        CreateItemSpots(layoutRoot.transform, LifeSupportStation.TankSpotGroup, "산소통 자리 후보", OxygenTankSpotPositions);
+        CreateItemSpots(layoutRoot.transform, AssemblyStation.NearGroup, "장비 부품 — 장비 주변", EquipmentNearSpotPositions);
+        CreateItemSpots(layoutRoot.transform, AssemblyStation.FarGroup, "장비 부품 — 맵 곳곳", EquipmentFarSpotPositions);
 
         GameObject bootstrapObject = FindOrCreate("SoloTestBootstrap", Vector3.zero);
         // 지운 테스트 스크립트(예: 임시 진단 컴포넌트)가 씬에 "스크립트 없음" 컴포넌트로 남지 않게 정리한다
@@ -563,6 +587,25 @@ public static class SoloMissionTestSetup
 
         EditorSceneManager.MarkSceneDirty(scene);
         EditorSceneManager.SaveScene(scene);
+    }
+
+    /// <summary>아이템 자리 후보 묶음 (ItemSpots) — 네트워크 오브젝트가 아니다. 장치가 실행 중에 묶음 이름으로 찾는다 (3b LS7 · 3c EA4).</summary>
+    private static void CreateItemSpots(Transform parent, string group, string label, Vector3[] positions)
+    {
+        GameObject spotsObject = new GameObject($"ItemSpots {group} ({label})");
+        spotsObject.transform.SetParent(parent, false);
+
+        ItemSpots spots = spotsObject.AddComponent<ItemSpots>();
+        SerializedObject so = new SerializedObject(spots);
+        so.FindProperty("group").stringValue = group;
+        so.ApplyModifiedPropertiesWithoutUndo();
+
+        for (int i = 0; i < positions.Length; i++)
+        {
+            Transform spot = new GameObject($"Spot_{i:00}").transform;
+            spot.SetParent(spotsObject.transform, false);
+            spot.position = positions[i];
+        }
     }
 
     private static void CreateInfoLabel(Transform parent, string name, Vector3 position, string text)

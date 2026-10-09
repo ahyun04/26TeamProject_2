@@ -44,6 +44,12 @@ namespace TrustNoOne.Missions
         bool OnTick(double now);
 
         /// <summary>
+        /// 장치의 요청으로 실패 처리 — 진행을 처음부터 (3b 명세 LS11: 생명 유지 장치 폭발). 바뀌었으면(진행 중이었으면) true.
+        /// 제한 시간 초과(OnTick)와 같은 결과를 즉시 만든다. 기본 구현은 아무것도 하지 않는다 (MissionObjectiveBase).
+        /// </summary>
+        bool ResetProgress();
+
+        /// <summary>
         /// 그 플레이어의 행동이 더 이상 늘지 않는 시점(탈출/사망/시간 종료)에 호출된다.
         /// "끝까지 안 했으면 성공" 같은 종료 판정을 여기서 확정한다. 상태가 바뀌었으면 true.
         /// </summary>

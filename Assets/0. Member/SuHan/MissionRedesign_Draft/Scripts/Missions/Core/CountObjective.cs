@@ -74,10 +74,29 @@ namespace TrustNoOne.Missions
             if (deadline < 0d || now < deadline)
                 return false;
 
+            ClearProgress();
+            return true;
+        }
+
+        /// <summary>
+        /// 장치 요청으로 실패 → 처음부터 (3b 명세 LS11). 진행 중이면 진행 0 이어도 true — 알림을 받은 장치가 다시 준비해야 해서
+        /// (생명 유지 장치: 첫 통부터 위험해 터져도 산소통을 다시 놓는다). 완료 · 실패한 목표는 그대로.
+        /// </summary>
+        public override bool ResetProgress()
+        {
+            if (Status != ObjectiveStatus.InProgress)
+                return false;
+
+            ClearProgress();
+            return true;
+        }
+
+        /// <summary>진행도와 진행 시각을 처음으로 (마감도 함께 사라진다).</summary>
+        private void ClearProgress()
+        {
             Progress = 0;
             firstProgressTime = -1d;
             lastProgressTime = -1d;
-            return true;
         }
     }
 }
