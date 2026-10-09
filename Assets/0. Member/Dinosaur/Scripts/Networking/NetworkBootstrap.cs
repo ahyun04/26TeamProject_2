@@ -67,13 +67,34 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
     /// <summary>방 생성 (Host). 성공 시 RoomManager를 초기화한다.</summary>
     public async Task<StartGameResult> CreateRoom(string roomName, int maxPlayers, bool isPrivate)
     {
-        return await StartSession(GameMode.Host, roomName, maxPlayers, isPrivate);
+        // 기획서: 방마다 8자리 영숫자 초대 코드를 생성. Fusion SessionName을 곧 초대 코드로 쓰므로
+        // 코드 -> 방 매핑은 Photon이 보장하고, 같은 코드가 이미 있으면(GameIdAlreadyExists) 새 코드로 재시도한다.
+        StartGameResult result = default;
+        for (int attempt = 0; attempt < 5; attempt++)
+        {
+            string code = GenerateInviteCode();
+            result = await StartSession(GameMode.Host, code, maxPlayers, isPrivate, roomName);
+            if (result.Ok || result.ShutdownReason != ShutdownReason.GameIdAlreadyExists)
+                break;
+        }
+        return result;
     }
 
-    /// <summary>기존 방에 참가 (Client).</summary>
-    public async Task<StartGameResult> JoinRoom(string roomName)
+    /// <summary>초대 코드로 기존 방에 참가 (Client). 코드는 대소문자 구분 없음.</summary>
+    public async Task<StartGameResult> JoinRoom(string inviteCode)
     {
-        return await StartSession(GameMode.Client, roomName, 0);
+        string code = (inviteCode ?? string.Empty).Trim().ToLowerInvariant();
+        return await StartSession(GameMode.Client, code, 0);
+    }
+
+    private const string InviteCodeChars = "abcdefghijklmnopqrstuvwxyz0123456789";
+
+    private static string GenerateInviteCode()
+    {
+        var chars = new char[8];
+        for (int i = 0; i < chars.Length; i++)
+            chars[i] = InviteCodeChars[UnityEngine.Random.Range(0, InviteCodeChars.Length)];
+        return new string(chars);
     }
 
     /// <summary>세션 종료 후 로비 씬으로 복귀.</summary>
@@ -100,7 +121,7 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
         }
     }
 
-    private async Task<StartGameResult> StartSession(GameMode mode, string roomName, int maxPlayers, bool isPrivate = false)
+    private async Task<StartGameResult> StartSession(GameMode mode, string sessionName, int maxPlayers, bool isPrivate = false, string roomName = null)
     {
         if (_sessionBusy || (_runner != null && _runner.IsRunning))
             throw new InvalidOperationException("이미 방에 연결 중이거나 참가 중입니다.");
@@ -110,7 +131,7 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
         GetSceneRefByName(lobbySceneName);
 
         _sessionBusy = true;
-        _roomName = roomName;
+        _roomName = roomName ?? sessionName;
         _maxPlayers = Mathf.Clamp(maxPlayers, 2, 10);
         _isPrivate = isPrivate;
         try
@@ -122,7 +143,7 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
             var args = new StartGameArgs
             {
                 GameMode = mode,
-                SessionName = roomName,
+                SessionName = sessionName,
                 Scene = roomScene,
                 SceneManager = _runnerObject.GetComponent<NetworkSceneManagerDefault>(),
                 EnableClientSessionCreation = false

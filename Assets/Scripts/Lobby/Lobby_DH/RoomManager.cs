@@ -19,6 +19,7 @@ namespace LockdownProtocol.Lobby
         public enum RoomState
         {
             Waiting,
+            Standby,   // 기획서 추가 상태 (Waiting ~ Starting 사이). 현재 전환 로직은 미정
             Starting,
             Playing,
             Ending,
@@ -56,6 +57,16 @@ namespace LockdownProtocol.Lobby
         [Networked] public int MaxPlayerCount { get; private set; }
         [Networked] public RoomState CurrentRoomState { get; private set; }
         [Networked] public NetworkBool IsPrivate { get; private set; }
+        /// <summary>8자리 영숫자 초대 코드(소문자). Fusion SessionName과 동일 — 서버(호스트)만 설정.</summary>
+        [Networked] public NetworkString<_16> InviteCode { get; private set; }
+        [Networked] public NetworkBool IsInviteEnabled { get; private set; }
+        [Networked] public long CreatedTime { get; private set; }  // UTC ticks
+
+        public const int AbsoluteMinPlayers = 2;
+        public const int AbsoluteMaxPlayers = 10;
+
+        public event Action<int> MaxPlayerChanged;
+        public event Action<string> MaxPlayerChangeRejected;
 
         public static RoomManager Instance { get; private set; }
 
@@ -113,6 +124,13 @@ namespace LockdownProtocol.Lobby
             RoomName = roomName;
             MaxPlayerCount = maxPlayers > 0 ? maxPlayers : defaultMaxPlayerCount;
             IsPrivate = isPrivate;
+            // 마이그레이션 후 재호출돼도 코드/생성시각은 유지 (비어 있을 때만 채운다)
+            if (InviteCode.Length == 0)
+            {
+                InviteCode = Runner.SessionInfo.Name;
+                IsInviteEnabled = true;
+                CreatedTime = DateTime.UtcNow.Ticks;
+            }
             HostPlayerId = hostPlayer;
             SetRoomState(RoomState.Waiting);
             FindFirstObjectByType<LobbyPlayerSpawner>()?.RefreshHostFlag(hostPlayer);
@@ -129,6 +147,36 @@ namespace LockdownProtocol.Lobby
 
             HostPlayerId = newHost;
             SetRoomState(RoomState.Waiting);
+        }
+
+        // ================== 최대 인원 변경 ==================
+
+        /// <summary>방장 전용. 게임 시작 전(Waiting)에만, 현재 인원 미만/허용 범위 밖은 거부. 성공 시 Networked 값으로 전원 동기화.</summary>
+        [Rpc(RpcSources.All, RpcTargets.StateAuthority, HostMode = RpcHostMode.SourceIsHostPlayer)]
+        public void RPC_RequestChangeMaxPlayer(int newMax, RpcInfo info = default)
+        {
+            PlayerRef requester = info.Source;
+
+            if (requester != HostPlayerId) { RPC_MaxPlayerRejected(requester, "방장만 변경할 수 있습니다."); return; }
+            if (CurrentRoomState != RoomState.Waiting) { RPC_MaxPlayerRejected(requester, "게임 시작 전에만 변경할 수 있습니다."); return; }
+            if (newMax < AbsoluteMinPlayers || newMax > AbsoluteMaxPlayers) { RPC_MaxPlayerRejected(requester, $"{AbsoluteMinPlayers}~{AbsoluteMaxPlayers}명 사이로 설정하세요."); return; }
+
+            int current = 0;
+            foreach (var _ in Runner.ActivePlayers) current++;
+            if (newMax < current) { RPC_MaxPlayerRejected(requester, "현재 인원보다 적게 설정할 수 없습니다."); return; }
+
+            MaxPlayerCount = newMax;
+            RPC_NotifyMaxPlayerChanged(newMax);
+        }
+
+        [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+        private void RPC_NotifyMaxPlayerChanged(int newMax) => MaxPlayerChanged?.Invoke(newMax);
+
+        [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+        private void RPC_MaxPlayerRejected([RpcTarget] PlayerRef target, string reason)
+        {
+            Debug.Log($"[RoomManager] 최대 인원 변경 거부: {reason}");
+            MaxPlayerChangeRejected?.Invoke(reason);
         }
 
         // ================== 방 나가기 ==================
@@ -177,6 +225,15 @@ namespace LockdownProtocol.Lobby
             {
                 // 게임 진행 중 참가는 StartGameArgs 단계에서 대부분 막히지만 방어적으로 한 번 더 체크
                 Debug.LogWarning($"[RoomManager] Waiting 상태가 아닐 때 참가 시도: {player}");
+                return;
+            }
+
+            // Fusion 세션 정원은 생성 시점 값이라, 방장이 줄인 MaxPlayerCount 초과 입장은 서버가 직접 차단
+            int active = 0;
+            foreach (var _ in runner.ActivePlayers) active++;
+            if (MaxPlayerCount > 0 && active > MaxPlayerCount && player != runner.LocalPlayer)
+            {
+                runner.Disconnect(player);
                 return;
             }
 

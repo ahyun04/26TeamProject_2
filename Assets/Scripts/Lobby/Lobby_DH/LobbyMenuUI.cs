@@ -6,27 +6,27 @@ using LockdownProtocol.Networking;
 namespace LockdownProtocol.Lobby
 {
     /// <summary>
-    /// 로비 메뉴 화면(방 만들기 / 방 참가 입력). NetworkBootstrap에 요청만 넘기고
-    /// 성공 시 씬 전환은 Fusion의 SceneManager가 자동으로 처리한다.
-    ///
-    /// 방 목록(서버 세션 리스트를 받아와 표시)은 기획서 범위지만, Fusion의
-    /// OnSessionListUpdated 콜백 연동은 별도 작업으로 남겨둠 (TODO) — 지금은
-    /// 방 이름을 직접 입력해서 참가하는 방식만 지원.
+    /// 로비 메뉴 화면: [빠른 입장] / [방 생성] / [초대 코드 입력 + 입력 버튼] 4가지만 담당한다.
+    /// - [방 생성]은 다음 화면(Create Panel, CreateRoomPanelUI)을 열기만 한다.
+    /// - 초대 코드로 참가하면 성공 시 씬 전환은 Fusion의 SceneManager가 자동으로 처리한다.
+    /// - [빠른 입장]은 껍데기(TODO: Fusion 로비 세션 목록 연동).
     /// </summary>
     public class LobbyMenuUI : MonoBehaviour
     {
         [Header("Dependencies")]
         [SerializeField] private NetworkBootstrap bootstrap;
 
-        [Header("Create Room")]
-        [SerializeField] private TMP_InputField roomNameInput;
-        [SerializeField] private TMP_InputField maxPlayersInput;
-        [SerializeField] private Toggle isPrivateToggle;
-        [SerializeField] private Button createRoomButton;
+        [Header("Quick Join (껍데기)")]
+        [SerializeField] private Button quickJoinButton;
 
-        [Header("Join Room")]
-        [SerializeField] private TMP_InputField joinRoomNameInput;
-        [SerializeField] private Button joinRoomButton;
+        [Header("Create Room")]
+        [SerializeField] private Button createRoomButton;
+        [Tooltip("방 생성 다음 화면(CreateRoomPanelUI가 붙은 오브젝트). 이 스크립트가 붙은 오브젝트 자신은 넣지 말 것")]
+        [SerializeField] private GameObject createPanel;
+
+        [Header("Join By Invite Code")]
+        [SerializeField] private TMP_InputField joinRoomNameInput; // 초대 코드 입력란
+        [SerializeField] private Button joinRoomButton;            // [입력] 버튼
 
         [Header("Feedback")]
         [SerializeField] private TMP_Text feedbackText;
@@ -35,63 +35,47 @@ namespace LockdownProtocol.Lobby
 
         private void OnEnable()
         {
-            createRoomButton.onClick.AddListener(OnCreateClicked);
+            createRoomButton.onClick.AddListener(OnCreateRoomButtonClicked);
             joinRoomButton.onClick.AddListener(OnJoinClicked);
+            if (quickJoinButton != null) quickJoinButton.onClick.AddListener(OnQuickJoinClicked);
+            if (createPanel != null) createPanel.SetActive(false);
         }
 
         private void OnDisable()
         {
-            createRoomButton.onClick.RemoveListener(OnCreateClicked);
+            createRoomButton.onClick.RemoveListener(OnCreateRoomButtonClicked);
             joinRoomButton.onClick.RemoveListener(OnJoinClicked);
+            if (quickJoinButton != null) quickJoinButton.onClick.RemoveListener(OnQuickJoinClicked);
         }
 
-        private async void OnCreateClicked()
+        /// <summary>빠른 입장 - 껍데기. TODO: Fusion 로비 세션 목록(OnSessionListUpdated)에서
+        /// 공개 + Waiting + 자리 있는 방을 골라 JoinRoom(세션명) 호출.</summary>
+        private void OnQuickJoinClicked()
         {
             if (_isBusy) return;
+            ShowFeedback("빠른 입장은 준비 중입니다");
+        }
 
-            string roomName = roomNameInput.text.Trim();
-            if (string.IsNullOrEmpty(roomName))
+        private void OnCreateRoomButtonClicked()
+        {
+            if (_isBusy) return;
+            if (createPanel == null)
             {
-                ShowFeedback("방 이름을 입력하세요.");
+                Debug.LogWarning("[LobbyMenuUI] Create Panel이 연결되지 않았습니다.");
                 return;
             }
-
-            int maxPlayers = 6;
-            if (maxPlayersInput != null && int.TryParse(maxPlayersInput.text, out int parsed))
-            {
-                maxPlayers = Mathf.Clamp(parsed, 2, 10);
-            }
-
-            _isBusy = true;
-            SetInteractable(false);
-
-            try
-            {
-                var result = await bootstrap.CreateRoom(roomName, maxPlayers, isPrivateToggle != null && isPrivateToggle.isOn);
-                if (this != null && !result.Ok)
-                    ShowFeedback($"방 생성 실패: {result.ShutdownReason}");
-            }
-            catch (System.Exception exception)
-            {
-                if (this != null) ShowFeedback(exception.Message);
-                Debug.LogException(exception);
-            }
-            finally
-            {
-                _isBusy = false;
-                if (this != null) SetInteractable(true);
-            }
-            // 성공 시 씬 전환은 NetworkBootstrap의 SceneManager가 자동 처리
+            ShowFeedback(string.Empty);
+            createPanel.SetActive(true);
         }
 
         private async void OnJoinClicked()
         {
             if (_isBusy) return;
 
-            string roomName = joinRoomNameInput.text.Trim();
-            if (string.IsNullOrEmpty(roomName))
+            string inviteCode = joinRoomNameInput.text.Trim();
+            if (string.IsNullOrEmpty(inviteCode))
             {
-                ShowFeedback("참가할 방 이름을 입력하세요.");
+                ShowFeedback("초대 코드를 입력하세요.");
                 return;
             }
 
@@ -100,10 +84,9 @@ namespace LockdownProtocol.Lobby
 
             try
             {
-                var result = await bootstrap.JoinRoom(roomName);
+                var result = await bootstrap.JoinRoom(inviteCode);
                 if (this == null) return;
                 var mapped = RoomManager.MapJoinResult(result);
-
 
                 switch (mapped)
                 {
@@ -111,7 +94,7 @@ namespace LockdownProtocol.Lobby
                         ShowFeedback("방이 가득 찼습니다");
                         break;
                     case RoomManager.JoinRoomResult.NotFound:
-                        ShowFeedback("존재하지 않는 방입니다");
+                        ShowFeedback("유효하지 않은 초대 코드이거나 참가할 수 없는 방입니다");
                         break;
                     case RoomManager.JoinRoomResult.GameStarted:
                         ShowFeedback("이미 게임이 시작되었습니다");
@@ -140,6 +123,7 @@ namespace LockdownProtocol.Lobby
         {
             createRoomButton.interactable = interactable;
             joinRoomButton.interactable = interactable;
+            if (quickJoinButton != null) quickJoinButton.interactable = interactable;
         }
 
         private void ShowFeedback(string message)
