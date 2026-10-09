@@ -156,6 +156,7 @@ namespace LockdownProtocol.Lobby
         public void RPC_RequestChangeMaxPlayer(int newMax, RpcInfo info = default)
         {
             PlayerRef requester = info.Source;
+            Debug.Log($"[RoomManager] 최대 인원 변경 요청: {MaxPlayerCount} -> {newMax} (요청자 {requester}, 방장 {HostPlayerId}, 상태 {CurrentRoomState})");
 
             if (requester != HostPlayerId) { RPC_MaxPlayerRejected(requester, "방장만 변경할 수 있습니다."); return; }
             if (CurrentRoomState != RoomState.Waiting) { RPC_MaxPlayerRejected(requester, "게임 시작 전에만 변경할 수 있습니다."); return; }
@@ -166,6 +167,7 @@ namespace LockdownProtocol.Lobby
             if (newMax < current) { RPC_MaxPlayerRejected(requester, "현재 인원보다 적게 설정할 수 없습니다."); return; }
 
             MaxPlayerCount = newMax;
+            Debug.Log($"[RoomManager] 최대 인원 변경 완료: {newMax}");
             RPC_NotifyMaxPlayerChanged(newMax);
         }
 
