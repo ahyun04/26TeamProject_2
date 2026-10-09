@@ -18,6 +18,15 @@ namespace LockdownProtocol.Lobby
         [Header("Room Info")]
         [SerializeField] private TMP_Text roomNameText;
         [SerializeField] private TMP_Text playerCountText;
+        [Tooltip("초대 코드 표시 (대문자로 보여줌)")]
+        [SerializeField] private TMP_Text inviteCodeText;
+        [Tooltip("초대 코드 옆 복사 버튼")]
+        [SerializeField] private Button copyInviteCodeButton;
+
+        [Header("Max Players (방장 전용 ◀ n ▶)")]
+        [SerializeField] private TMP_Text maxPlayerText;
+        [SerializeField] private Button maxPlayerDecreaseButton;
+        [SerializeField] private Button maxPlayerIncreaseButton;
 
         [Header("Player List")]
         [SerializeField] private Transform playerListContainer;
@@ -63,6 +72,9 @@ namespace LockdownProtocol.Lobby
             startGameButton.onClick.AddListener(OnStartGameClicked);
             if (leaveRoomButton != null) leaveRoomButton.onClick.AddListener(OnLeaveClicked);
             if (inviteButton != null) inviteButton.onClick.AddListener(OnInviteClicked);
+            if (copyInviteCodeButton != null) copyInviteCodeButton.onClick.AddListener(OnCopyInviteCodeClicked);
+            if (maxPlayerDecreaseButton != null) maxPlayerDecreaseButton.onClick.AddListener(OnMaxPlayerDecrease);
+            if (maxPlayerIncreaseButton != null) maxPlayerIncreaseButton.onClick.AddListener(OnMaxPlayerIncrease);
 
             if (startFailText != null) startFailText.text = string.Empty;
 
@@ -81,6 +93,50 @@ namespace LockdownProtocol.Lobby
             startGameButton.onClick.RemoveListener(OnStartGameClicked);
             if (leaveRoomButton != null) leaveRoomButton.onClick.RemoveListener(OnLeaveClicked);
             if (inviteButton != null) inviteButton.onClick.RemoveListener(OnInviteClicked);
+            if (copyInviteCodeButton != null) copyInviteCodeButton.onClick.RemoveListener(OnCopyInviteCodeClicked);
+            if (maxPlayerDecreaseButton != null) maxPlayerDecreaseButton.onClick.RemoveListener(OnMaxPlayerDecrease);
+            if (maxPlayerIncreaseButton != null) maxPlayerIncreaseButton.onClick.RemoveListener(OnMaxPlayerIncrease);
+            UnbindRoomEvents();
+        }
+
+        private RoomManager _boundRoom;
+
+        private void BindRoomEvents(RoomManager room)
+        {
+            if (_boundRoom == room) return;
+            UnbindRoomEvents();
+            _boundRoom = room;
+            if (_boundRoom != null) _boundRoom.MaxPlayerChangeRejected += HandleMaxPlayerRejected;
+        }
+
+        private void UnbindRoomEvents()
+        {
+            if (_boundRoom != null) _boundRoom.MaxPlayerChangeRejected -= HandleMaxPlayerRejected;
+            _boundRoom = null;
+        }
+
+        private void HandleMaxPlayerRejected(string reason)
+        {
+            if (startFailText != null) startFailText.text = reason;
+        }
+
+        private void OnCopyInviteCodeClicked()
+        {
+            var room = RoomManager.Instance;
+            if (room == null) return;
+            GUIUtility.systemCopyBuffer = room.InviteCode.ToString().ToUpperInvariant();
+            if (startFailText != null) startFailText.text = "초대 코드가 복사되었습니다";
+        }
+
+        private void OnMaxPlayerDecrease() => ChangeMaxPlayer(-1);
+        private void OnMaxPlayerIncrease() => ChangeMaxPlayer(+1);
+
+        private void ChangeMaxPlayer(int delta)
+        {
+            var room = RoomManager.Instance;
+            if (room == null) return;
+            // 최종 검증(방장/상태/범위/현재 인원)은 서버가 다시 한다
+            room.RPC_RequestChangeMaxPlayer(room.MaxPlayerCount + delta);
         }
 
         private void Update()
@@ -147,7 +203,10 @@ namespace LockdownProtocol.Lobby
         private void RefreshRoomInfo()
         {
             var room = RoomManager.Instance;
+            BindRoomEvents(room);
             if (roomNameText != null) roomNameText.text = room.RoomName.ToString();
+            if (inviteCodeText != null) inviteCodeText.text = room.InviteCode.ToString().ToUpperInvariant();
+            if (maxPlayerText != null) maxPlayerText.text = room.MaxPlayerCount.ToString();
 
             var players = FindObjectsByType<LobbyPlayerController>(FindObjectsSortMode.None);
             if (playerCountText != null)
@@ -195,6 +254,11 @@ namespace LockdownProtocol.Lobby
 
             bool isHost = localPlayer != null && localPlayer.IsHost;
             startGameButton.gameObject.SetActive(isHost);
+
+            // 인원 조절 화살표는 방장 + 대기 상태에서만 노출
+            bool canEditMax = isHost && RoomManager.Instance.CurrentRoomState == RoomManager.RoomState.Waiting;
+            if (maxPlayerDecreaseButton != null) maxPlayerDecreaseButton.gameObject.SetActive(canEditMax);
+            if (maxPlayerIncreaseButton != null) maxPlayerIncreaseButton.gameObject.SetActive(canEditMax);
 
             if (readyButtonLabel != null && localPlayer != null)
             {
