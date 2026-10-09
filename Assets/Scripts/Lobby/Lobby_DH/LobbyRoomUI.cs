@@ -44,6 +44,8 @@ namespace LockdownProtocol.Lobby
 
         [Header("Feedback")]
         [SerializeField] private TMP_Text startFailText;
+        [Tooltip("안내 문구가 표시되는 시간(초). 지나면 자동으로 사라진다")]
+        [SerializeField] private float feedbackDuration = 3f;
 
         private readonly List<PlayerListEntryUI> _spawnedEntries = new List<PlayerListEntryUI>();
         private LobbyGameStartManager _gameStartManager;
@@ -117,7 +119,24 @@ namespace LockdownProtocol.Lobby
 
         private void HandleMaxPlayerRejected(string reason)
         {
-            if (startFailText != null) startFailText.text = reason;
+            ShowFeedback(reason);
+        }
+
+        // 안내 문구는 일정 시간 뒤 자동으로 사라진다
+        private float _feedbackClearTime = -1f;
+
+        private void ShowFeedback(string message)
+        {
+            if (startFailText == null) return;
+            startFailText.text = message;
+            _feedbackClearTime = string.IsNullOrEmpty(message) ? -1f : Time.unscaledTime + feedbackDuration;
+        }
+
+        private void TickFeedback()
+        {
+            if (_feedbackClearTime < 0f || Time.unscaledTime < _feedbackClearTime) return;
+            _feedbackClearTime = -1f;
+            if (startFailText != null) startFailText.text = string.Empty;
         }
 
         private void OnCopyInviteCodeClicked()
@@ -125,7 +144,7 @@ namespace LockdownProtocol.Lobby
             var room = RoomManager.Instance;
             if (room == null) return;
             GUIUtility.systemCopyBuffer = room.InviteCode.ToString().ToUpperInvariant();
-            if (startFailText != null) startFailText.text = "초대 코드가 복사되었습니다";
+            ShowFeedback("초대 코드가 복사되었습니다");
         }
 
         private void OnMaxPlayerDecrease() => ChangeMaxPlayer(-1);
@@ -141,6 +160,8 @@ namespace LockdownProtocol.Lobby
 
         private void Update()
         {
+            TickFeedback();
+
             if (_gameStartManager == null)
             {
                 _gameStartManager = FindFirstObjectByType<LobbyGameStartManager>();
@@ -316,14 +337,14 @@ namespace LockdownProtocol.Lobby
         {
             if (startFailText == null) return;
 
-            startFailText.text = reason switch
+            ShowFeedback(reason switch
             {
                 LobbyGameStartManager.StartFailReason.NotHost => "방장만 시작할 수 있습니다",
                 LobbyGameStartManager.StartFailReason.NotEnoughPlayers => "최소 인원이 부족합니다",
                 LobbyGameStartManager.StartFailReason.NotAllReady => "모든 플레이어가 준비되지 않았습니다",
                 LobbyGameStartManager.StartFailReason.AlreadyStarting => "이미 시작 절차가 진행 중입니다",
                 _ => "게임을 시작할 수 없습니다"
-            };
+            });
         }
     }
 }
