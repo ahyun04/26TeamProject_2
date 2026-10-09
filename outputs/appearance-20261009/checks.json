@@ -1,0 +1,134 @@
+[
+  {
+    "name": "Initial room colors are unique",
+    "passed": true
+  },
+  {
+    "name": "Host and Client agree on assigned colors",
+    "passed": true
+  },
+  {
+    "name": "host silence leaves visor black",
+    "passed": true
+  },
+  {
+    "name": "client silence leaves visor black",
+    "passed": true
+  },
+  {
+    "name": "Customization opens with a real model preview",
+    "passed": true
+  },
+  {
+    "name": "Color selection changes preview but not avatar before Apply",
+    "passed": true
+  },
+  {
+    "name": "Cancel restores last committed color",
+    "passed": true
+  },
+  {
+    "name": "Apply saves actual host-approved color",
+    "passed": true
+  },
+  {
+    "name": "Selected color changes primary body material only",
+    "passed": true
+  },
+  {
+    "name": "Defaults changes draft without changing avatar",
+    "passed": true
+  },
+  {
+    "name": "Settings screenshot captured",
+    "passed": true
+  },
+  {
+    "name": "Duplicate color automatically becomes an unused color",
+    "passed": true
+  },
+  {
+    "name": "Server rejects invalid palette index",
+    "passed": true
+  },
+  {
+    "name": "host speech lights only black visor on host",
+    "passed": true
+  },
+  {
+    "name": "host speech lights only black visor on client",
+    "passed": true
+  },
+  {
+    "name": "host V mute clears local and remote glow",
+    "passed": true
+  },
+  {
+    "name": "host stopped speech clears both visors",
+    "passed": true
+  },
+  {
+    "name": "host held PTT with silence does not glow",
+    "passed": true
+  },
+  {
+    "name": "host PTT speech glows on both peers",
+    "passed": true
+  },
+  {
+    "name": "host released PTT clears both visors",
+    "passed": true
+  },
+  {
+    "name": "client speech lights only black visor on host",
+    "passed": true
+  },
+  {
+    "name": "client speech lights only black visor on client",
+    "passed": true
+  },
+  {
+    "name": "client V mute clears local and remote glow",
+    "passed": true
+  },
+  {
+    "name": "client stopped speech clears both visors",
+    "passed": true
+  },
+  {
+    "name": "client held PTT with silence does not glow",
+    "passed": true
+  },
+  {
+    "name": "client PTT speech glows on both peers",
+    "passed": true
+  },
+  {
+    "name": "client released PTT clears both visors",
+    "passed": true
+  },
+  {
+    "name": "Color identity survives StandBy to GamePlay scene change",
+    "passed": true
+  },
+  {
+    "name": "GamePlay customization remains visible but locked",
+    "passed": true
+  },
+  {
+    "name": "Locked UI cannot change draft color",
+    "passed": true
+  },
+  {
+    "name": "Server rejects GamePlay color changes",
+    "passed": true
+  },
+  {
+    "name": "Speaking emission uses selected actor color",
+    "passed": true
+  },
+  {
+    "name": "Death stops corpse visor emission",
+    "passed": true
+  }
+]

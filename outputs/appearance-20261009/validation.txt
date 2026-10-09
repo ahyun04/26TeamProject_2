@@ -1,0 +1,13 @@
+Player 검은 바이저 발광·사용자 색상 — 2026-10-09
+Unity 2022.3.58f1 / Fusion 2 Host Mode / Photon Voice
+실제 Player 렌더러: Primary 0·Secondary 1·Teritory 2·검은 얼굴 2 재질 3.
+발광 전용 재질은 슬롯 3, 몸통 색상은 슬롯 0에만 적용. 원본 모델·재질·텍스처 보존.
+15색 선택·미리보기·적용·취소·기본값·저장·중복 자동 배정, StandBy→GamePlay 색상 유지 확인.
+실제 Host·Client 방의 자동 검사 33개 통과. GamePlay UI와 서버 색상 변경 차단 확인.
+두 방향의 실제 Photon Voice 발화·무음·V 음소거·PTT 무음·PTT 발화·송신 종료 및 사망 시 발광 해제 확인.
+PTT 검사는 물리 키 입력 부재로 검사 복사본의 키·채널 Update만 잠시 중단하고 정상 Recorder 송신·VAD 설정을 재현. 제품 발광 Update·실제 인코딩·송수신을 사용.
+실제 사람 목소리·T/V/Esc 키·마우스 체감·다른 PC 지연·출력 장치 실패 미검증.
+비교표는 실제 카메라 원본의 동일 영역 확대·배치와 제목만 사용. 생성형 이미지 없음. 원본 PNG 별도 보관.
+기존 셰이더 오류 1건 유지. 검사 코드 제거 후 최종 Unity 컴파일·Fusion 코드 생성 종료 코드 0.
+기존 사용자 변경사항·GUID·참조·테스트 설정 복원 확인. 원본 Unity 편집기와 import worker 유지.
+추가 Inspector 연결 없음. git diff --check 통과. 커밋·푸시·병합 없음.

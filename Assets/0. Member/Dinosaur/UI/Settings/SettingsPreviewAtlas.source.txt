@@ -1,0 +1,112 @@
+Source: approved settings mockup exec-20c3567a-982a-4fb7-b0b1-606ea8d0dad3.png (1672x941).
+Extraction: Pillow crops of panel, button surfaces, tab surfaces, six icons, close X and slider thumb.
+Text and numbers are live TMP labels/input fields; no text is baked into the atlas.
+Transparent icon masks remove the blue-gray background; the slider track is excluded from the thumb.
+Panel/button centers reuse clean background pixels from the source for nine-sliced sprites.
+Sprite coordinates (Unity bottom-left origin):
+[
+  {
+    "name": "SettingsPanel",
+    "x": 0,
+    "y": 244,
+    "width": 1134,
+    "height": 780,
+    "border": 16
+  },
+  {
+    "name": "PrimaryButton",
+    "x": 0,
+    "y": 174,
+    "width": 148,
+    "height": 42,
+    "border": 7
+  },
+  {
+    "name": "NeutralButton",
+    "x": 180,
+    "y": 174,
+    "width": 149,
+    "height": 42,
+    "border": 7
+  },
+  {
+    "name": "NeutralTab",
+    "x": 1180,
+    "y": 937,
+    "width": 87,
+    "height": 87,
+    "border": 7
+  },
+  {
+    "name": "SelectedTab",
+    "x": 1280,
+    "y": 936,
+    "width": 88,
+    "height": 88,
+    "border": 7
+  },
+  {
+    "name": "SliderThumb",
+    "x": 370,
+    "y": 183,
+    "width": 33,
+    "height": 33,
+    "border": 0
+  },
+  {
+    "name": "CustomizationIcon",
+    "x": 1180,
+    "y": 842,
+    "width": 52,
+    "height": 52,
+    "border": 0
+  },
+  {
+    "name": "LobbyIcon",
+    "x": 1270,
+    "y": 841,
+    "width": 53,
+    "height": 53,
+    "border": 0
+  },
+  {
+    "name": "ControlsIcon",
+    "x": 1360,
+    "y": 842,
+    "width": 52,
+    "height": 52,
+    "border": 0
+  },
+  {
+    "name": "RulesIcon",
+    "x": 1180,
+    "y": 752,
+    "width": 52,
+    "height": 52,
+    "border": 0
+  },
+  {
+    "name": "SoundIcon",
+    "x": 1270,
+    "y": 751,
+    "width": 53,
+    "height": 53,
+    "border": 0
+  },
+  {
+    "name": "LanguageIcon",
+    "x": 1360,
+    "y": 751,
+    "width": 53,
+    "height": 53,
+    "border": 0
+  },
+  {
+    "name": "CloseIcon",
+    "x": 1460,
+    "y": 870,
+    "width": 24,
+    "height": 24,
+    "border": 0
+  }
+]

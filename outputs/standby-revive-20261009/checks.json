@@ -1,0 +1,550 @@
+[
+  {
+    "name": "Two independent processes joined actual private Photon room",
+    "passed": true
+  },
+  {
+    "name": "host nonlethal damage remains normal damage",
+    "passed": true
+  },
+  {
+    "name": "host damage revived in death callback same tick",
+    "passed": true,
+    "details": {
+      "actor": 1,
+      "beforeTick": 6034,
+      "afterTick": 6034,
+      "beforeSequence": 0,
+      "afterSequence": 1,
+      "dead": false,
+      "spectator": false,
+      "sameObject": true,
+      "samePosition": true,
+      "sameLook": true,
+      "sameReady": true,
+      "health": 100.0,
+      "stamina": 100.0,
+      "delay": 0.0
+    }
+  },
+  {
+    "name": "host damage full health/stamina and zero regen delay immediately",
+    "passed": true
+  },
+  {
+    "name": "host damage same object, position, look and ready immediately",
+    "passed": true
+  },
+  {
+    "name": "host damage host preserves identity and ready",
+    "passed": true
+  },
+  {
+    "name": "host damage host has no spectator and active movement",
+    "passed": true
+  },
+  {
+    "name": "host damage host preserves facing and drops item",
+    "passed": true
+  },
+  {
+    "name": "host damage client preserves identity and ready",
+    "passed": true
+  },
+  {
+    "name": "host damage client has no spectator and active movement",
+    "passed": true
+  },
+  {
+    "name": "host damage client preserves facing and drops item",
+    "passed": true
+  },
+  {
+    "name": "host damage local camera/HUD/listener retained",
+    "passed": true
+  },
+  {
+    "name": "host damage stays in survivor voice group",
+    "passed": true
+  },
+  {
+    "name": "host damage death pose not stuck",
+    "passed": true
+  },
+  {
+    "name": "host kill revived in death callback same tick",
+    "passed": true,
+    "details": {
+      "actor": 1,
+      "beforeTick": 6082,
+      "afterTick": 6082,
+      "beforeSequence": 1,
+      "afterSequence": 2,
+      "dead": false,
+      "spectator": false,
+      "sameObject": true,
+      "samePosition": true,
+      "sameLook": true,
+      "sameReady": true,
+      "health": 100.0,
+      "stamina": 100.0,
+      "delay": 0.0
+    }
+  },
+  {
+    "name": "host kill full health/stamina and zero regen delay immediately",
+    "passed": true
+  },
+  {
+    "name": "host kill same object, position, look and ready immediately",
+    "passed": true
+  },
+  {
+    "name": "host kill host preserves identity and ready",
+    "passed": true
+  },
+  {
+    "name": "host kill host has no spectator and active movement",
+    "passed": true
+  },
+  {
+    "name": "host kill host preserves facing and drops item",
+    "passed": true
+  },
+  {
+    "name": "host kill client preserves identity and ready",
+    "passed": true
+  },
+  {
+    "name": "host kill client has no spectator and active movement",
+    "passed": true
+  },
+  {
+    "name": "host kill client preserves facing and drops item",
+    "passed": true
+  },
+  {
+    "name": "host kill local camera/HUD/listener retained",
+    "passed": true
+  },
+  {
+    "name": "host kill stays in survivor voice group",
+    "passed": true
+  },
+  {
+    "name": "host kill death pose not stuck",
+    "passed": true
+  },
+  {
+    "name": "host repeat revived in death callback same tick",
+    "passed": true,
+    "details": {
+      "actor": 1,
+      "beforeTick": 6131,
+      "afterTick": 6131,
+      "beforeSequence": 2,
+      "afterSequence": 3,
+      "dead": false,
+      "spectator": false,
+      "sameObject": true,
+      "samePosition": true,
+      "sameLook": true,
+      "sameReady": true,
+      "health": 100.0,
+      "stamina": 100.0,
+      "delay": 0.0
+    }
+  },
+  {
+    "name": "host repeat full health/stamina and zero regen delay immediately",
+    "passed": true
+  },
+  {
+    "name": "host repeat same object, position, look and ready immediately",
+    "passed": true
+  },
+  {
+    "name": "host repeat host preserves identity and ready",
+    "passed": true
+  },
+  {
+    "name": "host repeat host has no spectator and active movement",
+    "passed": true
+  },
+  {
+    "name": "host repeat host preserves facing and drops item",
+    "passed": true
+  },
+  {
+    "name": "host repeat client preserves identity and ready",
+    "passed": true
+  },
+  {
+    "name": "host repeat client has no spectator and active movement",
+    "passed": true
+  },
+  {
+    "name": "host repeat client preserves facing and drops item",
+    "passed": true
+  },
+  {
+    "name": "host repeat local camera/HUD/listener retained",
+    "passed": true
+  },
+  {
+    "name": "host repeat stays in survivor voice group",
+    "passed": true
+  },
+  {
+    "name": "host repeat death pose not stuck",
+    "passed": true
+  },
+  {
+    "name": "host post-revive voice packets continue",
+    "passed": true
+  },
+  {
+    "name": "host walking resumes after repeated revives",
+    "passed": true
+  },
+  {
+    "name": "host look input resumes after revive",
+    "passed": true
+  },
+  {
+    "name": "host sprint with ordinary stamina cost still works",
+    "passed": true
+  },
+  {
+    "name": "host normal jump still consumes 15",
+    "passed": true
+  },
+  {
+    "name": "host fatal jump cost immediately revives without jump impulse",
+    "passed": true
+  },
+  {
+    "name": "host fatal sprint cost revives and movement continues",
+    "passed": true
+  },
+  {
+    "name": "client nonlethal damage remains normal damage",
+    "passed": true
+  },
+  {
+    "name": "client damage revived in death callback same tick",
+    "passed": true,
+    "details": {
+      "actor": 2,
+      "beforeTick": 6571,
+      "afterTick": 6571,
+      "beforeSequence": 0,
+      "afterSequence": 1,
+      "dead": false,
+      "spectator": false,
+      "sameObject": true,
+      "samePosition": true,
+      "sameLook": true,
+      "sameReady": true,
+      "health": 100.0,
+      "stamina": 100.0,
+      "delay": 0.0
+    }
+  },
+  {
+    "name": "client damage full health/stamina and zero regen delay immediately",
+    "passed": true
+  },
+  {
+    "name": "client damage same object, position, look and ready immediately",
+    "passed": true
+  },
+  {
+    "name": "client damage host preserves identity and ready",
+    "passed": true
+  },
+  {
+    "name": "client damage host has no spectator and active movement",
+    "passed": true
+  },
+  {
+    "name": "client damage host preserves facing and drops item",
+    "passed": true
+  },
+  {
+    "name": "client damage client preserves identity and ready",
+    "passed": true
+  },
+  {
+    "name": "client damage client has no spectator and active movement",
+    "passed": true
+  },
+  {
+    "name": "client damage client preserves facing and drops item",
+    "passed": true
+  },
+  {
+    "name": "client damage local camera/HUD/listener retained",
+    "passed": true
+  },
+  {
+    "name": "client damage stays in survivor voice group",
+    "passed": true
+  },
+  {
+    "name": "client damage death pose not stuck",
+    "passed": true
+  },
+  {
+    "name": "client kill revived in death callback same tick",
+    "passed": true,
+    "details": {
+      "actor": 2,
+      "beforeTick": 6618,
+      "afterTick": 6618,
+      "beforeSequence": 1,
+      "afterSequence": 2,
+      "dead": false,
+      "spectator": false,
+      "sameObject": true,
+      "samePosition": true,
+      "sameLook": true,
+      "sameReady": true,
+      "health": 100.0,
+      "stamina": 100.0,
+      "delay": 0.0
+    }
+  },
+  {
+    "name": "client kill full health/stamina and zero regen delay immediately",
+    "passed": true
+  },
+  {
+    "name": "client kill same object, position, look and ready immediately",
+    "passed": true
+  },
+  {
+    "name": "client kill host preserves identity and ready",
+    "passed": true
+  },
+  {
+    "name": "client kill host has no spectator and active movement",
+    "passed": true
+  },
+  {
+    "name": "client kill host preserves facing and drops item",
+    "passed": true
+  },
+  {
+    "name": "client kill client preserves identity and ready",
+    "passed": true
+  },
+  {
+    "name": "client kill client has no spectator and active movement",
+    "passed": true
+  },
+  {
+    "name": "client kill client preserves facing and drops item",
+    "passed": true
+  },
+  {
+    "name": "client kill local camera/HUD/listener retained",
+    "passed": true
+  },
+  {
+    "name": "client kill stays in survivor voice group",
+    "passed": true
+  },
+  {
+    "name": "client kill death pose not stuck",
+    "passed": true
+  },
+  {
+    "name": "client repeat revived in death callback same tick",
+    "passed": true,
+    "details": {
+      "actor": 2,
+      "beforeTick": 6667,
+      "afterTick": 6667,
+      "beforeSequence": 2,
+      "afterSequence": 3,
+      "dead": false,
+      "spectator": false,
+      "sameObject": true,
+      "samePosition": true,
+      "sameLook": true,
+      "sameReady": true,
+      "health": 100.0,
+      "stamina": 100.0,
+      "delay": 0.0
+    }
+  },
+  {
+    "name": "client repeat full health/stamina and zero regen delay immediately",
+    "passed": true
+  },
+  {
+    "name": "client repeat same object, position, look and ready immediately",
+    "passed": true
+  },
+  {
+    "name": "client repeat host preserves identity and ready",
+    "passed": true
+  },
+  {
+    "name": "client repeat host has no spectator and active movement",
+    "passed": true
+  },
+  {
+    "name": "client repeat host preserves facing and drops item",
+    "passed": true
+  },
+  {
+    "name": "client repeat client preserves identity and ready",
+    "passed": true
+  },
+  {
+    "name": "client repeat client has no spectator and active movement",
+    "passed": true
+  },
+  {
+    "name": "client repeat client preserves facing and drops item",
+    "passed": true
+  },
+  {
+    "name": "client repeat local camera/HUD/listener retained",
+    "passed": true
+  },
+  {
+    "name": "client repeat stays in survivor voice group",
+    "passed": true
+  },
+  {
+    "name": "client repeat death pose not stuck",
+    "passed": true
+  },
+  {
+    "name": "client post-revive voice packets continue",
+    "passed": true
+  },
+  {
+    "name": "client walking resumes after repeated revives",
+    "passed": true
+  },
+  {
+    "name": "client look input resumes after revive",
+    "passed": true
+  },
+  {
+    "name": "client sprint with ordinary stamina cost still works",
+    "passed": true
+  },
+  {
+    "name": "client normal jump still consumes 15",
+    "passed": true
+  },
+  {
+    "name": "client fatal jump cost immediately revives without jump impulse",
+    "passed": true
+  },
+  {
+    "name": "client fatal sprint cost revives and movement continues",
+    "passed": true
+  },
+  {
+    "name": "Client cannot refill authoritative health/stamina",
+    "passed": true
+  },
+  {
+    "name": "Ready players start actual GamePlay after repeated revives",
+    "passed": true
+  },
+  {
+    "name": "host previous attack cost 25 still works in GamePlay",
+    "passed": true
+  },
+  {
+    "name": "client previous attack cost 25 still works in GamePlay",
+    "passed": true
+  },
+  {
+    "name": "host host GamePlay death does not revive",
+    "passed": true
+  },
+  {
+    "name": "host host keeps ordinary death audio state",
+    "passed": true
+  },
+  {
+    "name": "host client GamePlay death does not revive",
+    "passed": true
+  },
+  {
+    "name": "host client keeps ordinary death audio state",
+    "passed": true
+  },
+  {
+    "name": "host fatal attack still blocks swing and target damage",
+    "passed": true
+  },
+  {
+    "name": "client host GamePlay death does not revive",
+    "passed": true
+  },
+  {
+    "name": "client host keeps ordinary death audio state",
+    "passed": true
+  },
+  {
+    "name": "client client GamePlay death does not revive",
+    "passed": true
+  },
+  {
+    "name": "client client keeps ordinary death audio state",
+    "passed": true
+  },
+  {
+    "name": "client fatal attack still blocks swing and target damage",
+    "passed": true
+  },
+  {
+    "name": "Dead Client cannot invoke authoritative revival",
+    "passed": true
+  },
+  {
+    "name": "Last citizen death keeps match result flow",
+    "passed": true
+  },
+  {
+    "name": "Return button restores fresh StandBy players without ghosts",
+    "passed": true
+  },
+  {
+    "name": "StandBy after match revived in death callback same tick",
+    "passed": true,
+    "details": {
+      "actor": 2,
+      "beforeTick": 7722,
+      "afterTick": 7722,
+      "beforeSequence": 0,
+      "afterSequence": 1,
+      "dead": false,
+      "spectator": false,
+      "sameObject": true,
+      "samePosition": true,
+      "sameLook": true,
+      "sameReady": true,
+      "health": 100.0,
+      "stamina": 100.0,
+      "delay": 0.0
+    }
+  },
+  {
+    "name": "StandBy after match full health/stamina and zero regen delay immediately",
+    "passed": true
+  },
+  {
+    "name": "StandBy after match same object, position, look and ready immediately",
+    "passed": true
+  }
+]

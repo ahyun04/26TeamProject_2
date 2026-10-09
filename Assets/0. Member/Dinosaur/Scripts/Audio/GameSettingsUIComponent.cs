@@ -24,12 +24,12 @@ public class GameSettingsUIComponent : MonoBehaviour
     [SerializeField] private TMP_Text voiceModeHintText; //선택한 송신 방식의 사용법
     [SerializeField] private Button soundTabButton; //사운드 탭 선택
     [SerializeField] private Button controlsTabButton; //조작키 탭 선택
-    [SerializeField] private TMP_Text soundTabText; //사운드 탭 글자
-    [SerializeField] private TMP_Text controlsTabText; //조작키 탭 글자
-    [SerializeField] private GameObject soundTabIndicator; //사운드 탭의 선택 밑줄
-    [SerializeField] private GameObject controlsTabIndicator; //조작키 탭의 선택 밑줄
+    [SerializeField] private Sprite selectedTabSprite; //선택한 아이콘 탭의 진한 배경
+    [SerializeField] private Sprite neutralTabSprite; //선택하지 않은 아이콘 탭의 배경
     [SerializeField] private GameObject soundPage; //음량과 송신 방식 페이지
     [SerializeField] private GameObject controlsPage; //현재 조작키 안내 페이지
+    [SerializeField] private Button customizationTabButton; //캐릭터 색상 탭 선택
+    [SerializeField] private GameObject customizationPage; //색상 팔레트와 모델 미리보기 페이지
     [SerializeField] private Button applyButton; //설정 적용과 저장
     [SerializeField] private Button cancelButton; //미적용 설정 취소
     [SerializeField] private Button defaultsButton; //임시 설정 기본값 복원
@@ -47,6 +47,7 @@ public class GameSettingsUIComponent : MonoBehaviour
     private bool isOpen; //현재 설정창 상태
     private int toggleFrame = -1; //Esc로 닫은 프레임의 입력 재사용 방지
     private bool soundSelected = true; //현재 열린 설정 탭
+    private bool customizationSelected; //현재 커스터마이징 탭 선택 여부
     private UnityAction<string>[] volumeInputActions; //숫자 입력 구독 해제에 사용할 함수
     private UnityAction[] decreaseActions; //감소 버튼 구독 해제에 사용할 함수
     private UnityAction[] increaseActions; //증가 버튼 구독 해제에 사용할 함수
@@ -65,6 +66,7 @@ public class GameSettingsUIComponent : MonoBehaviour
         pushToTalkButton.onClick.AddListener(selectPushToTalk);
         soundTabButton?.onClick.AddListener(showSoundTab);
         controlsTabButton?.onClick.AddListener(showControlsTab);
+        customizationTabButton?.onClick.AddListener(showCustomizationTab);
         applyButton?.onClick.AddListener(apply);
         cancelButton?.onClick.AddListener(close);
         defaultsButton?.onClick.AddListener(restoreDefaults);
@@ -134,6 +136,7 @@ public class GameSettingsUIComponent : MonoBehaviour
     {
         if (isOpen || owner == null || SessionDisconnectUIComponent.IsOpen || isGameEnded()) return;
         owner.beginSettingsEditing();
+        PlayerAppearance.beginCustomization();
         isOpen = true;
         toggleFrame = Time.frameCount;
         refreshValues();
@@ -149,6 +152,7 @@ public class GameSettingsUIComponent : MonoBehaviour
         if (!isOpen) return;
         finishVolumeInput();
         owner.cancelSettings();
+        PlayerAppearance.cancelCustomization();
         finishClose();
     }
 
@@ -156,8 +160,16 @@ public class GameSettingsUIComponent : MonoBehaviour
     {
         if (!isOpen) return;
         finishVolumeInput();
-        if (owner.applySettings()) finishClose();
-        else if (saveHintText != null) saveHintText.text = "저장하지 못했습니다. 다시 적용해 주세요.";
+        if (PlayerAppearance.prepareSave() && owner.applySettings())
+        {
+            PlayerAppearance.completeSave();
+            finishClose();
+        }
+        else
+        {
+            PlayerAppearance.rollbackSave();
+            if (saveHintText != null) saveHintText.text = "저장하지 못했습니다. 다시 적용해 주세요.";
+        }
     }
 
     private void restoreDefaults() //기본값은 적용 전까지 미리 듣기에만 반영
@@ -165,6 +177,7 @@ public class GameSettingsUIComponent : MonoBehaviour
         if (!isOpen) return;
         finishVolumeInput();
         owner.restoreDefaultSettings();
+        PlayerAppearance.restoreDefaults();
         refreshValues();
     }
 
@@ -275,6 +288,7 @@ public class GameSettingsUIComponent : MonoBehaviour
     {
         finishVolumeInput();
         soundSelected = true;
+        customizationSelected = false;
         refreshTab();
     }
 
@@ -282,19 +296,26 @@ public class GameSettingsUIComponent : MonoBehaviour
     {
         finishVolumeInput();
         soundSelected = false;
+        customizationSelected = false;
         refreshTab();
     }
 
-    private void refreshTab() //첫 예시의 글자 강조와 얇은 선택 밑줄 적용
+    private void showCustomizationTab() //기존 임시 설정을 유지하면서 색상 탭 선택
     {
-        if (soundPage != null) soundPage.SetActive(soundSelected);
-        if (controlsPage != null) controlsPage.SetActive(!soundSelected);
-        if (soundTabIndicator != null) soundTabIndicator.SetActive(soundSelected);
-        if (controlsTabIndicator != null) controlsTabIndicator.SetActive(!soundSelected);
-        Color selected = new Color(0.48f, 0.82f, 1f); //선택된 탭 글자
-        Color neutral = new Color(0.64f, 0.69f, 0.76f); //선택되지 않은 탭 글자
-        if (soundTabText != null) soundTabText.color = soundSelected ? selected : neutral;
-        if (controlsTabText != null) controlsTabText.color = soundSelected ? neutral : selected;
+        finishVolumeInput();
+        customizationSelected = true;
+        refreshTab();
+    }
+
+    private void refreshTab() //현재 페이지와 아이콘 탭의 선택 배경 표시
+    {
+        if (soundPage != null) soundPage.SetActive(!customizationSelected && soundSelected);
+        if (controlsPage != null) controlsPage.SetActive(!customizationSelected && !soundSelected);
+        if (customizationPage != null) customizationPage.SetActive(customizationSelected);
+        if (selectedTabSprite == null || neutralTabSprite == null) return;
+        if (soundTabButton != null) soundTabButton.image.sprite = !customizationSelected && soundSelected ? selectedTabSprite : neutralTabSprite;
+        if (controlsTabButton != null) controlsTabButton.image.sprite = !customizationSelected && !soundSelected ? selectedTabSprite : neutralTabSprite;
+        if (customizationTabButton != null) customizationTabButton.image.sprite = customizationSelected ? selectedTabSprite : neutralTabSprite;
     }
 
     private void selectVoiceActivation() //자동 음성 감지 방식 선택
@@ -347,6 +368,7 @@ public class GameSettingsUIComponent : MonoBehaviour
         pushToTalkButton.onClick.RemoveListener(selectPushToTalk);
         soundTabButton?.onClick.RemoveListener(showSoundTab);
         controlsTabButton?.onClick.RemoveListener(showControlsTab);
+        customizationTabButton?.onClick.RemoveListener(showCustomizationTab);
         applyButton?.onClick.RemoveListener(apply);
         cancelButton?.onClick.RemoveListener(close);
         defaultsButton?.onClick.RemoveListener(restoreDefaults);

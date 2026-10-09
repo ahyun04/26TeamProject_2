@@ -1,0 +1,298 @@
+[
+  {
+    "name": "Two independent processes joined private Photon room",
+    "passed": true
+  },
+  {
+    "name": "host actual Player prefab attack cost 25",
+    "passed": true
+  },
+  {
+    "name": "host StandBy attack rejected without cost",
+    "passed": true
+  },
+  {
+    "name": "client actual Player prefab attack cost 25",
+    "passed": true
+  },
+  {
+    "name": "client StandBy attack rejected without cost",
+    "passed": true
+  },
+  {
+    "name": "Client cannot directly spend authoritative attack resources",
+    "passed": true
+  },
+  {
+    "name": "Normal ready/start flow assigned Citizen and Killer",
+    "passed": true
+  },
+  {
+    "name": "host miss with stamina 100: correct resource cost",
+    "passed": true
+  },
+  {
+    "name": "host stamina 100: sequence and HUD replicate",
+    "passed": true
+  },
+  {
+    "name": "host sufficient stamina causes no self-damage",
+    "passed": true
+  },
+  {
+    "name": "host miss with stamina 25: correct resource cost",
+    "passed": true
+  },
+  {
+    "name": "host stamina 25: sequence and HUD replicate",
+    "passed": true
+  },
+  {
+    "name": "host sufficient stamina causes no self-damage",
+    "passed": true
+  },
+  {
+    "name": "host miss with stamina 10: correct resource cost",
+    "passed": true
+  },
+  {
+    "name": "host stamina 10: sequence and HUD replicate",
+    "passed": true
+  },
+  {
+    "name": "host health fallback triggers damage feedback",
+    "passed": true
+  },
+  {
+    "name": "host miss with stamina 0: correct resource cost",
+    "passed": true
+  },
+  {
+    "name": "host stamina 0: sequence and HUD replicate",
+    "passed": true
+  },
+  {
+    "name": "host health fallback triggers damage feedback",
+    "passed": true
+  },
+  {
+    "name": "host five same-frame requests charge once",
+    "passed": true
+  },
+  {
+    "name": "host knife hit: damage and 25 cost",
+    "passed": true
+  },
+  {
+    "name": "host scissors hit: damage and 25 cost",
+    "passed": true
+  },
+  {
+    "name": "host none rejected without cost",
+    "passed": true
+  },
+  {
+    "name": "host screwdriver rejected without cost",
+    "passed": true
+  },
+  {
+    "name": "host locked instant-kill request does not spend stamina",
+    "passed": true
+  },
+  {
+    "name": "client miss with stamina 100: correct resource cost",
+    "passed": true
+  },
+  {
+    "name": "client stamina 100: sequence and HUD replicate",
+    "passed": true
+  },
+  {
+    "name": "client sufficient stamina causes no self-damage",
+    "passed": true
+  },
+  {
+    "name": "client miss with stamina 25: correct resource cost",
+    "passed": true
+  },
+  {
+    "name": "client stamina 25: sequence and HUD replicate",
+    "passed": true
+  },
+  {
+    "name": "client sufficient stamina causes no self-damage",
+    "passed": true
+  },
+  {
+    "name": "client miss with stamina 10: correct resource cost",
+    "passed": true
+  },
+  {
+    "name": "client stamina 10: sequence and HUD replicate",
+    "passed": true
+  },
+  {
+    "name": "client health fallback triggers damage feedback",
+    "passed": true
+  },
+  {
+    "name": "client miss with stamina 0: correct resource cost",
+    "passed": true
+  },
+  {
+    "name": "client stamina 0: sequence and HUD replicate",
+    "passed": true
+  },
+  {
+    "name": "client health fallback triggers damage feedback",
+    "passed": true
+  },
+  {
+    "name": "client five same-frame requests charge once",
+    "passed": true
+  },
+  {
+    "name": "client knife hit: damage and 25 cost",
+    "passed": true
+  },
+  {
+    "name": "client scissors hit: damage and 25 cost",
+    "passed": true
+  },
+  {
+    "name": "client none rejected without cost",
+    "passed": true
+  },
+  {
+    "name": "client screwdriver rejected without cost",
+    "passed": true
+  },
+  {
+    "name": "client locked instant-kill request does not spend stamina",
+    "passed": true
+  },
+  {
+    "name": "Wall blocks target damage while swing still costs 25",
+    "passed": true
+  },
+  {
+    "name": "Attack restarts stamina regeneration delay",
+    "passed": true
+  },
+  {
+    "name": "Stamina stays at 75 during regeneration delay",
+    "passed": true
+  },
+  {
+    "name": "Stamina regenerates after attack delay",
+    "passed": true
+  },
+  {
+    "name": "Existing sprint stamina drain still works",
+    "passed": true,
+    "details": {
+      "owner": 2,
+      "damage": 4,
+      "jumps": 0,
+      "stamina": 83.125,
+      "health": 100.0,
+      "delay": 1.390625,
+      "y": 0.0,
+      "vertical": 0.0,
+      "cost": 15.0,
+      "hudStamina": -1.0,
+      "hudHealth": -1.0,
+      "grounded": true,
+      "dead": false,
+      "active": true,
+      "canAct": true,
+      "hasState": true,
+      "hasInput": false,
+      "denied": false
+    }
+  },
+  {
+    "name": "Existing sprint health fallback still works",
+    "passed": true,
+    "details": {
+      "owner": 2,
+      "damage": 5,
+      "jumps": 0,
+      "stamina": 0.0,
+      "health": 92.1875,
+      "delay": 1.375,
+      "y": 0.0,
+      "vertical": 0.0,
+      "cost": 15.0,
+      "hudStamina": -1.0,
+      "hudHealth": -1.0,
+      "grounded": true,
+      "dead": false,
+      "active": true,
+      "canAct": true,
+      "hasState": true,
+      "hasInput": false,
+      "denied": false
+    }
+  },
+  {
+    "name": "Existing jump cost remains 15",
+    "passed": true
+  },
+  {
+    "name": "host game-ended attack rejected without cost",
+    "passed": true
+  },
+  {
+    "name": "client game-ended attack rejected without cost",
+    "passed": true
+  },
+  {
+    "name": "Returned to StandBy and started fresh game",
+    "passed": true
+  },
+  {
+    "name": "host lethal health cost kills attacker and creates spectator",
+    "passed": true
+  },
+  {
+    "name": "host lethal cost prevents swing and opponent damage",
+    "passed": true
+  },
+  {
+    "name": "host death drops held weapon",
+    "passed": true
+  },
+  {
+    "name": "host dead-player requests cannot spend or deal damage",
+    "passed": true
+  },
+  {
+    "name": "host spectator has no health, stamina or attack component",
+    "passed": true
+  },
+  {
+    "name": "client lethal health cost kills attacker and creates spectator",
+    "passed": true
+  },
+  {
+    "name": "client lethal cost prevents swing and opponent damage",
+    "passed": true
+  },
+  {
+    "name": "client death drops held weapon",
+    "passed": true
+  },
+  {
+    "name": "client dead-player requests cannot spend or deal damage",
+    "passed": true
+  },
+  {
+    "name": "client spectator has no health, stamina or attack component",
+    "passed": true
+  },
+  {
+    "name": "Last citizen death preserves game result flow",
+    "passed": true
+  }
+]

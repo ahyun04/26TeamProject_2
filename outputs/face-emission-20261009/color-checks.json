@@ -1,0 +1,115 @@
+[
+  {
+    "name": "host shows host selected red and client selected green",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "host silent visors black with shader enabled",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "client shows host selected red and client selected green",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "client silent visors black with shader enabled",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "host chosen color matches linear emission on host",
+    "passed": true,
+    "details": {
+      "index": 1,
+      "actual": [
+        1.5748246908187866,
+        0.06620952486991882,
+        0.08646727353334427
+      ],
+      "expected": [
+        1.5748244844329269,
+        0.06620950714198962,
+        0.08646724231809602
+      ]
+    }
+  },
+  {
+    "name": "host chosen color matches linear emission on client",
+    "passed": true,
+    "details": {
+      "index": 1,
+      "actual": [
+        1.5748246908187866,
+        0.06620952486991882,
+        0.08646727353334427
+      ],
+      "expected": [
+        1.5748244844329269,
+        0.06620950714198962,
+        0.08646724231809602
+      ]
+    }
+  },
+  {
+    "name": "host mute clears assigned-color emission",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "host silence clears assigned-color emission",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "client chosen color matches linear emission on host",
+    "passed": true,
+    "details": {
+      "index": 2,
+      "actual": [
+        0.05442357063293457,
+        0.8959768414497375,
+        0.21307848393917084
+      ],
+      "expected": [
+        0.05442354931368216,
+        0.8959767909313132,
+        0.21307842880504446
+      ]
+    }
+  },
+  {
+    "name": "client chosen color matches linear emission on client",
+    "passed": true,
+    "details": {
+      "index": 2,
+      "actual": [
+        0.05442357063293457,
+        0.8959768414497375,
+        0.21307848393917084
+      ],
+      "expected": [
+        0.05442354931368216,
+        0.8959767909313132,
+        0.21307842880504446
+      ]
+    }
+  },
+  {
+    "name": "client mute clears assigned-color emission",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "client silence clears assigned-color emission",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "GamePlay retains both separately selected colors",
+    "passed": true,
+    "details": null
+  }
+]

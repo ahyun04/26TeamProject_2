@@ -44,6 +44,10 @@ public class PlayerHealth : NetworkBehaviour
     public event Action Died;
     public event Action Escaped;
     public event Action Damaged; //피격 시 진행 중인 로컬 상호작용 중단
+    internal event Action revived; //각 클라이언트의 부활 후 로컬 상태 복원
+
+    [Networked, OnChangedRender(nameof(handleRevived))]
+    private int reviveSequence { get; set; } //같은 틱의 사망과 부활도 복제하는 부활 횟수
 
     [Networked, OnChangedRender(nameof(handleDamage))]
     private int damageSequence { get; set; } //연속 피격과 회복이 같은 프레임에 발생해도 피격 전달
@@ -102,6 +106,22 @@ public class PlayerHealth : NetworkBehaviour
         if (IsDead || IsEscaped || amount <= 0f) return;
 
         CurrentHealth = Mathf.Min(maxHealth, CurrentHealth + amount);
+    }
+
+    internal bool tryRevive() //호스트의 사망 상태 해제와 최대 체력 회복
+    {
+        if (!HasStateAuthority || !IsDead || IsEscaped) return false;
+
+        CurrentHealth = maxHealth;
+        IsDead = false;
+        sprintDamageTimer = TickTimer.None;
+        reviveSequence++;
+        return true;
+    }
+
+    private void handleRevived() //복제된 부활 알림 전달
+    {
+        revived?.Invoke();
     }
 
     private void HandleHealthChanged()

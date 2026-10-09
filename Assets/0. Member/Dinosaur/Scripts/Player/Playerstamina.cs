@@ -4,7 +4,7 @@ using UnityEngine;
 
 /// <summary>
 /// 플레이어 스태미너 관리. PlayerMovement가 실제 이동 입력과 점프 실행을 전달하며
-/// 스프린트와 점프에 사용할 스태미나 및 부족한 자원의 체력 소모를 처리한다.
+/// 스프린트·점프·공격에 사용할 스태미나 및 부족한 자원의 체력 소모를 처리한다.
 /// </summary>
 [RequireComponent(typeof(NetworkObject))]
 public class PlayerStamina : NetworkBehaviour
@@ -14,6 +14,7 @@ public class PlayerStamina : NetworkBehaviour
     [SerializeField] private float drainPerSecond = 20f;
     [SerializeField, Min(0f)] private float healthDrainPerSecond = 10f; //스태미나 소진 후 초당 체력 소모량
     [SerializeField, Min(0f)] private float jumpStaminaCost = 15f; //점프 한 번에 필요한 스태미나
+    [SerializeField, Min(0f)] private float attackStaminaCost = 25f; //공격 한 번에 필요한 스태미나
     [SerializeField] private float regenPerSecond = 15f;
     [SerializeField] private float regenDelaySeconds = 1.5f;
 
@@ -84,6 +85,26 @@ public class PlayerStamina : NetworkBehaviour
         if (healthCost > 0f)
             health?.ApplyDamage(healthCost);
         return survivesJump && (health == null || !health.IsDead);
+    }
+
+    internal bool tryConsumeAttackStamina() //호스트가 공격 자원을 소모하고 생존 여부를 반환
+    {
+        if (!HasStateAuthority || health == null || !health.CanAct)
+            return false;
+
+        float healthCost = Mathf.Max(0f, attackStaminaCost - CurrentStamina); //스태미나로 감당하지 못한 공격 소모량
+        Drain(attackStaminaCost);
+        RegenDelayTimer = regenDelaySeconds;
+        if (healthCost > 0f)
+            health.ApplyDamage(healthCost);
+        return health.CanAct;
+    }
+
+    internal void restoreAfterRevive() //호스트의 부활 후 최대 스태미나와 회복 대기 초기화
+    {
+        if (!HasStateAuthority) return;
+        CurrentStamina = maxStamina;
+        RegenDelayTimer = 0f;
     }
 
     private void Drain(float amount)

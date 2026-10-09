@@ -27,6 +27,7 @@ namespace LockdownProtocol.Networking
         private PlayerCameraController cameraController; //호스트 기준 조준 정보
         private PlayerAnimation animationController; //캐릭터 공격 연출
         private PlayerInteraction interaction; //공격 시 미션 상호작용 중단
+        private PlayerStamina stamina; //승인한 공격의 자원 소모
         private readonly RaycastHit[] rayHits = new RaycastHit[32]; //자기 충돌체를 제외한 근접 판정
 
         internal bool usesWeaponAttackInput() //좌클릭을 공격에 사용하는 상태
@@ -42,6 +43,7 @@ namespace LockdownProtocol.Networking
             cameraController = GetComponent<PlayerCameraController>();
             animationController = GetComponent<PlayerAnimation>();
             interaction = GetComponent<PlayerInteraction>();
+            stamina = GetComponent<PlayerStamina>();
             findMatchSystems();
         }
 
@@ -92,7 +94,7 @@ namespace LockdownProtocol.Networking
         private void RPC_RequestAttack() //장착 무기로 일반 피해 적용
         {
             if (!canRequestAttack() || items == null || !items.tryGetEquippedWeapon(out ItemData weapon)) return;
-            beginAttack(weapon.AttackInterval);
+            if (!beginAttack(weapon.AttackInterval)) return;
             if (tryGetAttackTarget(out PlayerHealth target))
                 target.ApplyDamage(weapon.AttackDamage, Object.InputAuthority);
         }
@@ -111,17 +113,19 @@ namespace LockdownProtocol.Networking
 
             float duration = items != null && items.tryGetEquippedWeapon(out ItemData weapon)
                 ? weapon.AttackInterval : 1f;
-            beginAttack(duration);
+            if (!beginAttack(duration)) return;
             CanKill = false;
             CooldownTimer = TickTimer.CreateFromSeconds(Runner, killCooldownSeconds);
             target.Kill(Object.InputAuthority);
         }
 
-        private void beginAttack(float duration) //일반 공격과 즉사 모션의 중복 실행 방지
+        private bool beginAttack(float duration) //공격 자원 소모와 일반 공격·즉사 모션의 중복 실행 방지
         {
+            if (stamina == null || !stamina.tryConsumeAttackStamina()) return false;
             attackDuration = duration;
             attackTimer = TickTimer.CreateFromSeconds(Runner, duration);
             attackSequence++;
+            return true;
         }
 
         private bool tryGetAttackTarget(out PlayerHealth target) //시점과 벽을 포함한 호스트 근접 판정

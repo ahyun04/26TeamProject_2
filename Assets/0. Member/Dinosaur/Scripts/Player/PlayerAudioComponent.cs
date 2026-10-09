@@ -27,6 +27,7 @@ public class PlayerAudioComponent : NetworkBehaviour
         configureSource(deathSource);
         applyVolume();
         health.Died += playDeath;
+        health.revived += resetAfterRevive;
     }
 
     private void configureSource(AudioSource source) //본인은 직접 듣고 다른 사람은 거리로 감쇠
@@ -65,6 +66,13 @@ public class PlayerAudioComponent : NetworkBehaviour
         if (deathSound != null) deathSource.PlayOneShot(deathSound);
     }
 
+    private void resetAfterRevive() //부활 후 사망음과 발소리 재생 상태 초기화
+    {
+        deathPlayed = false;
+        distanceToNextStep = 0f;
+        deathSource.Stop();
+    }
+
     private void applyVolume() //전체와 효과음 설정 적용
     {
         float volume = GameAudio.getEffectsVolume();
@@ -80,7 +88,11 @@ public class PlayerAudioComponent : NetworkBehaviour
 
     public override void Despawned(NetworkRunner runner, bool hasState) //사망 구독과 재생 정리
     {
-        if (health != null) health.Died -= playDeath;
+        if (health != null)
+        {
+            health.Died -= playDeath;
+            health.revived -= resetAfterRevive;
+        }
         footstepSource.Stop();
         deathSource.Stop();
     }

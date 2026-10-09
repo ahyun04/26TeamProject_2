@@ -30,7 +30,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 2, y: 2, z: 2}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 8612106012233065105}
@@ -71,7 +71,7 @@ MonoBehaviour:
   - {fileID: 7480325146729224702}
   colliders:
   - {fileID: 8629275223608250811}
-  heldPositionOffset: {x: 0, y: 0, z: 0}
+  heldPositionOffset: {x: 0, y: -0.05, z: -0.04}
   heldRotationOffset: {x: 0, y: 180, z: 0}
 --- !u!114 &7178332236311967918
 MonoBehaviour:
