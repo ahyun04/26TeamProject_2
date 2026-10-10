@@ -37,6 +37,25 @@ namespace TrustNoOne.Missions
         }
 
         /// <summary>
+        /// except 행동을 쓰는 미션을 뺀 이번 판의 단체 미션이 모두 완료되었는가 (3d 명세 FD11 — 대형 방화문 해금 조건).
+        /// 기획서 "모든 단체 미션을 완료해야 방화문 개방을 시도할 수 있음" — 방화문 자신은 빼고 본다.
+        /// 다른 단체 미션이 하나도 없으면 true (막힐 이유가 없다). 개인 미션 · 행동 목표는 보지 않는다.
+        /// </summary>
+        public static bool AreOtherTeamMissionsCompleted(IReadOnlyList<IMissionObjective> objectives, MissionEventType except)
+        {
+            foreach (IMissionObjective objective in objectives)
+            {
+                if (objective.Definition.Category != MissionCategory.Team || objective.Definition.Trigger == except)
+                    continue;
+
+                if (objective.Status != ObjectiveStatus.Completed)
+                    return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
         /// 그 시민의 개인 미션이 전부 완료되었는가. 개인 미션이 없으면 true(해당 조건 없음).
         /// 단체 미션과 달리 "없음"을 true 로 보는 이유: 개인 미션이 0개인 시민이 영원히 이길 수 없게 되는 것을 피하기 위해서.
         /// </summary>

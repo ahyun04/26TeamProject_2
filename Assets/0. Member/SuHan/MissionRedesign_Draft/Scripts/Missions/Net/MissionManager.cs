@@ -312,6 +312,12 @@ namespace TrustNoOne.Missions
             }
         }
 
+        /// <summary>호스트: except 행동을 쓰는 미션을 뺀 이번 판의 단체 미션이 모두 끝났나 (3d 명세 FD11 — 방화문 해금 규칙). 초기화 전이면 false.</summary>
+        public bool AreOtherTeamMissionsCompleted(MissionEventType except)
+        {
+            return CanQuery && MissionOutcome.AreOtherTeamMissionsCompleted(router.Objectives, except);
+        }
+
         // ═════════════════════════════════════════════════════════════
         //  GameEndSystem 이 묻는 "사실" (호스트 전용) — 승패 결정은 하지 않는다
         // ═════════════════════════════════════════════════════════════

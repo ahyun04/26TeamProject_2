@@ -17,7 +17,7 @@ using UnityEngine;
 ///  공통 후처리: 조준 문구(MissionPrompt.promptObject)가 있으면 PromptBillboard 를 붙여 항상 보는 사람 쪽을 향하게 한다
 ///  (옛 밸브 문구가 방향 고정이라 배치에 따라 뒤집혀 보였음 — 2b 테스트에서 발견).
 /// [조준 외곽선] MissionOutlineBuilder 로 붙인다 (1단계 사용자 요청). 부품마다 MissionPrompt 를 두면 조준한 부품만 켜진다 (2a 명세 P7).
-/// [변환 목록] 1단계 발전기 / 2a 밸브 · 안테나 · 차단기 / 2b 전선 / 2c 필터 · 청소기(아이템) / 2d 압력(신규 — 옛 프리팹이 없어 원본 패널 · 피스톤 모델에서 조립) / 3a 코드 자판(신규 — 원본 자판 모델에서 조립) / 3b 생명 유지 장치 · 산소통(신규 — 모델이 없어 기본 도형으로 조립) / 3c 장비 조립(신규 — 원본 본체 · 부품 모델에서 조립). 미니게임을 이식할 때마다 Build… 와 Convert… 를 하나씩 추가한다.
+/// [변환 목록] 1단계 발전기 / 2a 밸브 · 안테나 · 차단기 / 2b 전선 / 2c 필터 · 청소기(아이템) / 2d 압력(신규 — 옛 프리팹이 없어 원본 패널 · 피스톤 모델에서 조립) / 3a 코드 자판(신규 — 원본 자판 모델에서 조립) / 3b 생명 유지 장치 · 산소통(신규 — 모델이 없어 기본 도형으로 조립) / 3c 장비 조립(신규 — 원본 본체 · 부품 모델에서 조립) / 3d 대형 방화문(신규 — 원본 문 · 패널 · 레버 모델에서 조립). 미니게임을 이식할 때마다 Build… 와 Convert… 를 하나씩 추가한다.
 /// </summary>
 public static class LegacyMissionConverter
 {
@@ -97,6 +97,21 @@ public static class LegacyMissionConverter
     private static readonly string[] EquipmentPartKoreanNames = { "파랑", "회색", "빨강", "노랑" };
     private static readonly Color AssemblyZoneColor = new Color(0.1f, 0.55f, 0.55f);
 
+    // 3d 방화문: 원본 문 · 패널 · 레버 모델에서 조립한다 (원본은 복사해서 쓰고 수정하지 않음)
+    public const string FireDoorStationPath = OutputFolder + "/FireDoor_Station.prefab";
+    private const string FireDoorGateModelPath = SourceModelFolder + "/Fire_door_gate.fbx";
+    private const string FireDoorPanelModelPath = SourceModelFolder + "/Fire_door_lever.panel.fbx";
+    private const string FireDoorLeverModelPath = SourceModelFolder + "/Fire_door_lever.fbx";
+    private const int FireDoorLeverItemId = 25;           // 기존 10 ~ 13 · 20 ~ 24 와 겹치지 않게 (FD18)
+    private const float FireDoorPanelOffsetX = 3.2f;      // 문 중심에서 패널까지 (명세 4장)
+    private const float FireDoorPanelHeight = 0.7f;       // 원본 모델 테스트 씬의 패널 높이 (0.69m)
+    private const float FireDoorLeverPivotHeight = 0.2f;  // 패널 바닥에서 꽂힌 레버 회전축까지
+    private const float FireDoorLandingDistance = 1f;     // 튕겨 나간 레버가 떨어지는 거리 (FD5)
+    private const float FireDoorInteractRange = 5.5f;     // 문 중심에서 양쪽 패널까지 + 여유
+    private static readonly Vector3 FireDoorWallSize = new Vector3(0.8f, 2f, 0.2f);     // 받침 벽 (테스트용 자리 표시, FD16)
+    private static readonly Vector2 FireDoorScreenSize = new Vector2(0.5f, 0.2f);
+    private static readonly Color FireDoorWallColor = new Color(0.3f, 0.32f, 0.35f);
+
     // 조준 감지 레이어 (ProjectSettings 의 Interactable). 원본 모델은 기본 레이어(0)로 들어와 있어 버튼을 이 레이어로 옮겨야 조준된다
     private const int InteractableLayer = 6;
 
@@ -135,6 +150,7 @@ public static class LegacyMissionConverter
         Report("코드", CreateCodeStation());
         Report("생명 유지 장치", CreateLifeSupportStation());
         Report("장비 조립", CreateAssemblyStation());
+        Report("방화문", CreateFireDoorStation());
         AssetDatabase.SaveAssets();
 
         // 새 NetworkObject 프리팹을 Fusion 네트워크 프리팹 목록에 즉시 반영 (안 하면 Runner.Spawn 이 실패한다)
@@ -246,7 +262,7 @@ public static class LegacyMissionConverter
             }
         }
 
-        return Convert("장비", AssemblyMachineModelPath, "Assembly_Station", AssemblyStationPath, copy => BuildAssembly(copy, partPrefabs), false);
+        return Convert("장비", AssemblyMachineModelPath, "Assembly_Station", AssemblyStationPath, copy => BuildAssembly(copy, partPrefabs));
     }
 
     /// <summary>장비 부품 아이템 한 색 (3c 명세 4장): 1인칭 모델 → 아이템 데이터 → 월드 아이템 (산소통과 같은 순서).</summary>
@@ -269,6 +285,39 @@ public static class LegacyMissionConverter
 
         return Assemble($"부품 ({koreanName})", $"EquipmentPart_{label}", $"{ItemPrefabFolder}/EquipmentPart_{label}.prefab",
             copy => BuildEquipmentPart(copy, color, data), false);
+    }
+
+    /// <summary>
+    /// 방화문 (3d 명세 4장): 레버 아이템을 먼저 만들고, 원본 문 모델을 복사해 양쪽 패널 · 꽂힌 레버 · 화면 · 충돌을 조립한다.
+    /// </summary>
+    public static NetworkObject CreateFireDoorStation()
+    {
+        NetworkObject leverPrefab = CreateFireDoorLever();
+
+        if (leverPrefab == null)
+        {
+            Debug.LogError("[LegacyMissionConverter] 방화문: 레버 아이템을 만들지 못해 방화문을 조립하지 않습니다.");
+            return null;
+        }
+
+        return Convert("방화문", FireDoorGateModelPath, "FireDoor_Station", FireDoorStationPath, copy => BuildFireDoor(copy, leverPrefab));
+    }
+
+    /// <summary>방화문 레버 아이템 (3d 명세 4장): 1인칭 모델 → 아이템 데이터(번호 25) → 월드 아이템.</summary>
+    public static NetworkObject CreateFireDoorLever()
+    {
+        GameObject firstPerson = AssemblePrefab("방화문 레버 1인칭", "FireDoorLever_FP", $"{ItemPrefabFolder}/FireDoorLever_FP.prefab",
+            BuildFireDoorLeverFirstPerson, false);
+
+        if (firstPerson == null)
+            return null;
+
+        ItemData data = CreateItemData($"{ItemDataFolder}/FireDoorLeverData.asset", FireDoorLeverItemId, "방화문 레버", firstPerson);
+
+        if (data == null)
+            return null;
+
+        return Assemble("방화문 레버", "FireDoorLever_Item", $"{ItemPrefabFolder}/FireDoorLever_Item.prefab", copy => BuildFireDoorLever(copy, data), false);
     }
 
     // ═════════════════════════════════════════════════════════════
@@ -1740,6 +1789,271 @@ public static class LegacyMissionConverter
     }
 
     // ═════════════════════════════════════════════════════════════
+    //  3d: 대형 방화문 (신규 — 원본 문 · 패널 · 레버 모델에서 조립)
+    // ═════════════════════════════════════════════════════════════
+
+    /// <summary>원본 모델을 읽는다. 없으면 오류.</summary>
+    private static GameObject LoadSourceModel(string path)
+    {
+        GameObject model = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+
+        if (model == null)
+            Debug.LogError($"[LegacyMissionConverter] 원본 모델이 없습니다: {path}");
+
+        return model;
+    }
+
+    /// <summary>메시 크기 BoxCollider 를 그 오브젝트에 붙인다 (메시가 없으면 기본 크기).</summary>
+    private static BoxCollider AddMeshBoxCollider(GameObject target)
+    {
+        MeshFilter meshFilter = target.GetComponent<MeshFilter>();
+        BoxCollider box = target.AddComponent<BoxCollider>();
+
+        if (meshFilter != null && meshFilter.sharedMesh != null)
+        {
+            box.center = meshFilter.sharedMesh.bounds.center;
+            box.size = meshFilter.sharedMesh.bounds.size;
+        }
+
+        return box;
+    }
+
+    /// <summary>방화문 레버 1인칭 모델: 빈 루트 + 레버 모델 사본(크기 0.8, 화면 오른쪽 아래, 세운 모습). 위치는 에디터 확인 후 조정.</summary>
+    private static bool BuildFireDoorLeverFirstPerson(GameObject copy)
+    {
+        GameObject model = LoadSourceModel(FireDoorLeverModelPath);
+
+        if (model == null)
+            return false;
+
+        GameObject view = Object.Instantiate(model, copy.transform);
+        view.name = "Model (모델)";
+        view.transform.localPosition = new Vector3(0.25f, -0.35f, 0.55f);
+        view.transform.localRotation = Quaternion.identity;
+        view.transform.localScale = Vector3.one * 0.8f;
+        return true;
+    }
+
+    /// <summary>
+    /// 방화문 레버 아이템 (3d 명세 4장): 빈 루트(바닥 원점) + 레버 모델 사본을 눕혀서(로컬 X 축 90° — 바닥에 떨어진 모습).
+    /// 모델 메시 크기 BoxCollider(레이어 6), 루트에 NetworkObject · ItemWorldView · FireDoorLever, 조준 외곽선(3c EA16).
+    /// </summary>
+    private static bool BuildFireDoorLever(GameObject copy, ItemData data)
+    {
+        GameObject model = LoadSourceModel(FireDoorLeverModelPath);
+
+        if (model == null)
+            return false;
+
+        copy.layer = InteractableLayer;
+        copy.AddComponent<NetworkObject>();
+
+        GameObject view = Object.Instantiate(model, copy.transform);
+        view.name = "Model (모델)";
+        view.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+
+        MeshFilter meshFilter = view.GetComponentInChildren<MeshFilter>();
+        Renderer renderer = view.GetComponentInChildren<Renderer>();
+
+        if (meshFilter == null || meshFilter.sharedMesh == null || renderer == null)
+        {
+            Debug.LogError("[LegacyMissionConverter] 방화문 레버: 모델에 메시가 없습니다.");
+            return false;
+        }
+
+        // 눕히면 모델의 z(두께)가 높이가 된다 (X 축 90°: z → −y) → 두께의 위쪽 끝만큼 올려 바닥에 닿게
+        Bounds bounds = meshFilter.sharedMesh.bounds;
+        view.transform.localPosition = Vector3.up * bounds.max.z;
+
+        meshFilter.gameObject.layer = InteractableLayer;
+        BoxCollider box = AddMeshBoxCollider(meshFilter.gameObject);
+
+        ItemWorldView worldView = copy.AddComponent<ItemWorldView>();
+        SerializedObject viewSO = new SerializedObject(worldView);
+        SetObjectArray(viewSO.FindProperty("renderers"), renderer);
+        SetObjectArray(viewSO.FindProperty("colliders"), box);
+        viewSO.ApplyModifiedPropertiesWithoutUndo();
+
+        FireDoorLever lever = copy.AddComponent<FireDoorLever>();
+        SerializedObject so = new SerializedObject(lever);
+        so.FindProperty("data").objectReferenceValue = data;
+        so.ApplyModifiedPropertiesWithoutUndo();
+
+        // 조준하면 외곽선 (미션 아이템 공통 — 3c EA16)
+        MissionOutlineBuilder.Attach(copy, view);
+
+        Debug.Log($"[LegacyMissionConverter] 방화문 레버: 아이템 번호 {FireDoorLeverItemId}, 크기 {bounds.size}");
+        return true;
+    }
+
+    /// <summary>
+    /// 방화문 (3d 명세 4장): 문 복사본(루트)에 문짝 충돌 · 기둥 충돌 · 양쪽 패널(중첩 NetworkObject · 받침 벽 · 화면 · 꽂힌 레버 · 떨어질 자리) · 장치 · 연출.
+    /// 정면 맞춤은 하지 않는다 — 모델 앞이 +Z (명세 1장).
+    /// </summary>
+    private static bool BuildFireDoor(GameObject copy, NetworkObject leverPrefab)
+    {
+        Transform root = copy.transform;
+        Transform gate = FindDeep(root, "Fire_door_Gate");
+        Transform upper = FindDeep(root, "Fire_door_Upper");
+        Transform lower = FindDeep(root, "Fire_door_Lower");
+
+        // 문틀 노드는 FBX 의 최상위 노드(문짝 둘의 부모)라 Unity 가 프리팹 루트로 쓰면서 이름을 파일 이름으로 바꾼다.
+        // 복사본 이름도 FireDoor_Station 으로 바뀌므로 이름으로는 못 찾는다 → 메시가 달린 루트 자신이 문틀이다 (3d 테스트에서 발견)
+        if (gate == null && root.GetComponent<MeshFilter>() != null)
+            gate = root;
+
+        if (gate == null || upper == null || lower == null)
+        {
+            Debug.LogError($"[LegacyMissionConverter] 방화문: 모델 노드를 찾지 못했습니다 (문틀 {Found(gate)}, 위 문짝 {Found(upper)}, 아래 문짝 {Found(lower)}).");
+            return false;
+        }
+
+        GameObject panelModel = LoadSourceModel(FireDoorPanelModelPath);
+        GameObject leverModel = LoadSourceModel(FireDoorLeverModelPath);
+
+        if (panelModel == null || leverModel == null)
+            return false;
+
+        // 문짝 충돌 (기본 레이어 — 다 열리면 FireDoorVisual 이 끈다, FD14)
+        BoxCollider upperCollider = AddMeshBoxCollider(upper.gameObject);
+        BoxCollider lowerCollider = AddMeshBoxCollider(lower.gameObject);
+
+        // 문틀은 양쪽 기둥만 충돌 (문틀 전체 상자면 출입구가 막힌다). 복사본은 원점 · 회전 0 이라 월드 경계를 루트 기준으로 쓴다
+        Bounds gateBounds = gate.GetComponent<Renderer>().bounds;
+        Bounds doorBounds = lower.GetComponent<Renderer>().bounds;
+        Vector3 gateCenter = root.InverseTransformPoint(gateBounds.center);
+        float postWidth = Mathf.Max(0.05f, (gateBounds.size.x - doorBounds.size.x) * 0.5f);
+
+        for (int side = -1; side <= 1; side += 2)
+        {
+            GameObject post = new GameObject(side < 0 ? "Post L (기둥 충돌)" : "Post R (기둥 충돌)");
+            post.transform.SetParent(root, false);
+            post.transform.localPosition = new Vector3(gateCenter.x + side * (gateBounds.extents.x - postWidth * 0.5f), gateCenter.y, gateCenter.z);
+            BoxCollider postCollider = post.AddComponent<BoxCollider>();
+            postCollider.size = new Vector3(postWidth, gateBounds.size.y, gateBounds.size.z);
+        }
+
+        float front = root.InverseTransformPoint(gateBounds.center + Vector3.forward * gateBounds.extents.z).z;
+
+        if (copy.GetComponent<NetworkObject>() == null)
+            copy.AddComponent<NetworkObject>();
+
+        FireDoorStation station = copy.AddComponent<FireDoorStation>();
+        FireDoorVisual visual = copy.AddComponent<FireDoorVisual>();
+
+        Material wallMaterial = GetOrCreateColorMaterial("FireDoor_Wall", FireDoorWallColor);
+        Material screenMaterial = GetOrCreateColorMaterial("LifeSupport_Screen", Color.black);
+        FireDoorPanel[] panels = new FireDoorPanel[FireDoorRules.PanelCount];
+        List<Collider> aimColliders = new List<Collider>();
+
+        for (int i = 0; i < panels.Length; i++)
+        {
+            float x = (i == 0 ? -1f : 1f) * FireDoorPanelOffsetX;
+            GameObject panelRoot = new GameObject(i == 0 ? "Panel L (패널)" : "Panel R (패널)");
+            panelRoot.transform.SetParent(root, false);
+            panelRoot.transform.localPosition = new Vector3(x, 0f, front);
+            panelRoot.AddComponent<NetworkObject>();   // 조준 주소 (FD10)
+
+            // 받침 벽: 바닥부터, 패널 뒤 (테스트용 자리 표시 — 실제 맵은 벽, FD16)
+            CreateShape(PrimitiveType.Cube, "Wall (받침 벽)", panelRoot.transform, new Vector3(0f, FireDoorWallSize.y * 0.5f, -FireDoorWallSize.z * 0.5f),
+                FireDoorWallSize, wallMaterial, true);
+
+            // 패널 모델 (원점 = 바닥 가운데, 앞 = +Z)
+            GameObject panelView = Object.Instantiate(panelModel, panelRoot.transform);
+            panelView.name = "Panel Model (패널)";
+            panelView.transform.localPosition = new Vector3(0f, FireDoorPanelHeight, 0f);
+            panelView.transform.localRotation = Quaternion.identity;
+
+            MeshFilter panelMesh = panelView.GetComponentInChildren<MeshFilter>();
+
+            if (panelMesh == null || panelMesh.sharedMesh == null)
+            {
+                Debug.LogError("[LegacyMissionConverter] 방화문: 패널 모델에 메시가 없습니다.");
+                return false;
+            }
+
+            panelMesh.gameObject.layer = InteractableLayer;
+            aimColliders.Add(AddMeshBoxCollider(panelMesh.gameObject));
+            Bounds panelBounds = panelMesh.sharedMesh.bounds;
+            float panelFront = panelBounds.max.z;
+            float panelTop = FireDoorPanelHeight + panelBounds.max.y;
+
+            // 화면: 패널 위 받침 벽 앞 검은 판 + 3mm 앞 LCD
+            float screenY = panelTop + 0.05f + FireDoorScreenSize.y * 0.5f;
+            CreateShape(PrimitiveType.Cube, "Screen (화면)", panelRoot.transform, new Vector3(0f, screenY, 0.01f),
+                new Vector3(FireDoorScreenSize.x, FireDoorScreenSize.y, 0.02f), screenMaterial, false);
+            LcdDisplay display = CreateLcdText(panelRoot.transform, new Vector3(0f, screenY, 0.023f), Quaternion.LookRotation(Vector3.back, Vector3.up),
+                FireDoorScreenSize * 0.9f, FireDoorStation.LongestScreenText, FireDoorStation.LockedText);
+
+            // 꽂힌 레버: 회전축 오브젝트(버튼 · 콜라이더 · 외곽선) + 레버 모델 사본(세운 모습), 평소 숨김
+            GameObject pivot = new GameObject("Mounted Lever (꽂힌 레버)");
+            pivot.transform.SetParent(panelRoot.transform, false);
+            pivot.transform.localPosition = new Vector3(0f, FireDoorPanelHeight + FireDoorLeverPivotHeight, panelFront + 0.03f);
+            pivot.layer = InteractableLayer;
+
+            GameObject leverView = Object.Instantiate(leverModel, pivot.transform);
+            leverView.name = "Lever Model (레버)";
+            leverView.transform.localPosition = Vector3.zero;
+            leverView.transform.localRotation = Quaternion.identity;
+
+            MeshFilter leverMesh = leverView.GetComponentInChildren<MeshFilter>();
+            BoxCollider leverCollider = pivot.AddComponent<BoxCollider>();
+
+            if (leverMesh != null && leverMesh.sharedMesh != null)
+            {
+                leverCollider.center = leverMesh.sharedMesh.bounds.center;
+                leverCollider.size = leverMesh.sharedMesh.bounds.size;
+            }
+
+            aimColliders.Add(leverCollider);
+            AddStationButton(pivot, station, i);
+            MissionOutlineBuilder.Attach(pivot, leverView);
+
+            // 떨어질 자리: 패널 앞 1m 바닥 (FD5)
+            GameObject landing = new GameObject("Landing (떨어질 자리)");
+            landing.transform.SetParent(panelRoot.transform, false);
+            landing.transform.localPosition = new Vector3(0f, 0f, panelFront + FireDoorLandingDistance);
+
+            FireDoorPanel panel = panelRoot.AddComponent<FireDoorPanel>();
+            SerializedObject panelSO = new SerializedObject(panel);
+            panelSO.FindProperty("station").objectReferenceValue = station;
+            panelSO.FindProperty("index").intValue = i;
+            panelSO.FindProperty("display").objectReferenceValue = display;
+            panelSO.FindProperty("mountedLever").objectReferenceValue = pivot.transform;
+            panelSO.FindProperty("landing").objectReferenceValue = landing.transform;
+            panelSO.ApplyModifiedPropertiesWithoutUndo();
+
+            // 패널 외곽선 (패널 메시) — 꽂힌 레버는 자기 외곽선이 더 가깝다
+            MissionOutlineBuilder.Attach(panelRoot, panelView);
+
+            pivot.SetActive(false);
+            panels[i] = panel;
+        }
+
+        SerializedObject visualSO = new SerializedObject(visual);
+        visualSO.FindProperty("upperDoor").objectReferenceValue = upper;
+        visualSO.FindProperty("lowerDoor").objectReferenceValue = lower;
+        visualSO.FindProperty("upperTravel").floatValue = upper.GetComponent<Renderer>().bounds.size.y;
+        visualSO.FindProperty("lowerTravel").floatValue = doorBounds.size.y;
+        SetObjectArray(visualSO.FindProperty("doorColliders"), upperCollider, lowerCollider);
+        visualSO.ApplyModifiedPropertiesWithoutUndo();
+
+        SerializedObject so = ConfigureStation(station, MissionEventType.FireDoorOpened, CompletionPolicy.Lock, FireDoorInteractRange);
+        so.FindProperty("leverPrefab").objectReferenceValue = leverPrefab;
+        SetObjectArray(so.FindProperty("panels"), panels);
+        so.FindProperty("visual").objectReferenceValue = visual;
+
+        // 패널 · 꽂힌 레버 콜라이더 → 이 미션이 없는 사람(범인)과 완료 뒤에는 공통 틀이 꺼서 조준 · 외곽선이 나오지 않는다
+        foreach (Collider aimCollider in aimColliders)
+            AddCollider(so, aimCollider);
+
+        so.ApplyModifiedPropertiesWithoutUndo();
+
+        Debug.Log($"[LegacyMissionConverter] 방화문: 문짝 위 · 아래, 패널 2개 (x ±{FireDoorPanelOffsetX}m, 앞면 z {front:0.00}), 기둥 충돌 2 (폭 {postWidth:0.00}m), 레버 프리팹 {leverPrefab.name}");
+        return true;
+    }
+
+    // ═════════════════════════════════════════════════════════════
     //  원본 모델 조립 도우미 (압력 · 코드가 같이 쓴다)
     // ═════════════════════════════════════════════════════════════
 
@@ -2111,6 +2425,10 @@ public static class LegacyMissionConverter
 
         foreach (Collider collider in root.GetComponentsInChildren<Collider>(true))
         {
+            // 조준 감지는 조준 레이어(6)만 본다 → 조준되지 않는 충돌용 콜라이더(문틀 · 장비 몸체 · 받침 벽)는 검사하지 않는다 (3d 명세 FD12)
+            if (collider.gameObject.layer != InteractableLayer)
+                continue;
+
             MonoBehaviour resolved = null;
 
             foreach (MonoBehaviour behaviour in collider.GetComponentsInParent<MonoBehaviour>(true))

@@ -12,11 +12,13 @@ using UnityEngine;
 /// [단축키] 호스트에서만 동작한다.
 ///  F9  : 내 행동 확정 — 탈출/사망을 흉내낸다. "뛰지 않는다" 같은 종료 판정 목표가 이때 결과로 확정된다.
 ///  F10 : 게임 종료 전체 공개 (MissionManager.RevealAllMissions)
+///  F8  : (테스트) 방화문을 뺀 단체 미션 즉시 완료 — 방화문 해금을 빨리 보려고 (3d 명세 FD17). 장치 모습은 바뀌지 않는다 (미션 상태만)
 /// </summary>
 public class MissionDebugOverlay : MonoBehaviour
 {
     [SerializeField] private KeyCode finalizeKey = KeyCode.F9;
     [SerializeField] private KeyCode revealKey = KeyCode.F10;
+    [SerializeField] private KeyCode completeOtherTeamKey = KeyCode.F8;
     [SerializeField] private float panelWidth = 540f;
 
     private MissionManager manager;
@@ -42,6 +44,38 @@ public class MissionDebugOverlay : MonoBehaviour
             lastAction = $"{revealKey}: 전체 공개 완료";
             Debug.Log($"[MissionDebugOverlay] {lastAction}");
         }
+
+        if (Input.GetKeyDown(completeOtherTeamKey))
+        {
+            int completed = CompleteTeamMissionsExceptFireDoor();
+            lastAction = $"{completeOtherTeamKey}: (테스트) 방화문 제외 단체 미션 {completed}개 완료";
+            Debug.Log($"[MissionDebugOverlay] {lastAction}");
+        }
+    }
+
+    /// <summary>
+    /// (테스트, 3d 명세 FD17) 방화문을 뺀 진행 중 단체 미션마다 남은 수만큼 완료 이벤트를 보낸다 — 내 플레이어 이름으로.
+    /// 미션 상태만 바뀌고 장치(발전기 · 장비 등) 모습은 그대로다.
+    /// </summary>
+    private int CompleteTeamMissionsExceptFireDoor()
+    {
+        int count = 0;
+        Fusion.PlayerRef actor = manager.Runner.LocalPlayer;
+
+        // 복사해서 돈다 — Publish 하는 동안 공개 목록이 바뀔 수 있다
+        System.Collections.Generic.List<ObjectiveView> views = new System.Collections.Generic.List<ObjectiveView>(manager.Client.Team);
+
+        foreach (ObjectiveView view in views)
+        {
+            if (view.Definition == null || view.Definition.Trigger == MissionEventType.FireDoorOpened || view.Status != ObjectiveStatus.InProgress)
+                continue;
+
+            int remaining = Mathf.Max(1, view.Required - view.Progress);
+            manager.Publish(new MissionEvent(view.Definition.Trigger, actor, 0, remaining));
+            count++;
+        }
+
+        return count;
     }
 
     private bool TryGetManager()
@@ -111,7 +145,7 @@ public class MissionDebugOverlay : MonoBehaviour
         }
 
         builder.AppendLine();
-        builder.AppendLine($"<color=#AAAAAA>{finalizeKey}: 내 행동 확정(탈출·사망 흉내)   {revealKey}: 전체 공개</color>");
+        builder.AppendLine($"<color=#AAAAAA>{finalizeKey}: 내 행동 확정(탈출·사망 흉내)   {revealKey}: 전체 공개   {completeOtherTeamKey}: 방화문 빼고 단체 미션 완료(테스트)</color>");
 
         if (!string.IsNullOrEmpty(lastAction))
             builder.AppendLine($"<color=#FFD37C>{lastAction}</color>");

@@ -298,6 +298,23 @@ namespace TrustNoOne.Missions
             return manager != null && manager.ResetMission(completionEvent) > 0;
         }
 
+        /// <summary>
+        /// 이 장치의 미션을 뺀 이번 판의 단체 미션이 모두 끝났나 (3d 명세 FD11 — 대형 방화문 해금).
+        /// 호스트면 목표 목록(규칙), 다른 PC 면 공개 데이터(화면 표시). 매니저가 없으면 false.
+        /// </summary>
+        protected bool AreOtherTeamMissionsCompleted()
+        {
+            EnsureManager();
+
+            if (manager == null || manager.Object == null || !manager.Object.IsValid)
+                return false;
+
+            if (HasStateAuthority)
+                return manager.AreOtherTeamMissionsCompleted(completionEvent);
+
+            return manager.Client != null && manager.Client.AreOtherTeamMissionsCompleted(completionEvent);
+        }
+
         /// <summary>원래 상태로 되돌린다 (호스트 전용). 사용 중이면 먼저 취소하고, 잠금을 풀고, 하위 클래스 상태를 되돌린다.</summary>
         protected void ResetStation()
         {

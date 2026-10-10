@@ -16,7 +16,8 @@ using Object = UnityEngine.Object;
 ///  - 단체 TG002 코드 순서 맞추기: 진짜 CodeStation (3a, 원본 자판 모델에서 조립, 실패 시 자리 표시)
 ///  - 단체 TG004 생명 유지 장치 복구: 진짜 LifeSupportStation (3b, 기본 도형 자리 표시) + 산소통 자리 후보 10곳 — 실행 중 본체가 6곳에 산소통을 놓는다. 실패 시 자리 표시
 ///  - 단체 TG003 고장난 장비 조립: 진짜 AssemblyStation (3c, 원본 본체 · 부품 모델에서 조립) + 부품 자리 후보 2묶음(주변 4 · 맵 8) — 실행 중 장비가 부품 4개를 놓는다. 실패 시 자리 표시
-///  - 단체 TG005: 아직 만들기 전이라 "자리 표시" HoldStation 큐브 (F 2초)
+///  - 단체 TG005 대형 방화문 열기: 진짜 FireDoorStation (3d, 원본 문 · 패널 · 레버 모델에서 조립) + 레버 자리 후보 6곳 — 실행 중 방화문이 레버 2개를 놓는다. 실패 시 자리 표시
+///  - (자리 표시 큐브 목록은 이제 비어 있다 — 단체 미션이 모두 진짜 장치가 됨)
 ///      단체는 Lock(완료 후 잠금), 개인은 ResetForNext(완료 후 원래대로) — 명세 S3
 ///  - 개인 행동 목표 AG101 뛰지 않는다: TestRunReporter (Shift 달리기 감지)
 ///  - 디버그 패널(F9 확정 / F10 공개, 단체 미션 남은 시간), 홀드 게이지 HUD
@@ -115,7 +116,6 @@ public static class SoloMissionTestSetup
 
     private static readonly PlaceholderSpec[] PlaceholderStations =
     {
-        Team("Placeholder_TG005_FireDoor", "대형 방화문 열기", "TG005", MissionEventType.FireDoorOpened, new Vector3(9f, 0f, 16f)),
 
     };
 
@@ -166,6 +166,17 @@ public static class SoloMissionTestSetup
         new Vector3(-10f, 0f, 32f), new Vector3(10f, 0f, 32f), new Vector3(-32f, 0f, -4f), new Vector3(32f, 0f, -4f),
     };
 
+    // 3d 방화문: 옛 TG005 자리 (9, 16) 은 패널 포함 폭 7.6m 가 생명 유지 장치 (3, 16) 과 너무 가까워 (14, 16) 으로 (명세 FD16)
+    private static readonly PlaceholderSpec FireDoorFallback =
+        Team("Placeholder_TG005_FireDoor", "대형 방화문 열기", "TG005", MissionEventType.FireDoorOpened, new Vector3(14f, 0f, 16f));
+
+    // 3d 레버 자리 후보 6곳 (명세 5장, FD6): 방화문 주변 바닥, 다른 장치 · 아이템 자리와 3m 이상
+    private static readonly Vector3[] FireDoorLeverSpotPositions =
+    {
+        new Vector3(10f, 0f, 11f), new Vector3(18f, 0f, 11f), new Vector3(14f, 0f, 9.5f),
+        new Vector3(21f, 0f, 15f), new Vector3(8f, 0f, 18.5f), new Vector3(18.5f, 0f, 20f),
+    };
+
     // 필터 옆 바닥에 청소기 (필터 청소는 청소기를 들어야 한다 — 2c 명세 F1)
     private static readonly Vector3 VacuumToolPosition = new Vector3(10.5f, 0f, -6f);
 
@@ -189,7 +200,8 @@ public static class SoloMissionTestSetup
 
     private const string InfoText =
         "가까운 앞줄: 발전기 3대 (버튼 클릭 → 3초, 1대 고치면 다음 1대까지 2분)\n" +
-        "먼 앞줄: 단체 미션 — 코드 · 장비 조립 · 생명 유지 장치(실제) + 자리 표시 1개(방화문, F 2초)  /  뒤: 개인 미션 6종 — 모두 실제 미니게임\n" +
+        "먼 앞줄: 단체 미션 — 코드 · 장비 조립 · 생명 유지 장치 · 방화문 (모두 실제)  /  뒤: 개인 미션 6종 — 모두 실제 미니게임\n" +
+        "방화문(먼 앞줄 오른쪽): 다른 단체 미션 완료 → 레버 2개 패널에 끼우기(우클릭) → 30초 안에 내리기(클릭)   F8 = 방화문 빼고 단체 미션 즉시 완료(테스트)\n" +
         "장비 조립(먼 앞줄 왼쪽): 부품 4개(1개는 장비 주변)를 찾아 들고 장비 앞 바닥 원 안으로 → 자동으로 붙음\n" +
         "생명 유지 장치(먼 앞줄): 산소통 6개 중 정상 3개만 본체에 — 가까이서 압력계 확인 → 들기(좌클릭) → 본체에 우클릭, 첫 공급부터 120초\n" +
         "Shift 달리기 = AG101 '뛰지 않는다' 위반   F9 내 행동 확정 / F10 전체 공개";
@@ -236,6 +248,7 @@ public static class SoloMissionTestSetup
 
         AddConvertedOrPlaceholder(spawns, LegacyMissionConverter.CreateLifeSupportStation(), LifeSupportFallback, "생명 유지 장치");
         AddConvertedOrPlaceholder(spawns, LegacyMissionConverter.CreateAssemblyStation(), AssemblyFallback, "장비 조립");
+        AddConvertedOrPlaceholder(spawns, LegacyMissionConverter.CreateFireDoorStation(), FireDoorFallback, "방화문");
 
         // 밸브 모델은 피벗이 손잡이 중심이라 바닥(y=0)에 두면 절반이 묻힌다 → 벽에 달린 높이로 띄운다
         AddConvertedOrPlaceholder(spawns, LegacyMissionConverter.ConvertValve(), ValveFallback, "밸브", new Vector3(0f, ValveMountHeight, 0f));
@@ -553,11 +566,14 @@ public static class SoloMissionTestSetup
             "생명 유지 장치 · TG004\n산소통 들기(좌클릭) → 가까이서 압력계 확인 → 본체에 우클릭");
         CreateInfoLabel(layoutRoot.transform, "Info (장비 조립)", AssemblyFallback.Position + new Vector3(0f, 3f, 0f),
             "고장난 장비 조립 · TG003\n부품 4개를 들고 바닥 원 안으로");
+        CreateInfoLabel(layoutRoot.transform, "Info (방화문)", FireDoorFallback.Position + new Vector3(0f, 3.2f, 0f),
+            "대형 방화문 열기 · TG005\n다른 단체 미션 완료 → 레버 2개 끼우기(우클릭) → 30초 안에 내리기(클릭)");
 
         // 아이템 자리 후보 (네트워크 오브젝트 아님 — 장치가 실행 중에 묶음 이름으로 찾는다)
         CreateItemSpots(layoutRoot.transform, LifeSupportStation.TankSpotGroup, "산소통 자리 후보", OxygenTankSpotPositions);
         CreateItemSpots(layoutRoot.transform, AssemblyStation.NearGroup, "장비 부품 — 장비 주변", EquipmentNearSpotPositions);
         CreateItemSpots(layoutRoot.transform, AssemblyStation.FarGroup, "장비 부품 — 맵 곳곳", EquipmentFarSpotPositions);
+        CreateItemSpots(layoutRoot.transform, FireDoorStation.LeverSpotGroup, "방화문 레버", FireDoorLeverSpotPositions);
 
         GameObject bootstrapObject = FindOrCreate("SoloTestBootstrap", Vector3.zero);
         // 지운 테스트 스크립트(예: 임시 진단 컴포넌트)가 씬에 "스크립트 없음" 컴포넌트로 남지 않게 정리한다

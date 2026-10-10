@@ -120,6 +120,27 @@ namespace TrustNoOne.Missions
                 && view.Definition.Trigger == eventType;
         }
 
+        /// <summary>
+        /// 화면 표시용: except 행동을 쓰는 미션을 뺀 공개 단체 미션이 모두 완료되었는가 (3d 명세 FD11 — 방화문 LOCKED / READY).
+        /// 공개 목록이 아직 없으면(초기화 전) false. 실제 허용 여부는 호스트가 목표 목록으로 다시 검사한다.
+        /// </summary>
+        public bool AreOtherTeamMissionsCompleted(MissionEventType except)
+        {
+            if (team.Count == 0)
+                return false;
+
+            foreach (ObjectiveView view in team)
+            {
+                if (view.Definition == null || view.Definition.Trigger == except)
+                    continue;
+
+                if (view.Status != ObjectiveStatus.Completed)
+                    return false;
+            }
+
+            return true;
+        }
+
         // ───────────── MissionManager 전용 입력 ─────────────
 
         /// <summary>공개 데이터([Networked]) 반영. 값이 같으면 아무것도 하지 않는다 (매 프레임 호출돼도 안전).</summary>
