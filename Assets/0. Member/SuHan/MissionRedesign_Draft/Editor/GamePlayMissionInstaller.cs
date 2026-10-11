@@ -107,8 +107,13 @@ public static class GamePlayMissionInstaller
         new Placement { Name = "FireDoor", PrefabPath = LegacyMissionConverter.FireDoorStationPath, Position = new Vector3(-1f, 0f, 24.5f), Yaw = 180f, CheckOverlap = true },
     };
 
-    // 1층 아이템 NavMesh (6b 보강 NS2 · NS3): 높이 지면 −0.5 ~ +2.0m, 가로 · 세로 = 맵 바닥 전체 (x −20 ~ 129, z −34 ~ 27)
-    private static readonly Bounds GamePlayNavMeshVolume = new Bounds(new Vector3(54.5f, 0.75f, -3.5f), new Vector3(149f, 2.5f, 61f));
+    // 1층 아이템 NavMesh (6b 보강 NS2 · NS3): 높이 지면 −0.5 ~ +2.0m, 가로 · 세로 = 본게임 건물만 (x −20 ~ 30, z −34 ~ 27).
+    // 본게임 건물 = 가장 큰 건물(바닥 타일 189개 — 플레이어 시작 지점 · 새 장치가 있는 곳), 바닥 x −19.6 ~ 28.4 · z −33.5 ~ 26.5 (4m 타일 가장자리) + 여유.
+    // 나머지 두 건물(x 57 ~ 77, x 111 ~ 127)은 게임 구역이 아니다 (테스트 후 추가 — 사용자 확인)
+    private static readonly Bounds GamePlayNavMeshVolume = new Bounds(new Vector3(5f, 0.75f, -3.5f), new Vector3(50f, 2.5f, 61f));
+
+    // 처음 범위(맵 바닥 전체 x −20 ~ 129 — 게임 구역이 아닌 두 건물까지 덮었다). 오브젝트 범위가 이 값 그대로면 새 범위로 바꾼다
+    private static readonly Bounds FirstGamePlayNavMeshVolume = new Bounds(new Vector3(54.5f, 0.75f, -3.5f), new Vector3(149f, 2.5f, 61f));
     private const string GamePlayNavMeshPath = DataFolder + "/GamePlay_ItemNavMesh.asset";
 
     // ═════════════════════════════════════════════════════════════
@@ -155,7 +160,7 @@ public static class GamePlayMissionInstaller
         int listSwapped = SwapMissionListUI(scene, manager);
         int listLayoutFixed = FixMissionListLayout();
         // 장치를 다 놓은 뒤 굽는다 — 장치 몸체도 길을 막는 것으로 들어간다 (6b 보강 NS2 · NS4: 매번 다시 굽기)
-        bool navMeshBaked = ItemNavMeshBaker.Bake(root, GamePlayNavMeshVolume, GamePlayNavMeshPath);
+        bool navMeshBaked = ItemNavMeshBaker.Bake(root, GamePlayNavMeshVolume, GamePlayNavMeshPath, FirstGamePlayNavMeshVolume);
         int overlaps = CheckOverlaps(placedNow, root);
 
         EditorSceneManager.MarkSceneDirty(scene);
