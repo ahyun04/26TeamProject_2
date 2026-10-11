@@ -13,8 +13,8 @@ using Object = UnityEngine.Object;
 /// [에디터 전용, 1클릭 도구] 메인 게임 씬(GamePlay)의 옛 미션을 지우고 새 미션을 놓는다 (6b 명세 3장).
 ///
 /// [하는 일] 실제 게임 데이터 준비(없을 때만) → 옛 미션 프리팹 제거 → 옛 MissionSystem 컴포넌트만 제거 →
-///  `Missions (새 미션)` 아래에 MissionManager · PlayerHealthActorGate · 새 장치 · 아이템 자리 후보(없을 때만) →
-///  팀원 스크립트의 미션 시스템 칸 연결 → 미션 목록 패널의 옛 MissionUI 를 MissionListUI 로 바꿔 끼우기(6c) → 새 5종 겹침 경고 → 저장.
+///  `Missions (새 미션)` 아래에 MissionManager · PlayerHealthActorGate · 새 장치(없을 때만) → 옛 아이템 자리 후보 묶음 제거 →
+///  팀원 스크립트의 미션 시스템 칸 연결 → 미션 목록 패널의 옛 MissionUI 를 MissionListUI 로 바꿔 끼우기(6c) → 1층 아이템 NavMesh 굽기(6b 보강 — 매번) → 새 5종 겹침 경고 → 저장.
 /// [다시 실행해도 안전 — SW7] 이름으로 찾아 이미 있으면 건드리지 않는다 → 기획자가 옮긴 배치 · 바꾼 데이터 숫자가 남는다.
 ///  지운 것만 다시 만든다. 처음 배치로 되돌리려면 `Missions (새 미션)` 을 지우고 다시 실행한다.
 /// [MissionSystem 오브젝트 — SW8] 옛 MissionSystem 과 같은 오브젝트에 RoleAssignment · GameTimer · GameEndSystem 이 붙어 있어
@@ -22,7 +22,7 @@ using Object = UnityEngine.Object;
 /// [팀원 타입을 이름으로 다루는 이유] 엔진 밖 컴파일 검사(VerifyAll)에 팀원 스크립트가 없다 → 팀원 타입(MissionSystem · RoleAssignment 등)을
 ///  코드에 직접 쓰지 않고 타입 이름 · 직렬화 칸 이름으로 찾는다.
 /// [겹침 경고] 새 5종만 검사한다. 옛 미션 자리(벽에 붙은 밸브 · 차단기 등)는 원래 배치라 경고가 소음이 된다.
-/// [근거] 6b 명세 SW1 · SW2 · SW5 · SW6 · SW7 · SW8 · SW11 · SW12 (사용자 결정 — 질문 1 ~ 6, 접근 1)
+/// [근거] 6b 명세 SW1 · SW2 · SW5 · SW6 · SW7 · SW8 · SW11 · SW12 (사용자 결정 — 질문 1 ~ 6, 접근 1), 6b 보강 명세 NS2 · NS4 · NS12
 /// </summary>
 public static class GamePlayMissionInstaller
 {
@@ -107,36 +107,9 @@ public static class GamePlayMissionInstaller
         new Placement { Name = "FireDoor", PrefabPath = LegacyMissionConverter.FireDoorStationPath, Position = new Vector3(-1f, 0f, 24.5f), Yaw = 180f, CheckOverlap = true },
     };
 
-    private sealed class SpotGroup
-    {
-        public string Group;
-        public string Label;
-        public Vector2[] Spots;
-    }
-
-    // 아이템 자리 후보 (x, z — 바닥 y 0): 씬 프리팹 기준점에서 2.2 ~ 3m 이상 떨어진 시작 홀 칸 (2026-10-11 씬 분석)
-    private static readonly SpotGroup[] SpotGroups =
-    {
-        new SpotGroup { Group = LifeSupportStation.TankSpotGroup, Label = "산소통 자리 후보", Spots = new[]
-        {
-            new Vector2(14f, -19f), new Vector2(-14f, -19f), new Vector2(13f, 2f), new Vector2(-2f, -19f), new Vector2(-9f, 6f),
-            new Vector2(-16f, 23f), new Vector2(9f, -7f), new Vector2(14f, 21f), new Vector2(-9f, -12f), new Vector2(6f, -17f),
-        } },
-        // 장비에서 3.8 ~ 5.5m, 조립 원(중심 ≈ (4.1, 14.6), 반경 2.5m) 밖
-        new SpotGroup { Group = AssemblyStation.NearGroup, Label = "장비 부품 — 장비 주변", Spots = new[]
-        {
-            new Vector2(5f, 22.5f), new Vector2(1f, 16f), new Vector2(8f, 21.5f), new Vector2(7.5f, 14f),
-        } },
-        new SpotGroup { Group = AssemblyStation.FarGroup, Label = "장비 부품 — 맵 곳곳", Spots = new[]
-        {
-            new Vector2(6f, 6f), new Vector2(14f, 12f), new Vector2(-16f, 16f), new Vector2(12f, -13f),
-            new Vector2(4f, -11f), new Vector2(-7f, 0f), new Vector2(-8f, -18f), new Vector2(-8f, -6f),
-        } },
-        new SpotGroup { Group = FireDoorStation.LeverSpotGroup, Label = "방화문 레버", Spots = new[]
-        {
-            new Vector2(-1f, 21f), new Vector2(-3f, 21f), new Vector2(1f, 21f), new Vector2(-3f, 19f), new Vector2(1f, 19f), new Vector2(-5f, 21f),
-        } },
-    };
+    // 1층 아이템 NavMesh (6b 보강 NS2 · NS3): 높이 지면 −0.5 ~ +2.0m, 가로 · 세로 = 맵 바닥 전체 (x −20 ~ 129, z −34 ~ 27)
+    private static readonly Bounds GamePlayNavMeshVolume = new Bounds(new Vector3(54.5f, 0.75f, -3.5f), new Vector3(149f, 2.5f, 61f));
+    private const string GamePlayNavMeshPath = DataFolder + "/GamePlay_ItemNavMesh.asset";
 
     // ═════════════════════════════════════════════════════════════
     //  메뉴
@@ -177,10 +150,12 @@ public static class GamePlayMissionInstaller
                 placedNow.Add(placed);
         }
 
-        int spotGroupsCreated = EnsureItemSpots(root);
+        int spotGroupsRemoved = RemoveOldItemSpots(root);
         int wired = WireTeamScripts(scene, manager);
         int listSwapped = SwapMissionListUI(scene, manager);
         int listLayoutFixed = FixMissionListLayout();
+        // 장치를 다 놓은 뒤 굽는다 — 장치 몸체도 길을 막는 것으로 들어간다 (6b 보강 NS2 · NS4: 매번 다시 굽기)
+        bool navMeshBaked = ItemNavMeshBaker.Bake(root, GamePlayNavMeshVolume, GamePlayNavMeshPath);
         int overlaps = CheckOverlaps(placedNow, root);
 
         EditorSceneManager.MarkSceneDirty(scene);
@@ -189,7 +164,7 @@ public static class GamePlayMissionInstaller
 
         Debug.Log($"[GamePlayMissionInstaller] 완료 — 옛 미션 {removedOld}개 · 옛 MissionSystem 컴포넌트 {removedSystems}개 제거, " +
                   $"새 장치 {placedNow.Count}개 놓음 · {skipped}개 이미 있어 건너뜀, MissionManager {(managerCreated ? "새로 만듦" : "있음")}, " +
-                  $"PlayerHealthActorGate {(gateCreated ? "새로 만듦" : "있음")}, 자리 후보 묶음 {spotGroupsCreated}개 새로 만듦, " +
+                  $"PlayerHealthActorGate {(gateCreated ? "새로 만듦" : "있음")}, 옛 자리 후보 묶음 {spotGroupsRemoved}개 제거, NavMesh {(navMeshBaked ? "구움" : "실패")}, " +
                   $"미션 시스템 칸 {wired}개 연결, 미션 목록 UI {listSwapped}개 교체 · 칸 설정 {listLayoutFixed}개 고침, 겹침 경고 {overlaps}개. 멀티 테스트 전에는 SuHan/Build Full Game (Windows) 로 다시 빌드하세요.");
     }
 
@@ -456,35 +431,27 @@ public static class GamePlayMissionInstaller
         return instance;
     }
 
-    private static int EnsureItemSpots(Transform root)
+    /// <summary>
+    /// 6b 의 아이템 자리 후보 묶음(`ItemSpots …`)을 지운다 (6b 보강 NS12 — 아이템은 이제 1층 NavMesh 위 무작위).
+    /// 우리 도구가 붙인 이름으로 찾는다 → ItemSpots 스크립트를 지운 뒤에도 정리된다.
+    /// </summary>
+    private static int RemoveOldItemSpots(Transform root)
     {
-        ItemSpots[] existing = Object.FindObjectsByType<ItemSpots>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-        int created = 0;
+        List<GameObject> old = new List<GameObject>();
 
-        foreach (SpotGroup group in SpotGroups)
+        foreach (Transform child in root)
         {
-            if (existing.Any(spots => spots.Group == group.Group))
-                continue;
-
-            GameObject spotsObject = new GameObject($"ItemSpots {group.Group} ({group.Label})");
-            spotsObject.transform.SetParent(root, false);
-
-            ItemSpots itemSpots = spotsObject.AddComponent<ItemSpots>();
-            SerializedObject so = new SerializedObject(itemSpots);
-            so.FindProperty("group").stringValue = group.Group;
-            so.ApplyModifiedPropertiesWithoutUndo();
-
-            for (int i = 0; i < group.Spots.Length; i++)
-            {
-                Transform spot = new GameObject($"Spot_{i:00}").transform;
-                spot.SetParent(spotsObject.transform, false);
-                spot.position = new Vector3(group.Spots[i].x, 0f, group.Spots[i].y);
-            }
-
-            created++;
+            if (child.name.StartsWith("ItemSpots "))
+                old.Add(child.gameObject);
         }
 
-        return created;
+        foreach (GameObject spots in old)
+            Object.DestroyImmediate(spots);
+
+        if (old.Count > 0)
+            Debug.Log($"[GamePlayMissionInstaller] 옛 아이템 자리 후보 묶음 {old.Count}개를 지웠습니다 (아이템은 1층 NavMesh 위 무작위).");
+
+        return old.Count;
     }
 
     // ═════════════════════════════════════════════════════════════

@@ -20,9 +20,6 @@ namespace TrustNoOne.Missions
     /// </summary>
     public class FireDoorStation : MissionStation
     {
-        /// <summary>레버 자리 후보 묶음 이름 (ItemSpots, FD6).</summary>
-        public const string LeverSpotGroup = "FireDoorLever";
-
         public const string LockedText = "LOCKED";
         public const string ReadyText = "READY";
         public const string WaitText = "WAIT";
@@ -54,6 +51,23 @@ namespace TrustNoOne.Missions
 
         [SerializeField] private float failedScreenTime = 2f;
         [SerializeField] private float openDuration = 2f;
+
+        [Header("레버 배치 (1층 NavMesh 위 무작위 — 6b 보강 NS8)")]
+        [Tooltip("방화문에서 최소 거리 (m) — 앞쪽 반원")]
+        [Min(0f)]
+        [SerializeField] private float leverMin = 2f;
+
+        [Tooltip("방화문에서 최대 거리 (m)")]
+        [Min(0f)]
+        [SerializeField] private float leverMax = 6f;
+
+        [Tooltip("문이 보는 쪽으로 최소 이만큼 앞 (m)")]
+        [Min(0f)]
+        [SerializeField] private float leverAhead = 1f;
+
+        [Tooltip("레버끼리 최소 거리 (m)")]
+        [Min(0f)]
+        [SerializeField] private float leverSpacing = 2f;
 
         [Header("연출")]
         [SerializeField] private FireDoorVisual visual;
@@ -249,38 +263,45 @@ namespace TrustNoOne.Missions
             }
         }
 
-        /// <summary>호스트: 방화문 주변 자리 후보 중 2곳에 레버를 놓는다 (FD6).</summary>
+        /// <summary>호스트: 방화문 앞 반원(2 ~ 6m)의 1층 NavMesh 위 무작위 지점에 레버 2개를 놓는다 (FD6 → 6b 보강 NS8).</summary>
         private void PlaceLevers()
         {
-            ItemSpots spots = ItemSpots.Find(LeverSpotGroup);
+            if (!NavMeshSpawnArea.TryCreate(name, out NavMeshSpawnArea area))
+                return;
 
-            if (spots == null || spots.Count == 0)
+            if (!area.TryGetOrigin(transform, out Vector3 origin))
             {
-                Debug.LogError($"[FireDoorStation] {name}: 씬에 ItemSpots(묶음 \"{LeverSpotGroup}\" — 레버 자리 후보)가 없어 레버를 놓지 못했습니다.");
+                Debug.LogError($"[FireDoorStation] {name}: 방화문 앞(3m)에 1층 NavMesh 가 없어 레버를 놓지 못했습니다 (방화문 위치 · 방향 · NavMesh 범위 확인).");
                 return;
             }
 
-            int[] picked = new int[FireDoorRules.PanelCount];
-            int count = LifeSupportRules.PickSpots(spots.Count, picked, n => Random.Range(0, n));
-
-            if (count < FireDoorRules.PanelCount)
-                Debug.LogWarning($"[FireDoorStation] {name}: 자리 후보가 {spots.Count}곳뿐이라 레버를 {count}개만 놓았습니다.");
-
+            Vector3 door = transform.position;
+            Vector3 front = transform.forward;
+            List<Vector3> placed = new List<Vector3>();
             StringBuilder log = new StringBuilder();
 
-            for (int i = 0; i < count; i++)
+            for (int i = 0; i < FireDoorRules.PanelCount; i++)
             {
-                Transform spot = spots.Get(picked[i]);
-                NetworkObject spawned = Runner.Spawn(leverPrefab, spot.position, spot.rotation);
+                if (!area.TryPickNear(origin, door, leverMin, leverMax,
+                        p => SpawnPointRules.InFront(p, door, front, leverAhead) && SpawnPointRules.IsFarFromAll(p, placed, leverSpacing),
+                        out Vector3 at))
+                    continue;
+
+                placed.Add(at);
+
+                NetworkObject spawned = Runner.Spawn(leverPrefab, at, NavMeshSpawnArea.RandomYaw());
                 FireDoorLever lever = spawned != null ? spawned.GetComponent<FireDoorLever>() : null;
 
                 if (lever != null)
                     levers.Add(lever);
 
-                log.Append(spot.name).Append(' ');
+                log.Append(NavMeshSpawnArea.Describe(at)).Append(' ');
             }
 
-            Debug.Log($"[FireDoorStation] {name}: 레버 {count}개 배치 — {log}");
+            if (placed.Count < FireDoorRules.PanelCount)
+                Debug.LogWarning($"[FireDoorStation] {name}: 레버 자리를 {placed.Count}/{FireDoorRules.PanelCount}개만 찾았습니다 (방화문 앞이 좁음).");
+
+            Debug.Log($"[FireDoorStation] {name}: 레버 {placed.Count}개 배치 — {log}");
         }
 
         private void ClearPanels()
