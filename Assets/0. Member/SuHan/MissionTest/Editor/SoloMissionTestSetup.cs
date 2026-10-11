@@ -21,9 +21,11 @@ using Object = UnityEngine.Object;
 ///      단체는 Lock(완료 후 잠금), 개인은 ResetForNext(완료 후 원래대로) — 명세 S3
 ///  - 개인 행동 목표 AG101 뛰지 않는다: TestRunReporter (Shift 달리기 감지)
 ///  - 디버그 패널(F9 확정 / F10 공개, 단체 미션 남은 시간), 홀드 게이지 HUD
+///  - (6a) 네트워크 오브젝트(장치 · 청소기 · 미션 관리자)는 씬에 프리팹 인스턴스로 미리 놓는다 — 씬만 열어도 배치가 보인다. 플레이어만 실행 중에 스폰.
+///      시작 방식(혼자 / 호스트 / 손님)은 MissionTestBootstrap 시작 화면, 멀티 배정(F5 · F6) · 판 다시 시작(F7)은 MissionTestAssignmentPanel (6a 명세 MT6 · MT7)
 ///
 /// [이식이 진행되면] 자리 표시 큐브를 하나씩 진짜 스테이션으로 바꾼다 (PlaceholderStations 에서 빼고 변환 결과를 배치).
-/// [다시 실행해도 안전] 에셋은 값만 갱신, 씬의 MissionTestLayout 은 지우고 새로 만든다.
+/// [다시 실행해도 안전] 에셋은 값만 갱신, 씬의 MissionTestLayout 은 지우고 새로 만든다 (씬에서 손으로 옮긴 장치 위치도 원래대로 돌아간다).
 ///  전체 기획서 기준으로 만들었던 옛 테스트 에셋은 지운다 (새 기획서가 대체 — 명세 S8).
 /// ⚠ 이 메뉴를 다시 실행하면 Pool 의 배정 개수와 발전기 제한 시간이 아래 값으로 되돌아간다.
 /// </summary>
@@ -204,7 +206,8 @@ public static class SoloMissionTestSetup
         "방화문(먼 앞줄 오른쪽): 다른 단체 미션 완료 → 레버 2개 패널에 끼우기(우클릭) → 30초 안에 내리기(클릭)   F8 = 방화문 빼고 단체 미션 즉시 완료(테스트)\n" +
         "장비 조립(먼 앞줄 왼쪽): 부품 4개(1개는 장비 주변)를 찾아 들고 장비 앞 바닥 원 안으로 → 자동으로 붙음\n" +
         "생명 유지 장치(먼 앞줄): 산소통 6개 중 정상 3개만 본체에 — 가까이서 압력계 확인 → 들기(좌클릭) → 본체에 우클릭, 첫 공급부터 120초\n" +
-        "Shift 달리기 = AG101 '뛰지 않는다' 위반   F9 내 행동 확정 / F10 전체 공개";
+        "Shift 달리기 = AG101 '뛰지 않는다' 위반   F9 내 행동 확정 / F10 전체 공개\n" +
+        "멀티: 에디터 [호스트] + 빌드 [손님] → 호스트 F5 손님 = 시민 / F6 손님 1명 = 범인   F7 판 다시 시작";
 
     // ═════════════════════════════════════════════════════════════
     //  진입점
@@ -228,7 +231,7 @@ public static class SoloMissionTestSetup
         NetworkObject missionManagerPrefab = CreateOrUpdateMissionManagerPrefab(pool);
         NetworkObject playerPrefab = LoadPlayerPrefab();
 
-        List<(NetworkObject prefab, Vector3 position)> spawns = new List<(NetworkObject, Vector3)>();
+        List<(NetworkObject prefab, Vector3 position)> placements = new List<(NetworkObject, Vector3)>();
 
         NetworkObject generatorPrefab = LegacyMissionConverter.ConvertGenerator();
 
@@ -239,40 +242,41 @@ public static class SoloMissionTestSetup
         }
 
         foreach (Vector3 position in GeneratorPositions)
-            spawns.Add((generatorPrefab, position));
+            placements.Add((generatorPrefab, position));
 
         foreach (PlaceholderSpec spec in PlaceholderStations)
-            spawns.Add((BuildPlaceholderPrefab(spec), spec.Position));
+            placements.Add((BuildPlaceholderPrefab(spec), spec.Position));
 
-        AddConvertedOrPlaceholder(spawns, LegacyMissionConverter.CreateCodeStation(), CodeFallback, "코드");
+        AddConvertedOrPlaceholder(placements, LegacyMissionConverter.CreateCodeStation(), CodeFallback, "코드");
 
-        AddConvertedOrPlaceholder(spawns, LegacyMissionConverter.CreateLifeSupportStation(), LifeSupportFallback, "생명 유지 장치");
-        AddConvertedOrPlaceholder(spawns, LegacyMissionConverter.CreateAssemblyStation(), AssemblyFallback, "장비 조립");
-        AddConvertedOrPlaceholder(spawns, LegacyMissionConverter.CreateFireDoorStation(), FireDoorFallback, "방화문");
+        AddConvertedOrPlaceholder(placements, LegacyMissionConverter.CreateLifeSupportStation(), LifeSupportFallback, "생명 유지 장치");
+        AddConvertedOrPlaceholder(placements, LegacyMissionConverter.CreateAssemblyStation(), AssemblyFallback, "장비 조립");
+        AddConvertedOrPlaceholder(placements, LegacyMissionConverter.CreateFireDoorStation(), FireDoorFallback, "방화문");
 
         // 밸브 모델은 피벗이 손잡이 중심이라 바닥(y=0)에 두면 절반이 묻힌다 → 벽에 달린 높이로 띄운다
-        AddConvertedOrPlaceholder(spawns, LegacyMissionConverter.ConvertValve(), ValveFallback, "밸브", new Vector3(0f, ValveMountHeight, 0f));
-        AddConvertedOrPlaceholder(spawns, LegacyMissionConverter.ConvertBreaker(), BreakerFallback, "차단기");
-        AddConvertedOrPlaceholder(spawns, LegacyMissionConverter.ConvertAntenna(), AntennaFallback, "안테나");
-        AddConvertedOrPlaceholder(spawns, LegacyMissionConverter.ConvertWiring(), WiringFallback, "전선");
-        AddConvertedOrPlaceholder(spawns, LegacyMissionConverter.ConvertFilter(), FilterFallback, "필터");
-        AddConvertedOrPlaceholder(spawns, LegacyMissionConverter.CreatePressureStation(), PressureFallback, "압력");
+        AddConvertedOrPlaceholder(placements, LegacyMissionConverter.ConvertValve(), ValveFallback, "밸브", new Vector3(0f, ValveMountHeight, 0f));
+        AddConvertedOrPlaceholder(placements, LegacyMissionConverter.ConvertBreaker(), BreakerFallback, "차단기");
+        AddConvertedOrPlaceholder(placements, LegacyMissionConverter.ConvertAntenna(), AntennaFallback, "안테나");
+        AddConvertedOrPlaceholder(placements, LegacyMissionConverter.ConvertWiring(), WiringFallback, "전선");
+        AddConvertedOrPlaceholder(placements, LegacyMissionConverter.ConvertFilter(), FilterFallback, "필터");
+        AddConvertedOrPlaceholder(placements, LegacyMissionConverter.CreatePressureStation(), PressureFallback, "압력");
 
         NetworkObject vacuumTool = LegacyMissionConverter.ConvertVacuumTool();
 
         if (vacuumTool != null)
-            spawns.Add((vacuumTool, VacuumToolPosition));
+            placements.Add((vacuumTool, VacuumToolPosition));
         else
             Debug.LogWarning("[SoloMissionTestSetup] 청소기 변환에 실패해 청소기를 두지 않습니다 (위의 LegacyMissionConverter 오류 확인).");
 
-        WireScene(scene, playerPrefab, missionManagerPrefab, spawns);
+        WireScene(scene, playerPrefab, missionManagerPrefab, placements);
 
         AssetDatabase.SaveAssets();
 
         // 새 NetworkObject 프리팹을 Fusion 네트워크 프리팹 목록에 즉시 반영 (안 하면 Runner.Spawn 이 실패한다)
         Fusion.Editor.NetworkProjectConfigUtilities.RebuildPrefabTable();
 
-        Debug.Log($"[SoloMissionTestSetup] 완료. 네트워크 오브젝트 {spawns.Count}개 배치. Play 를 눌러 테스트하세요.");
+        Debug.Log($"[SoloMissionTestSetup] 완료. 씬에 네트워크 오브젝트 {placements.Count + 1}개(미션 관리자 포함)를 미리 놓았습니다. " +
+                  "Play → 시작 화면에서 [혼자] / [호스트] / [손님]. 멀티 테스트 전에는 메뉴 SuHan/Build Mission Test (Windows) 로 다시 빌드하세요.");
     }
 
     /// <summary>전체 기획서 기준으로 만들었던 옛 테스트 에셋 (새 기획서가 대체).</summary>
@@ -408,17 +412,17 @@ public static class SoloMissionTestSetup
     /// (offset 은 모델 피벗 보정용이라 바닥에 서는 자리 표시 큐브에는 쓰지 않는다)
     /// </summary>
     private static void AddConvertedOrPlaceholder(
-        List<(NetworkObject prefab, Vector3 position)> spawns, NetworkObject converted, PlaceholderSpec fallback, string what,
+        List<(NetworkObject prefab, Vector3 position)> placements, NetworkObject converted, PlaceholderSpec fallback, string what,
         Vector3 convertedOffset = default)
     {
         if (converted == null)
         {
             Debug.LogWarning($"[SoloMissionTestSetup] {what} 변환에 실패해 자리 표시 큐브로 대체합니다 (위의 LegacyMissionConverter 오류 확인).");
-            spawns.Add((BuildPlaceholderPrefab(fallback), fallback.Position));
+            placements.Add((BuildPlaceholderPrefab(fallback), fallback.Position));
             return;
         }
 
-        spawns.Add((converted, fallback.Position + convertedOffset));
+        placements.Add((converted, fallback.Position + convertedOffset));
     }
 
     private static NetworkObject BuildPlaceholderPrefab(PlaceholderSpec spec)
@@ -517,7 +521,7 @@ public static class SoloMissionTestSetup
 
     private static void WireScene(
         Scene scene, NetworkObject playerPrefab, NetworkObject missionManagerPrefab,
-        List<(NetworkObject prefab, Vector3 position)> spawns)
+        List<(NetworkObject prefab, Vector3 position)> placements)
     {
         RemovePlacedPlayerInstances(scene, playerPrefab);
         DestroyIfExists("TestDoorSpawnPoint");
@@ -530,20 +534,21 @@ public static class SoloMissionTestSetup
             new GameObject("PlayerHealthActorGate").AddComponent<PlayerHealthActorGate>();
 
         GameObject layoutRoot = new GameObject(LayoutRootName);
-        Transform spawnRoot = new GameObject("SpawnPoints (Runner.Spawn 위치)").transform;
-        spawnRoot.SetParent(layoutRoot.transform, false);
 
-        List<Transform> points = new List<Transform>();
+        // 네트워크 오브젝트(장치 · 청소기 · 미션 관리자)는 씬에 프리팹 인스턴스로 미리 놓는다 (6a 명세 MT7) — 씬만 열어도 배치가 보인다.
+        // 실행하면 테스트용 씬 관리자(SuhanTestSceneManager)가 이 씬을 넘겨받아 등록한다. 플레이어만 실행 중에 스폰한다
+        Transform networkRoot = new GameObject("NetworkObjects (씬 배치)").transform;
+        networkRoot.SetParent(layoutRoot.transform, false);
 
-        for (int i = 0; i < spawns.Count; i++)
+        PlaceSceneObject(missionManagerPrefab, networkRoot, "MissionManager", Vector3.zero, Quaternion.identity);
+
+        for (int i = 0; i < placements.Count; i++)
         {
-            Transform point = new GameObject($"{spawns[i].prefab.name}_{i:00}").transform;
-            point.SetParent(spawnRoot, false);
-            point.position = spawns[i].position;
+            Vector3 position = placements[i].position;
             // 모두 플레이어 시작 위치 쪽을 바라보게 (이름표/모델 정면)
-            Vector3 toCenter = new Vector3(-point.position.x, 0f, -point.position.z);
-            point.rotation = toCenter.sqrMagnitude > 0.01f ? Quaternion.LookRotation(toCenter) : Quaternion.identity;
-            points.Add(point);
+            Vector3 toCenter = new Vector3(-position.x, 0f, -position.z);
+            Quaternion rotation = toCenter.sqrMagnitude > 0.01f ? Quaternion.LookRotation(toCenter) : Quaternion.identity;
+            PlaceSceneObject(placements[i].prefab, networkRoot, $"{placements[i].prefab.name}_{i:00}", position, rotation);
         }
 
         CreateInfoLabel(layoutRoot.transform, "Info (조작 안내)", new Vector3(0f, 0.8f, 4f), InfoText);
@@ -575,10 +580,13 @@ public static class SoloMissionTestSetup
         CreateItemSpots(layoutRoot.transform, AssemblyStation.FarGroup, "장비 부품 — 맵 곳곳", EquipmentFarSpotPositions);
         CreateItemSpots(layoutRoot.transform, FireDoorStation.LeverSpotGroup, "방화문 레버", FireDoorLeverSpotPositions);
 
-        GameObject bootstrapObject = FindOrCreate("SoloTestBootstrap", Vector3.zero);
+        // 옛 시작 오브젝트(이름 SoloTestBootstrap — 실행 중 스폰 목록 · 미션 관리자 프리팹 연결이 남아 있다)는 지우고 새로 만든다 (6a MT10)
+        DestroyIfExists("SoloTestBootstrap");
+        GameObject bootstrapObject = FindOrCreate("MissionTestBootstrap", Vector3.zero);
         // 지운 테스트 스크립트(예: 임시 진단 컴포넌트)가 씬에 "스크립트 없음" 컴포넌트로 남지 않게 정리한다
         GameObjectUtility.RemoveMonoBehavioursWithMissingScript(bootstrapObject);
-        SoloTestBootstrap bootstrap = GetOrAdd<SoloTestBootstrap>(bootstrapObject);
+        MissionTestBootstrap bootstrap = GetOrAdd<MissionTestBootstrap>(bootstrapObject);
+        GetOrAdd<MissionTestAssignmentPanel>(bootstrapObject);
         GetOrAdd<MissionDebugOverlay>(bootstrapObject);
         GetOrAdd<TestRunReporter>(bootstrapObject);
         GetOrAdd<MissionHoldGaugeHUD>(bootstrapObject);
@@ -586,23 +594,27 @@ public static class SoloMissionTestSetup
         SerializedObject so = new SerializedObject(bootstrap);
         so.FindProperty("playerPrefab").objectReferenceValue = playerPrefab;
         so.FindProperty("playerSpawnPoint").objectReferenceValue = playerSpawnPoint;
-        so.FindProperty("missionManagerPrefab").objectReferenceValue = missionManagerPrefab;
-
-        SerializedProperty entries = so.FindProperty("networkedSpawns");
-        entries.ClearArray();
-
-        for (int i = 0; i < spawns.Count; i++)
-        {
-            entries.InsertArrayElementAtIndex(i);
-            SerializedProperty entry = entries.GetArrayElementAtIndex(i);
-            entry.FindPropertyRelative("prefab").objectReferenceValue = spawns[i].prefab;
-            entry.FindPropertyRelative("point").objectReferenceValue = points[i];
-        }
-
         so.ApplyModifiedPropertiesWithoutUndo();
 
         EditorSceneManager.MarkSceneDirty(scene);
+        // 저장할 때 Fusion 이 씬 오브젝트의 정렬 키를 굽는다 (호스트 · 손님이 같은 오브젝트로 짝을 맞추는 번호)
         EditorSceneManager.SaveScene(scene);
+    }
+
+    /// <summary>
+    /// 프리팹 인스턴스를 씬에 놓는다 (6a 명세 MT7). 프리팹 연결을 유지하므로 변환 메뉴로 프리팹을 다시 만들면 씬에 놓인 것도 따라 바뀐다.
+    /// </summary>
+    private static void PlaceSceneObject(NetworkObject prefab, Transform parent, string name, Vector3 position, Quaternion rotation)
+    {
+        if (prefab == null)
+        {
+            Debug.LogError($"[SoloMissionTestSetup] {name}: 프리팹이 없어 씬에 놓지 못했습니다 (위의 오류 확인).");
+            return;
+        }
+
+        GameObject instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab.gameObject, parent);
+        instance.name = name;
+        instance.transform.SetPositionAndRotation(position, rotation);
     }
 
     /// <summary>아이템 자리 후보 묶음 (ItemSpots) — 네트워크 오브젝트가 아니다. 장치가 실행 중에 묶음 이름으로 찾는다 (3b LS7 · 3c EA4).</summary>
@@ -634,7 +646,7 @@ public static class SoloMissionTestSetup
 
     /// <summary>
     /// 씬에 직접 놓인 Player(러너 없이 놓여서 Spawned 가 불리지 않던 것)를 지운다. 이름 또는 Player 프리팹 인스턴스로 찾는다.
-    /// Player 는 SoloTestBootstrap 이 Runner.Spawn 으로 만든다.
+    /// Player 는 MissionTestBootstrap 이 Runner.Spawn 으로 만든다.
     /// </summary>
     private static void RemovePlacedPlayerInstances(Scene scene, NetworkObject playerPrefab)
     {
