@@ -22,7 +22,7 @@ namespace LockdownProtocol.Networking
 
         private PlayerHealth _health;
         private RoleAssignment _roles;
-        private MissionSystem _missions;
+        private TrustNoOne.Missions.MissionManager _missions; // 새 미션 시스템으로 교체(6b)
         private PlayerItemController items; //장착 무기 진입점
         private PlayerCameraController cameraController; //호스트 기준 조준 정보
         private PlayerAnimation animationController; //캐릭터 공격 연출
@@ -53,7 +53,7 @@ namespace LockdownProtocol.Networking
                 foreach (RoleAssignment roles in FindObjectsByType<RoleAssignment>(FindObjectsSortMode.None))
                     if (roles.Runner == Runner) { _roles = roles; break; }
             if (_missions == null)
-                foreach (MissionSystem missions in FindObjectsByType<MissionSystem>(FindObjectsSortMode.None))
+                foreach (TrustNoOne.Missions.MissionManager missions in FindObjectsByType<TrustNoOne.Missions.MissionManager>(FindObjectsSortMode.None)) // 새 미션 시스템으로 교체(6b)
                     if (missions.Runner == Runner) { _missions = missions; break; }
         }
 
@@ -81,7 +81,7 @@ namespace LockdownProtocol.Networking
         private bool hasCompletedKillerMissions() //미배정 상태에서는 즉사 기술 잠금
         {
             return _missions != null && _missions.Object != null && _missions.Object.IsValid &&
-                   _missions.IsPersonalMissionCompleted(Object.InputAuthority);
+                   _missions.HasCompletedKillerMissions(Object.InputAuthority); // 살인마 미션이 있고 모두 완료 — 옛 동작 그대로(6b)
         }
 
         private bool canRequestAttack() //두 공격 경로에 공통으로 적용하는 호스트 검증

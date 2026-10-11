@@ -7,7 +7,7 @@ public class GameEndSystem : NetworkBehaviour
 {
     private const int MaxPlayerCount = 10;
 
-    [SerializeField] private MissionSystem missionSystem;
+    [SerializeField] private TrustNoOne.Missions.MissionManager missionSystem; // 새 미션 시스템으로 교체(6b)
     [SerializeField] private RoleAssignment roleAssignment;
     [SerializeField] private GameTimer gameTimer;
 
@@ -78,13 +78,13 @@ public class GameEndSystem : NetworkBehaviour
         CheckAllCitizensRemoved();
         TryEndGame();
         if (missionSystem != null && missionSystem.Object != null && missionSystem.Object.IsValid)
-            missionSystem.removePlayerMissions(player);
+            missionSystem.RemovePlayerMissions(player); // 새 미션 시스템으로 교체(6b)
     }
 
     private void FindDependencies()
     {
         if (missionSystem == null)
-            missionSystem = FindFirstObjectByType<MissionSystem>();
+            missionSystem = FindFirstObjectByType<TrustNoOne.Missions.MissionManager>(); // 새 미션 시스템으로 교체(6b)
 
         if (roleAssignment == null)
             roleAssignment = FindFirstObjectByType<RoleAssignment>();
@@ -197,7 +197,7 @@ public class GameEndSystem : NetworkBehaviour
                 escapedCitizenFound = true;
 
             if (health.IsDead && GetPlayerResult(player) == PlayerResult.None &&
-                (missionSystem == null || !missionSystem.IsPersonalActionCompleted(player)))
+                (missionSystem == null || !missionSystem.IsActionGoalSuccess(player))) // 새 미션 시스템으로 교체(6b)
             {
                 TrySetResult(player, PlayerResult.Lose);
             }
@@ -223,7 +223,7 @@ public class GameEndSystem : NetworkBehaviour
             if (!IsCitizen(player) || GetPlayerResult(player) != PlayerResult.None)
                 continue;
 
-            PlayerResult result = missionSystem.IsPersonalActionCompleted(player)
+            PlayerResult result = missionSystem.IsActionGoalSuccess(player) // 새 미션 시스템으로 교체(6b)
                 ? PlayerResult.Win
                 : PlayerResult.Lose;
 

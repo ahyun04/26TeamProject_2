@@ -106,6 +106,19 @@ namespace TrustNoOne.Missions
             return count;
         }
 
+        /// <summary>
+        /// 그 사람이 주인인 목표(개인 미션 · 행동 목표 · 살인마 미션)를 목록에서 뺀다 (6b 명세 SW4 — 게임 중 나간 사람). 단체 미션은 그대로.
+        /// 빠진 목표는 더 이상 이벤트를 받지 않고 진행도 · 완료 집계에서도 빠진다 → 나간 사람이 남은 사람의 완료를 막지 않는다.
+        /// </summary>
+        /// <returns>뺀 목표 수</returns>
+        public int RemoveOwner(PlayerRef player)
+        {
+            if (player.IsNone)
+                return 0;
+
+            return objectives.RemoveAll(objective => objective.Owner == player && objective.Definition.Category != MissionCategory.Team);
+        }
+
         /// <summary>그 플레이어의 행동이 끝났다 (탈출/사망/시간 종료). 종료 판정 목표를 확정한다.</summary>
         public void FinalizePlayer(PlayerRef player)
         {

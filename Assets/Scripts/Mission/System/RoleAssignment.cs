@@ -10,7 +10,7 @@ public enum PlayerRole
 
 /// <summary>
 /// 현재 게임에 참가한 플레이어들의 역할을 랜덤으로 결정하고,
-/// 역할 배정이 끝나면 MissionSystem에 시민/살인마 목록을 전달
+/// 역할 배정이 끝나면 미션 시스템(새 MissionManager — 6b 교체)에 시민/살인마 목록을 전달
 /// 역할 결정은 StateAuthority만 수행한다.
 /// </summary>
 public class RoleAssignment : NetworkBehaviour
@@ -22,7 +22,7 @@ public class RoleAssignment : NetworkBehaviour
     [SerializeField, Min(1)] private int killerCount = 1;
 
     [Header("연결")]
-    [SerializeField] private MissionSystem missionSystem;
+    [SerializeField] private TrustNoOne.Missions.MissionManager missionSystem; // 새 미션 시스템으로 교체(6b)
 
     // 역할 배정 중복 실행 방지
     [Networked]
@@ -40,7 +40,7 @@ public class RoleAssignment : NetworkBehaviour
             return;
 
         if (missionSystem == null)
-            missionSystem = FindFirstObjectByType<MissionSystem>();
+            missionSystem = FindFirstObjectByType<TrustNoOne.Missions.MissionManager>(); // 새 미션 시스템으로 교체(6b)
     }
 
 
@@ -50,7 +50,7 @@ public class RoleAssignment : NetworkBehaviour
             return;
 
         if (missionSystem == null)
-            missionSystem = FindFirstObjectByType<MissionSystem>();
+            missionSystem = FindFirstObjectByType<TrustNoOne.Missions.MissionManager>(); // 새 미션 시스템으로 교체(6b)
 
         if (missionSystem == null || !missionSystem.IsReady)
             return;
@@ -119,7 +119,7 @@ public class RoleAssignment : NetworkBehaviour
             }
         }
 
-        // 역할 배정 결과를 기존 MissionSystem에 전달
+        // 역할 배정 결과를 미션 시스템(새 MissionManager — 6b 교체)에 전달
         missionSystem.InitializeMissions(citizens, killers);
 
         Initialized = true;
