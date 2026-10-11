@@ -53,7 +53,25 @@ namespace LockdownProtocol.Lobby
         private bool _isOpen;
 
         internal static LobbyRoomUI Instance { get; private set; }
-        internal bool IsRoomMenuOpen => _isOpen; //공용 설정 버튼의 표시 조건
+        internal bool IsRoomMenuOpen => _isOpen || GameAudio.isLobbySettingsOpen; //통합 방 메뉴와 공용 열림 상태
+        internal bool hasAuxiliaryModal => (_miniHud != null && _miniHud.IsLeaveConfirmationOpen) ||
+            (inviteListPanel != null && inviteListPanel.isActiveAndEnabled && inviteListPanel.IsOpen); //기존 초대·나가기 확인창 표시
+
+        internal void openInvites() //통합 로비 탭의 기존 초대 기능 호출
+        {
+            OnInviteClicked();
+        }
+
+        internal void openLeaveConfirmation() //통합 로비 탭의 기존 나가기 확인 호출
+        {
+            OnLeaveClicked();
+        }
+
+        internal void closeAuxiliaryModal() //ESC에서 초대·나가기 확인창만 취소
+        {
+            if (inviteListPanel != null && inviteListPanel.IsOpen) inviteListPanel.Close();
+            if (_miniHud != null && _miniHud.IsLeaveConfirmationOpen) _miniHud.cancelLeaveConfirmation();
+        }
         internal bool BlocksPlayerInput => SessionDisconnectUIComponent.IsOpen || GameAudio.blocksPlayerInput || _isOpen ||
             (_miniHud != null && _miniHud.IsLeaveConfirmationOpen) ||
             (inviteListPanel != null && inviteListPanel.isActiveAndEnabled && inviteListPanel.IsOpen);
@@ -69,6 +87,9 @@ namespace LockdownProtocol.Lobby
             }
 
             _miniHud = FindFirstObjectByType<LobbyMiniHudUI>();
+            if (inviteListPanel != null && detailPanelRoot != null &&
+                inviteListPanel.transform.IsChildOf(detailPanelRoot.transform))
+                inviteListPanel.transform.SetParent(transform, false); //닫힌 기존 상세 패널과 독립적으로 초대창 표시
 
             readyButton.onClick.AddListener(OnReadyClicked);
             startGameButton.onClick.AddListener(OnStartGameClicked);
@@ -170,7 +191,7 @@ namespace LockdownProtocol.Lobby
             }
             if (!SessionDisconnectUIComponent.IsOpen && !GameAudio.blocksPlayerInput && Input.GetKeyDown(KeyCode.Escape))
             {
-                SetOpen(!_isOpen);
+                if (!hasAuxiliaryModal && !GameAudio.showLobbySettings()) SetOpen(!_isOpen);
             }
 
             RefreshCursorState();

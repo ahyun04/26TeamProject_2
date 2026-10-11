@@ -64,6 +64,7 @@ namespace LockdownProtocol.Lobby
 
         public const int AbsoluteMinPlayers = 2;
         public const int AbsoluteMaxPlayers = 10;
+        internal int defaultMaximumPlayers => defaultMaxPlayerCount; //로비 탭의 기본값에 기존 설정 재사용
 
         public event Action<int> MaxPlayerChanged;
         public event Action<string> MaxPlayerChangeRejected;

@@ -151,7 +151,7 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
 
             if (mode == GameMode.Host && maxPlayers > 0)
             {
-                args.PlayerCount = _maxPlayers;
+                args.PlayerCount = RoomManager.AbsoluteMaxPlayers; //변경 가능한 최대 정원 예약, 실제 입장은 RoomManager의 논리 정원으로 제한
             }
 
             StartGameResult result = await _runner.StartGame(args);
@@ -218,6 +218,15 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
         throw new InvalidOperationException($"씬 '{sceneName}'을 Build Settings에서 찾을 수 없습니다.");
     }
 
+    internal void retainRoomSettings(RoomManager room) //게임 씬에서 방 오브젝트가 사라지기 전에 확정 설정 보존
+    {
+        if (_runner == null || !_runner.IsServer || room == null || room.Object == null ||
+            !room.Object.IsValid || room.Runner != _runner) return;
+        _roomName = room.RoomName.ToString();
+        _maxPlayers = room.MaxPlayerCount;
+        _isPrivate = room.IsPrivate;
+    }
+
     internal async Task<bool> returnToStandBy() //종료된 게임의 참가자들을 방장 권한으로 대기실에 복귀
     {
         if (_runner == null || !_runner.IsRunning || !_runner.IsServer ||
@@ -233,6 +242,9 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
         try
         {
             SceneRef roomScene = GetSceneRefByName(roomSceneName);
+            RoomManager room = RoomManager.Instance; //같은 방에서 적용한 정원을 복귀 후에도 유지
+            if (room != null && room.Object != null && room.Object.IsValid && room.Runner == _runner)
+                _maxPlayers = room.MaxPlayerCount;
             RoomManager.Instance?.SetRoomState(RoomManager.RoomState.Ending);
             foreach (PlayerRef player in _runner.ActivePlayers)
             {

@@ -33,6 +33,8 @@ namespace LockdownProtocol.Lobby
         public event System.Action<StartFailReason> StartFailed;
         public event System.Action CountdownStarted;
         public event System.Action CountdownCancelled;
+        internal int minimumPlayerCount => minPlayerCount; //로비 탭과 같은 최소 시작 조건
+        internal float? countdownRemaining => Object != null && Object.IsValid ? StartCountdown.RemainingTime(Runner) : null; //실제 복제된 시작 타이머
 
         public override void FixedUpdateNetwork()
         {
@@ -121,6 +123,7 @@ namespace LockdownProtocol.Lobby
         private void BeginGameSceneTransition()
         {
             if (!Object.HasStateAuthority) return;
+            FindFirstObjectByType<NetworkBootstrap>()?.retainRoomSettings(RoomManager.Instance); //적용한 방 설정을 대기실 복귀까지 보존
 
             // 로비 이동/Ready 입력 제한 + 음성 채널 종료는 각 클라에서
             // RPC_NotifyStartApproved 수신 시점에 이미 처리되어 있어야 함

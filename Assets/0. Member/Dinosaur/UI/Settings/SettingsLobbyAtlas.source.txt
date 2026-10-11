@@ -1,0 +1,53 @@
+Source: approved lobby ready/start mockup exec-c2cb6290-b48c-47c9-9e43-5bb319a5bd6a.png (1672x941).
+Pillow crops reuse the card edge, avatar silhouette, crown and play icon. Text is rendered by TMP.
+Center pixels of the cropped card are replaced with clean source background; masks produce tintable icon sprites.
+[
+  {
+    "name": "LobbyCard",
+    "x": 4,
+    "y": 518,
+    "width": 538,
+    "height": 502,
+    "border": 14
+  },
+  {
+    "name": "ReadyPill",
+    "x": 550,
+    "y": 977,
+    "width": 111,
+    "height": 43,
+    "border": 10
+  },
+  {
+    "name": "Crown",
+    "x": 669,
+    "y": 990,
+    "width": 33,
+    "height": 30,
+    "border": 0
+  },
+  {
+    "name": "AvatarDisc",
+    "x": 710,
+    "y": 959,
+    "width": 61,
+    "height": 61,
+    "border": 0
+  },
+  {
+    "name": "AvatarPerson",
+    "x": 779,
+    "y": 959,
+    "width": 61,
+    "height": 61,
+    "border": 0
+  },
+  {
+    "name": "PlayIcon",
+    "x": 848,
+    "y": 980,
+    "width": 31,
+    "height": 40,
+    "border": 0
+  }
+]

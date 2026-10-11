@@ -1,0 +1,181 @@
+[
+  {
+    "name": "Both peers open the unified lobby with legacy panel hidden",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "Only host can edit maximum and both peers can ready",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "Two actual player rows shown",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "Start is blocked before everybody is ready",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "Draft maximum does not change shared room",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "Cancel restores committed maximum",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "Client cannot change draft",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "Server rejects non-host change",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "Apply confirms and replicates changed maximum",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "Lower boundary clamps to current participant count",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "Upper boundary clamps to 10",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "Defaults changes draft only",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "Copy uses actual eight-character room invite",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "Friend invitation opens existing modal and keeps input blocked",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "Returning from invite preserves pending maximum",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "Existing leave confirmation opens",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "Cancelling leave resumes same pending settings",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "Host ready button replicates personal state",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "Ready cancel replicates personal state",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "Start enables with host included in all-ready count",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "Unapplied maximum blocks start",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "Raising original 2-player room capacity allows a real third client",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "New unready member disables host start",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "Cannot lower draft below 3 connected players",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "Server rejects maximum lower than current player count",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "Host can increase actual room limit again",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "Five actual clients appear without clipping the fixed ready controls",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "All five personal ready states unlock host start only",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "UI refuses start after another member cancels ready",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "Start shows actual network countdown and locks edits",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "Host request moves all 5 real peers into GamePlay",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "host GamePlay cannot alter capacity, readiness or start",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "client GamePlay cannot alter capacity, readiness or start",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "Configured maximum survives GamePlay and StandBy return",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "Returning room resets ready states and keeps unified menu",
+    "passed": true,
+    "details": null
+  },
+  {
+    "name": "Existing customization preview and cancel still work after lobby integration",
+    "passed": true
+  }
+]

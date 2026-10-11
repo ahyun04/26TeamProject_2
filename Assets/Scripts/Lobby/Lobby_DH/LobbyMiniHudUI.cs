@@ -53,6 +53,11 @@ namespace LockdownProtocol.Lobby
             if (leaveConfirmPanel != null) leaveConfirmPanel.SetActive(false);
         }
 
+        internal void cancelLeaveConfirmation() //통합 설정창의 ESC 취소 진입점
+        {
+            HideLeaveConfirm();
+        }
+
         private void Update()
         {
             RefreshRoomInfo();

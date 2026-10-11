@@ -9,6 +9,17 @@ public class GameAudio : MonoBehaviour
 
     private static GameAudio instance; //클라이언트 하나의 사운드 진입점
     internal static bool blocksPlayerInput => instance != null && instance.settingsUI.blocksPlayerInput; //설정창 입력 차단
+    internal static bool isLobbySettingsOpen => instance != null && instance.settingsUI.isLobbyOpen; //통합 방 화면 열림 상태
+
+    internal static bool showLobbySettings() //기존 방 메뉴의 통합 설정창 호출
+    {
+        return instance != null && instance.settingsUI.showLobbySettings();
+    }
+
+    internal static void showLobbyModal(bool invite) //초대·나가기 화면으로 연결
+    {
+        if (instance != null) instance.settingsUI.showAuxiliaryModal(invite);
+    }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void resetInstance() //플레이 시작 시 정적 참조 초기화

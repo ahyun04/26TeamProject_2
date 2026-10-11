@@ -30,6 +30,9 @@ public class GameSettingsUIComponent : MonoBehaviour
     [SerializeField] private GameObject controlsPage; //현재 조작키 안내 페이지
     [SerializeField] private Button customizationTabButton; //캐릭터 색상 탭 선택
     [SerializeField] private GameObject customizationPage; //색상 팔레트와 모델 미리보기 페이지
+    [SerializeField] private Button lobbyTabButton; //참가자와 방 설정 탭
+    [SerializeField] private GameObject lobbyPage; //기존 방 기능을 통합한 페이지
+    [SerializeField] private LobbySettingsUIComponent lobbyUI; //방 설정과 기존 네트워크 기능 연결
     [SerializeField] private Button applyButton; //설정 적용과 저장
     [SerializeField] private Button cancelButton; //미적용 설정 취소
     [SerializeField] private Button defaultsButton; //임시 설정 기본값 복원
@@ -48,6 +51,10 @@ public class GameSettingsUIComponent : MonoBehaviour
     private int toggleFrame = -1; //Esc로 닫은 프레임의 입력 재사용 방지
     private bool soundSelected = true; //현재 열린 설정 탭
     private bool customizationSelected; //현재 커스터마이징 탭 선택 여부
+    private bool lobbySelected; //현재 로비 탭 선택 여부
+    private bool applying; //방 설정의 서버 응답 대기 여부
+    private bool auxiliaryModal; //기존 초대·나가기 창에서 돌아올 상태
+    internal bool isLobbyOpen => isOpen && lobbySelected && !auxiliaryModal; //기존 방 UI와 공용 열림 상태
     private UnityAction<string>[] volumeInputActions; //숫자 입력 구독 해제에 사용할 함수
     private UnityAction[] decreaseActions; //감소 버튼 구독 해제에 사용할 함수
     private UnityAction[] increaseActions; //증가 버튼 구독 해제에 사용할 함수
@@ -67,6 +74,7 @@ public class GameSettingsUIComponent : MonoBehaviour
         soundTabButton?.onClick.AddListener(showSoundTab);
         controlsTabButton?.onClick.AddListener(showControlsTab);
         customizationTabButton?.onClick.AddListener(showCustomizationTab);
+        lobbyTabButton?.onClick.AddListener(showLobbyTab);
         applyButton?.onClick.AddListener(apply);
         cancelButton?.onClick.AddListener(close);
         defaultsButton?.onClick.AddListener(restoreDefaults);
@@ -108,8 +116,20 @@ public class GameSettingsUIComponent : MonoBehaviour
             openButton.gameObject.SetActive(false);
             return;
         }
+        if (auxiliaryModal)
+        {
+            if (Input.GetKeyDown(KeyCode.Escape)) LobbyRoomUI.Instance?.closeAuxiliaryModal();
+            if (LobbyRoomUI.Instance == null || !LobbyRoomUI.Instance.hasAuxiliaryModal)
+            {
+                auxiliaryModal = false;
+                if (isOpen) panel.SetActive(true);
+                toggleFrame = Time.frameCount;
+            }
+            return;
+        }
         if (!Input.GetKeyDown(KeyCode.Escape)) return;
         if (isOpen) close();
+        else if (sceneName == "StandBy" && LobbyRoomUI.Instance != null && !LobbyRoomUI.Instance.hasAuxiliaryModal) showLobbySettings();
         else if (sceneName == "GamePlay" && PlayerCameraController.LocalListenerTransform != null) open();
     }
 
@@ -117,7 +137,7 @@ public class GameSettingsUIComponent : MonoBehaviour
     {
         bool canShowButton = !isOpen && !SessionDisconnectUIComponent.IsOpen && !isGameEnded() &&
             (sceneName == "Main" || sceneName == "Lobby" ||
-             (sceneName == "StandBy" && LobbyRoomUI.Instance != null && LobbyRoomUI.Instance.IsRoomMenuOpen));
+             (sceneName == "StandBy" && LobbyRoomUI.Instance != null));
         if (openButton.gameObject.activeSelf != canShowButton) openButton.gameObject.SetActive(canShowButton);
         if (isOpen)
         {
@@ -137,11 +157,13 @@ public class GameSettingsUIComponent : MonoBehaviour
         if (isOpen || owner == null || SessionDisconnectUIComponent.IsOpen || isGameEnded()) return;
         owner.beginSettingsEditing();
         PlayerAppearance.beginCustomization();
+        lobbyUI?.beginEditing();
+        applying = false;
+        refreshApplyState();
         isOpen = true;
         toggleFrame = Time.frameCount;
         refreshValues();
         refreshTab();
-        if (saveHintText != null) saveHintText.text = "적용을 누르면 변경 사항이 저장됩니다.";
         panel.SetActive(true);
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
@@ -153,13 +175,37 @@ public class GameSettingsUIComponent : MonoBehaviour
         finishVolumeInput();
         owner.cancelSettings();
         PlayerAppearance.cancelCustomization();
+        lobbyUI?.endEditing();
         finishClose();
     }
 
     private void apply() //입력 중인 숫자도 반영한 뒤 설정 저장
     {
-        if (!isOpen) return;
+        if (!isOpen || applying) return;
         finishVolumeInput();
+        lobbyUI?.finishInput();
+        if (lobbyUI != null && lobbyUI.hasPendingChange)
+        {
+            applying = true;
+            refreshApplyState();
+            if (saveHintText != null) saveHintText.text = "방 인원을 적용하는 중입니다.";
+            lobbyUI.applyMaximum(handleRoomApplied);
+            return;
+        }
+        applyLocalSettings();
+    }
+
+    private void handleRoomApplied(bool accepted, string reason) //공유 설정 승인 뒤 개인 설정 저장
+    {
+        if (!isOpen) return;
+        applying = false;
+        refreshApplyState();
+        if (accepted) applyLocalSettings();
+        else if (saveHintText != null) saveHintText.text = reason;
+    }
+
+    private void applyLocalSettings() //기존 음량과 캐릭터 설정 확정
+    {
         if (PlayerAppearance.prepareSave() && owner.applySettings())
         {
             PlayerAppearance.completeSave();
@@ -174,16 +220,21 @@ public class GameSettingsUIComponent : MonoBehaviour
 
     private void restoreDefaults() //기본값은 적용 전까지 미리 듣기에만 반영
     {
-        if (!isOpen) return;
+        if (!isOpen || applying) return;
         finishVolumeInput();
         owner.restoreDefaultSettings();
         PlayerAppearance.restoreDefaults();
+        lobbyUI?.restoreDefaults();
         refreshValues();
     }
 
     private void finishClose() //입력 차단 해제와 현재 화면의 커서 복원
     {
         isOpen = false;
+        applying = false;
+        auxiliaryModal = false;
+        lobbyUI?.endEditing();
+        refreshApplyState();
         toggleFrame = Time.frameCount;
         panel.SetActive(false);
         bool showCursor = PlayerCameraController.LocalListenerTransform == null ||
@@ -289,6 +340,7 @@ public class GameSettingsUIComponent : MonoBehaviour
         finishVolumeInput();
         soundSelected = true;
         customizationSelected = false;
+        lobbySelected = false;
         refreshTab();
     }
 
@@ -297,6 +349,7 @@ public class GameSettingsUIComponent : MonoBehaviour
         finishVolumeInput();
         soundSelected = false;
         customizationSelected = false;
+        lobbySelected = false;
         refreshTab();
     }
 
@@ -304,18 +357,53 @@ public class GameSettingsUIComponent : MonoBehaviour
     {
         finishVolumeInput();
         customizationSelected = true;
+        lobbySelected = false;
         refreshTab();
+    }
+
+    private void showLobbyTab() //기존 방 상태를 같은 설정창에서 표시
+    {
+        finishVolumeInput();
+        customizationSelected = false;
+        lobbySelected = true;
+        refreshTab();
+    }
+
+    internal bool showLobbySettings() //StandBy ESC의 통합 진입점
+    {
+        if (lobbyPage == null || LobbyRoomUI.Instance == null) return false;
+        showLobbyTab();
+        open();
+        return isOpen;
+    }
+
+    internal void showAuxiliaryModal(bool invite) //초대·나가기 확인창 동안 편집 상태 보존
+    {
+        if (!isOpen || applying || LobbyRoomUI.Instance == null) return;
+        auxiliaryModal = true;
+        panel.SetActive(false);
+        if (invite) LobbyRoomUI.Instance.openInvites();
+        else LobbyRoomUI.Instance.openLeaveConfirmation();
+    }
+
+    private void refreshApplyState() //서버 응답 중 중복 저장과 기본값 변경 차단
+    {
+        if (applyButton != null) applyButton.interactable = !applying;
+        if (defaultsButton != null) defaultsButton.interactable = !applying;
     }
 
     private void refreshTab() //현재 페이지와 아이콘 탭의 선택 배경 표시
     {
-        if (soundPage != null) soundPage.SetActive(!customizationSelected && soundSelected);
-        if (controlsPage != null) controlsPage.SetActive(!customizationSelected && !soundSelected);
+        if (soundPage != null) soundPage.SetActive(!lobbySelected && !customizationSelected && soundSelected);
+        if (controlsPage != null) controlsPage.SetActive(!lobbySelected && !customizationSelected && !soundSelected);
         if (customizationPage != null) customizationPage.SetActive(customizationSelected);
+        if (lobbyPage != null) lobbyPage.SetActive(lobbySelected);
+        if (saveHintText != null) saveHintText.text = lobbySelected ? "적용을 누르면 방 최대 인원이 변경됩니다." : "적용을 누르면 변경 사항이 저장됩니다.";
         if (selectedTabSprite == null || neutralTabSprite == null) return;
-        if (soundTabButton != null) soundTabButton.image.sprite = !customizationSelected && soundSelected ? selectedTabSprite : neutralTabSprite;
-        if (controlsTabButton != null) controlsTabButton.image.sprite = !customizationSelected && !soundSelected ? selectedTabSprite : neutralTabSprite;
+        if (soundTabButton != null) soundTabButton.image.sprite = !lobbySelected && !customizationSelected && soundSelected ? selectedTabSprite : neutralTabSprite;
+        if (controlsTabButton != null) controlsTabButton.image.sprite = !lobbySelected && !customizationSelected && !soundSelected ? selectedTabSprite : neutralTabSprite;
         if (customizationTabButton != null) customizationTabButton.image.sprite = customizationSelected ? selectedTabSprite : neutralTabSprite;
+        if (lobbyTabButton != null) lobbyTabButton.image.sprite = lobbySelected ? selectedTabSprite : neutralTabSprite;
     }
 
     private void selectVoiceActivation() //자동 음성 감지 방식 선택
@@ -369,6 +457,7 @@ public class GameSettingsUIComponent : MonoBehaviour
         soundTabButton?.onClick.RemoveListener(showSoundTab);
         controlsTabButton?.onClick.RemoveListener(showControlsTab);
         customizationTabButton?.onClick.RemoveListener(showCustomizationTab);
+        lobbyTabButton?.onClick.RemoveListener(showLobbyTab);
         applyButton?.onClick.RemoveListener(apply);
         cancelButton?.onClick.RemoveListener(close);
         defaultsButton?.onClick.RemoveListener(restoreDefaults);
