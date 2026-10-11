@@ -1,0 +1,68 @@
+{
+  "scene": "StandBy",
+  "running": true,
+  "gameEnded": false,
+  "regen": [
+    {
+      "owner": 2,
+      "tick": 2427,
+      "damage": 7,
+      "delta": 0.015625,
+      "health": 100.0,
+      "rate": 5.0,
+      "delay": 5.0,
+      "remaining": -1.0,
+      "staminaRate": 15.0,
+      "staminaDelay": 1.5,
+      "hudHealth": 1.0,
+      "dead": false,
+      "escaped": false,
+      "canAct": true,
+      "authority": false
+    },
+    {
+      "owner": 1,
+      "tick": 2427,
+      "damage": 4,
+      "delta": 0.015625,
+      "health": 63.59375,
+      "rate": 5.0,
+      "delay": 5.0,
+      "remaining": 0.0,
+      "staminaRate": 15.0,
+      "staminaDelay": 1.5,
+      "hudHealth": -1.0,
+      "dead": false,
+      "escaped": false,
+      "canAct": true,
+      "authority": false
+    }
+  ],
+  "players": [
+    {
+      "id": 2,
+      "role": "",
+      "local": true,
+      "dead": false,
+      "escaped": false,
+      "spectator": false,
+      "cameraActive": true,
+      "hudActive": true,
+      "health": 100.0,
+      "stamina": 100.0
+    },
+    {
+      "id": 1,
+      "role": "",
+      "local": false,
+      "dead": false,
+      "escaped": false,
+      "spectator": false,
+      "cameraActive": false,
+      "hudActive": false,
+      "health": 63.59375,
+      "stamina": 63.28125
+    }
+  ],
+  "ghosts": []
+}

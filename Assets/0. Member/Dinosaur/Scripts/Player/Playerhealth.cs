@@ -12,6 +12,8 @@ public class PlayerHealth : NetworkBehaviour
 {
     [Header("Health Settings")]
     [SerializeField] private float maxHealth = 100f;
+    [SerializeField, Min(0f)] private float healthRegenPerSecond = 5f; //추가 피해가 없을 때 초당 자동 체력 회복량
+    [SerializeField, Min(0f)] private float healthRegenDelaySeconds = 5f; //마지막 피해 후 자동 회복 대기 시간
 
     [Networked, OnChangedRender(nameof(HandleHealthChanged))]
     public float CurrentHealth { get; private set; }
@@ -53,6 +55,14 @@ public class PlayerHealth : NetworkBehaviour
     private int damageSequence { get; set; } //연속 피격과 회복이 같은 프레임에 발생해도 피격 전달
 
     [Networked] private TickTimer sprintDamageTimer { get; set; } //체력 달리기 피격 연출의 1초 간격
+    [Networked] private TickTimer healthRegenTimer { get; set; } //마지막 실제 체력 감소 후 자동 회복 대기
+
+    public override void FixedUpdateNetwork() //호스트만 생존 중 체력을 네트워크 틱에 따라 자동 회복
+    {
+        if (!HasStateAuthority || healthRegenPerSecond <= 0f || CurrentHealth >= maxHealth ||
+            !CanAct || !healthRegenTimer.ExpiredOrNotRunning(Runner)) return;
+        Heal(healthRegenPerSecond * Runner.DeltaTime);
+    }
 
     private void handleDamage() //모든 클라이언트에 피격 알림
     {
@@ -67,6 +77,7 @@ public class PlayerHealth : NetworkBehaviour
             CurrentHealth = maxHealth;
             IsDead = false;
             IsEscaped = false;
+            healthRegenTimer = TickTimer.None;
         }
     }
 
@@ -91,6 +102,7 @@ public class PlayerHealth : NetworkBehaviour
         if (IsDead || IsEscaped || amount <= 0f) return;
 
         CurrentHealth = Mathf.Max(0f, CurrentHealth - amount);
+        healthRegenTimer = TickTimer.CreateFromSeconds(Runner, healthRegenDelaySeconds);
         if (showDamage) damageSequence++;
 
         if (CurrentHealth <= 0f)
@@ -115,6 +127,7 @@ public class PlayerHealth : NetworkBehaviour
         CurrentHealth = maxHealth;
         IsDead = false;
         sprintDamageTimer = TickTimer.None;
+        healthRegenTimer = TickTimer.None;
         reviveSequence++;
         return true;
     }

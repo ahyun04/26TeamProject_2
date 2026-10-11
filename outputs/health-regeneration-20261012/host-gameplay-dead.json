@@ -1,0 +1,75 @@
+{
+  "scene": "GamePlay",
+  "running": true,
+  "gameEnded": false,
+  "regen": [
+    {
+      "owner": 1,
+      "tick": 3307,
+      "damage": 0,
+      "delta": 0.015625,
+      "health": 100.0,
+      "rate": 5.0,
+      "delay": 5.0,
+      "remaining": -1.0,
+      "staminaRate": 15.0,
+      "staminaDelay": 1.5,
+      "hudHealth": 1.0,
+      "dead": false,
+      "escaped": false,
+      "canAct": true,
+      "authority": true
+    },
+    {
+      "owner": 2,
+      "tick": 3307,
+      "damage": 1,
+      "delta": 0.015625,
+      "health": 0.0,
+      "rate": 5.0,
+      "delay": 5.0,
+      "remaining": 0.0,
+      "staminaRate": 15.0,
+      "staminaDelay": 1.5,
+      "hudHealth": -1.0,
+      "dead": true,
+      "escaped": false,
+      "canAct": false,
+      "authority": true
+    }
+  ],
+  "players": [
+    {
+      "id": 1,
+      "role": "Citizen",
+      "local": true,
+      "dead": false,
+      "escaped": false,
+      "spectator": false,
+      "cameraActive": true,
+      "hudActive": true,
+      "health": 100.0,
+      "stamina": 100.0
+    },
+    {
+      "id": 2,
+      "role": "Killer",
+      "local": false,
+      "dead": true,
+      "escaped": false,
+      "spectator": true,
+      "cameraActive": false,
+      "hudActive": false,
+      "health": 0.0,
+      "stamina": 100.0
+    }
+  ],
+  "ghosts": [
+    {
+      "owner": 2,
+      "local": false,
+      "hasHealth": false,
+      "hasStamina": false
+    }
+  ]
+}

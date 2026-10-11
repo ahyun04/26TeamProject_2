@@ -1,0 +1,660 @@
+[
+  {
+    "check": "host player 1: settings 5 HP/s after 5s",
+    "passed": true,
+    "details": {
+      "owner": 1,
+      "tick": 553,
+      "damage": 0,
+      "delta": 0.015625,
+      "health": 100.0,
+      "rate": 5.0,
+      "delay": 5.0,
+      "remaining": -1.0,
+      "staminaRate": 15.0,
+      "staminaDelay": 1.5,
+      "hudHealth": 1.0,
+      "dead": false,
+      "escaped": false,
+      "canAct": true,
+      "authority": true
+    }
+  },
+  {
+    "check": "host player 1: stamina unchanged 15/s, 1.5s delay",
+    "passed": true,
+    "details": null
+  },
+  {
+    "check": "host player 2: settings 5 HP/s after 5s",
+    "passed": true,
+    "details": {
+      "owner": 2,
+      "tick": 553,
+      "damage": 0,
+      "delta": 0.015625,
+      "health": 100.0,
+      "rate": 5.0,
+      "delay": 5.0,
+      "remaining": -1.0,
+      "staminaRate": 15.0,
+      "staminaDelay": 1.5,
+      "hudHealth": -1.0,
+      "dead": false,
+      "escaped": false,
+      "canAct": true,
+      "authority": true
+    }
+  },
+  {
+    "check": "host player 2: stamina unchanged 15/s, 1.5s delay",
+    "passed": true,
+    "details": null
+  },
+  {
+    "check": "client player 2: settings 5 HP/s after 5s",
+    "passed": true,
+    "details": {
+      "owner": 2,
+      "tick": 566,
+      "damage": 0,
+      "delta": 0.015625,
+      "health": 100.0,
+      "rate": 5.0,
+      "delay": 5.0,
+      "remaining": -1.0,
+      "staminaRate": 15.0,
+      "staminaDelay": 1.5,
+      "hudHealth": 1.0,
+      "dead": false,
+      "escaped": false,
+      "canAct": true,
+      "authority": false
+    }
+  },
+  {
+    "check": "client player 2: stamina unchanged 15/s, 1.5s delay",
+    "passed": true,
+    "details": null
+  },
+  {
+    "check": "client player 1: settings 5 HP/s after 5s",
+    "passed": true,
+    "details": {
+      "owner": 1,
+      "tick": 566,
+      "damage": 0,
+      "delta": 0.015625,
+      "health": 100.0,
+      "rate": 5.0,
+      "delay": 5.0,
+      "remaining": -1.0,
+      "staminaRate": 15.0,
+      "staminaDelay": 1.5,
+      "hudHealth": -1.0,
+      "dead": false,
+      "escaped": false,
+      "canAct": true,
+      "authority": false
+    }
+  },
+  {
+    "check": "client player 1: stamina unchanged 15/s, 1.5s delay",
+    "passed": true,
+    "details": null
+  },
+  {
+    "check": "damage starts full five-second timer",
+    "passed": true,
+    "details": {
+      "owner": 1,
+      "tick": 559,
+      "damage": 1,
+      "delta": 0.015625,
+      "health": 60.0,
+      "rate": 5.0,
+      "delay": 5.0,
+      "remaining": 5.0,
+      "staminaRate": 15.0,
+      "staminaDelay": 1.5,
+      "hudHealth": 1.0,
+      "dead": false,
+      "escaped": false,
+      "canAct": true,
+      "authority": true
+    }
+  },
+  {
+    "check": "no automatic healing before five seconds",
+    "passed": true,
+    "details": {
+      "owner": 1,
+      "tick": 811,
+      "damage": 1,
+      "delta": 0.015625,
+      "health": 60.0,
+      "rate": 5.0,
+      "delay": 5.0,
+      "remaining": 1.0625,
+      "staminaRate": 15.0,
+      "staminaDelay": 1.5,
+      "hudHealth": 0.6000000238418579,
+      "dead": false,
+      "escaped": false,
+      "canAct": true,
+      "authority": true
+    }
+  },
+  {
+    "check": "another damage restarts the five-second timer",
+    "passed": true,
+    "details": {
+      "owner": 1,
+      "tick": 818,
+      "damage": 2,
+      "delta": 0.015625,
+      "health": 40.0,
+      "rate": 5.0,
+      "delay": 5.0,
+      "remaining": 5.0,
+      "staminaRate": 15.0,
+      "staminaDelay": 1.5,
+      "hudHealth": 0.6000000238418579,
+      "dead": false,
+      "escaped": false,
+      "canAct": true,
+      "authority": true
+    }
+  },
+  {
+    "check": "old expiry does not begin healing",
+    "passed": true,
+    "details": {
+      "owner": 1,
+      "tick": 947,
+      "damage": 2,
+      "delta": 0.015625,
+      "health": 40.0,
+      "rate": 5.0,
+      "delay": 5.0,
+      "remaining": 2.984375,
+      "staminaRate": 15.0,
+      "staminaDelay": 1.5,
+      "hudHealth": 0.4000000059604645,
+      "dead": false,
+      "escaped": false,
+      "canAct": true,
+      "authority": true
+    }
+  },
+  {
+    "check": "automatic healing is five HP per second while walking",
+    "passed": true,
+    "details": {
+      "from": {
+        "owner": 1,
+        "tick": 1141,
+        "damage": 2,
+        "delta": 0.015625,
+        "health": 40.3125,
+        "rate": 5.0,
+        "delay": 5.0,
+        "remaining": 0.0,
+        "staminaRate": 15.0,
+        "staminaDelay": 1.5,
+        "hudHealth": 0.40234375,
+        "dead": false,
+        "escaped": false,
+        "canAct": true,
+        "authority": true
+      },
+      "to": {
+        "owner": 1,
+        "tick": 1270,
+        "damage": 2,
+        "delta": 0.015625,
+        "health": 50.390625,
+        "rate": 5.0,
+        "delay": 5.0,
+        "remaining": 0.0,
+        "staminaRate": 15.0,
+        "staminaDelay": 1.5,
+        "hudHealth": 0.503125011920929,
+        "dead": false,
+        "escaped": false,
+        "canAct": true,
+        "authority": true
+      },
+      "rate": 5.0
+    }
+  },
+  {
+    "check": "host health regeneration replicates to client",
+    "passed": true,
+    "details": {
+      "host": {
+        "owner": 1,
+        "tick": 1270,
+        "damage": 2,
+        "delta": 0.015625,
+        "health": 50.390625,
+        "rate": 5.0,
+        "delay": 5.0,
+        "remaining": 0.0,
+        "staminaRate": 15.0,
+        "staminaDelay": 1.5,
+        "hudHealth": 0.503125011920929,
+        "dead": false,
+        "escaped": false,
+        "canAct": true,
+        "authority": true
+      },
+      "client": {
+        "owner": 1,
+        "tick": 1285,
+        "damage": 2,
+        "delta": 0.015625,
+        "health": 51.171875,
+        "rate": 5.0,
+        "delay": 5.0,
+        "remaining": 0.0,
+        "staminaRate": 15.0,
+        "staminaDelay": 1.5,
+        "hudHealth": -1.0,
+        "dead": false,
+        "escaped": false,
+        "canAct": true,
+        "authority": false
+      }
+    }
+  },
+  {
+    "check": "local HUD follows regenerating HP",
+    "passed": true,
+    "details": {
+      "owner": 1,
+      "tick": 1270,
+      "damage": 2,
+      "delta": 0.015625,
+      "health": 50.390625,
+      "rate": 5.0,
+      "delay": 5.0,
+      "remaining": 0.0,
+      "staminaRate": 15.0,
+      "staminaDelay": 1.5,
+      "hudHealth": 0.503125011920929,
+      "dead": false,
+      "escaped": false,
+      "canAct": true,
+      "authority": true
+    }
+  },
+  {
+    "check": "healing clamps at max HP",
+    "passed": true,
+    "details": {
+      "owner": 1,
+      "tick": 1302,
+      "damage": 2,
+      "delta": 0.015625,
+      "health": 100.0,
+      "rate": 5.0,
+      "delay": 5.0,
+      "remaining": 0.0,
+      "staminaRate": 15.0,
+      "staminaDelay": 1.5,
+      "hudHealth": 1.0,
+      "dead": false,
+      "escaped": false,
+      "canAct": true,
+      "authority": true
+    }
+  },
+  {
+    "check": "continuous HP sprinting drains ten HP/s without healing",
+    "passed": true,
+    "details": {
+      "from": {
+        "owner": 2,
+        "tick": 1482,
+        "damage": 2,
+        "delta": 0.015625,
+        "health": 61.09375,
+        "rate": 5.0,
+        "delay": 5.0,
+        "remaining": 5.0,
+        "staminaRate": 15.0,
+        "staminaDelay": 1.5,
+        "hudHealth": -1.0,
+        "dead": false,
+        "escaped": false,
+        "canAct": true,
+        "authority": true
+      },
+      "to": {
+        "owner": 2,
+        "tick": 1553,
+        "damage": 4,
+        "delta": 0.015625,
+        "health": 50.0,
+        "rate": 5.0,
+        "delay": 5.0,
+        "remaining": 5.0,
+        "staminaRate": 15.0,
+        "staminaDelay": 1.5,
+        "hudHealth": -1.0,
+        "dead": false,
+        "escaped": false,
+        "canAct": true,
+        "authority": true
+      },
+      "rate": 10.0
+    }
+  },
+  {
+    "check": "every sprint damage tick resets recovery delay",
+    "passed": true,
+    "details": {
+      "owner": 2,
+      "tick": 1553,
+      "damage": 4,
+      "delta": 0.015625,
+      "health": 50.0,
+      "rate": 5.0,
+      "delay": 5.0,
+      "remaining": 5.0,
+      "staminaRate": 15.0,
+      "staminaDelay": 1.5,
+      "hudHealth": -1.0,
+      "dead": false,
+      "escaped": false,
+      "canAct": true,
+      "authority": true
+    }
+  },
+  {
+    "check": "sprint stops: no healing during recovery delay",
+    "passed": true,
+    "details": {
+      "from": {
+        "owner": 2,
+        "tick": 1586,
+        "damage": 4,
+        "delta": 0.015625,
+        "health": 49.21875,
+        "rate": 5.0,
+        "delay": 5.0,
+        "remaining": 4.5625,
+        "staminaRate": 15.0,
+        "staminaDelay": 1.5,
+        "hudHealth": -1.0,
+        "dead": false,
+        "escaped": false,
+        "canAct": true,
+        "authority": true
+      },
+      "to": {
+        "owner": 2,
+        "tick": 1811,
+        "damage": 4,
+        "delta": 0.015625,
+        "health": 49.21875,
+        "rate": 5.0,
+        "delay": 5.0,
+        "remaining": 1.046875,
+        "staminaRate": 15.0,
+        "staminaDelay": 1.5,
+        "hudHealth": -1.0,
+        "dead": false,
+        "escaped": false,
+        "canAct": true,
+        "authority": true
+      }
+    }
+  },
+  {
+    "check": "sprint HP resumes regeneration after last damage",
+    "passed": true,
+    "details": {
+      "from": {
+        "owner": 2,
+        "tick": 1882,
+        "damage": 4,
+        "delta": 0.015625,
+        "health": 49.609375,
+        "rate": 5.0,
+        "delay": 5.0,
+        "remaining": 0.0,
+        "staminaRate": 15.0,
+        "staminaDelay": 1.5,
+        "hudHealth": -1.0,
+        "dead": false,
+        "escaped": false,
+        "canAct": true,
+        "authority": true
+      },
+      "to": {
+        "owner": 2,
+        "tick": 1979,
+        "damage": 4,
+        "delta": 0.015625,
+        "health": 57.1875,
+        "rate": 5.0,
+        "delay": 5.0,
+        "remaining": 0.0,
+        "staminaRate": 15.0,
+        "staminaDelay": 1.5,
+        "hudHealth": -1.0,
+        "dead": false,
+        "escaped": false,
+        "canAct": true,
+        "authority": true
+      },
+      "rate": 5.0
+    }
+  },
+  {
+    "check": "client local HUD follows HP damage",
+    "passed": true,
+    "details": {
+      "owner": 2,
+      "tick": 1993,
+      "damage": 5,
+      "delta": 0.015625,
+      "health": 52.65625,
+      "rate": 5.0,
+      "delay": 5.0,
+      "remaining": 4.875,
+      "staminaRate": 15.0,
+      "staminaDelay": 1.5,
+      "hudHealth": 0.526562511920929,
+      "dead": false,
+      "escaped": false,
+      "canAct": true,
+      "authority": false
+    }
+  },
+  {
+    "check": "client cannot modify authoritative HP",
+    "passed": true,
+    "details": {
+      "owner": 2,
+      "tick": 2024,
+      "damage": 5,
+      "delta": 0.015625,
+      "health": 52.65625,
+      "rate": 5.0,
+      "delay": 5.0,
+      "remaining": 4.390625,
+      "staminaRate": 15.0,
+      "staminaDelay": 1.5,
+      "hudHealth": -1.0,
+      "dead": false,
+      "escaped": false,
+      "canAct": true,
+      "authority": true
+    }
+  },
+  {
+    "check": "jump HP shortfall resets recovery delay",
+    "passed": true,
+    "details": {
+      "owner": 2,
+      "tick": 2037,
+      "damage": 6,
+      "delta": 0.015625,
+      "health": 70.0,
+      "rate": 5.0,
+      "delay": 5.0,
+      "remaining": 5.0,
+      "staminaRate": 15.0,
+      "staminaDelay": 1.5,
+      "hudHealth": -1.0,
+      "dead": false,
+      "escaped": false,
+      "canAct": true,
+      "authority": true
+    }
+  },
+  {
+    "check": "attack HP shortfall resets recovery delay",
+    "passed": true,
+    "details": {
+      "owner": 1,
+      "tick": 2063,
+      "damage": 4,
+      "delta": 0.015625,
+      "health": 60.0,
+      "rate": 5.0,
+      "delay": 5.0,
+      "remaining": 4.921875,
+      "staminaRate": 15.0,
+      "staminaDelay": 1.5,
+      "hudHealth": 0.6000000238418579,
+      "dead": false,
+      "escaped": false,
+      "canAct": true,
+      "authority": true
+    }
+  },
+  {
+    "check": "StandBy immediate revive restores full HP and resets timer",
+    "passed": true,
+    "details": {
+      "owner": 2,
+      "tick": 2070,
+      "damage": 7,
+      "delta": 0.015625,
+      "health": 100.0,
+      "rate": 5.0,
+      "delay": 5.0,
+      "remaining": -1.0,
+      "staminaRate": 15.0,
+      "staminaDelay": 1.5,
+      "hudHealth": -1.0,
+      "dead": false,
+      "escaped": false,
+      "canAct": true,
+      "authority": true
+    }
+  },
+  {
+    "check": "revived StandBy player remains at max HP",
+    "passed": true,
+    "details": null
+  },
+  {
+    "check": "dead GamePlay player does not heal or revive",
+    "passed": true,
+    "details": {
+      "owner": 2,
+      "tick": 3307,
+      "damage": 1,
+      "delta": 0.015625,
+      "health": 0.0,
+      "rate": 5.0,
+      "delay": 5.0,
+      "remaining": 0.0,
+      "staminaRate": 15.0,
+      "staminaDelay": 1.5,
+      "hudHealth": -1.0,
+      "dead": true,
+      "escaped": false,
+      "canAct": false,
+      "authority": true
+    }
+  },
+  {
+    "check": "dead zero HP replicates to client",
+    "passed": true,
+    "details": {
+      "owner": 2,
+      "tick": 3306,
+      "damage": 1,
+      "delta": 0.015625,
+      "health": 0.0,
+      "rate": 5.0,
+      "delay": 5.0,
+      "remaining": 0.0,
+      "staminaRate": 15.0,
+      "staminaDelay": 1.5,
+      "hudHealth": 0.0,
+      "dead": true,
+      "escaped": false,
+      "canAct": false,
+      "authority": false
+    }
+  },
+  {
+    "check": "spectator is still created without health or stamina",
+    "passed": true,
+    "details": null
+  },
+  {
+    "check": "new StandBy player after game end starts at full health",
+    "passed": true,
+    "details": null
+  },
+  {
+    "check": "escaped player does not automatically heal",
+    "passed": true,
+    "details": {
+      "owner": 2,
+      "tick": 4469,
+      "damage": 1,
+      "delta": 0.015625,
+      "health": 60.0,
+      "rate": 5.0,
+      "delay": 5.0,
+      "remaining": 0.0,
+      "staminaRate": 15.0,
+      "staminaDelay": 1.5,
+      "hudHealth": -1.0,
+      "dead": false,
+      "escaped": true,
+      "canAct": false,
+      "authority": true
+    }
+  },
+  {
+    "check": "escaped HP state is replicated",
+    "passed": true,
+    "details": {
+      "owner": 2,
+      "tick": 4470,
+      "damage": 1,
+      "delta": 0.015625,
+      "health": 60.0,
+      "rate": 5.0,
+      "delay": 5.0,
+      "remaining": 0.0,
+      "staminaRate": 15.0,
+      "staminaDelay": 1.5,
+      "hudHealth": 0.6000000238418579,
+      "dead": false,
+      "escaped": true,
+      "canAct": false,
+      "authority": false
+    }
+  }
+]
