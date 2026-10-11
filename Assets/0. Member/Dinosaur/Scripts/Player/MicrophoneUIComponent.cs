@@ -4,8 +4,10 @@ using UnityEngine.UI;
 
 public class MicrophoneUIComponent : MonoBehaviour
 {
-    [SerializeField] private Graphic[] iconParts; //마이크 모양을 구성하는 표시
-    [SerializeField] private GameObject muteSlash; //음소거를 표시하는 사선
+    [SerializeField] private Image stateIcon; //본인 마이크 상태 아이콘
+    [SerializeField] private Sprite enabledIcon; //마이크 켜짐의 흰색 아이콘
+    [SerializeField] private Sprite mutedIcon; //음소거의 빨간 사선 아이콘
+    [SerializeField] private Sprite disconnectedIcon; //송신 불가의 회색 X 아이콘
     [SerializeField] private TMP_Text stateText; //현재 마이크 상태
     [SerializeField] private TMP_Text hintText; //송신 방식과 조작 키 안내
     [SerializeField] private Color enabledColor = Color.white; //마이크 켜짐 색상
@@ -19,13 +21,11 @@ public class MicrophoneUIComponent : MonoBehaviour
         string label = muted ? "음소거" : !ready ? "송신 불가" : waitingForKey ? "말하기 대기" : "마이크 켜짐"; //현재 상태 문구
         string hint = pushToTalk ? $"{talkKey} 눌러 말하기 · {muteKey} 음소거" : $"음성 인식 · {muteKey} 음소거"; //현재 방식의 사용법
         if (stateText.text != label) stateText.text = label;
-        if (stateText.color != color)
-        {
-            stateText.color = color;
-            foreach (Graphic part in iconParts)
-                if (part != null) part.color = color;
-        }
+        if (stateText.color != color) stateText.color = color;
+        Sprite icon = muted ? mutedIcon : !ready ? disconnectedIcon : enabledIcon; //기존 송신 판정에 맞는 표시
+        Color iconColor = !muted && waitingForKey ? waitingColor : Color.white; //완성된 컬러 아이콘의 중복 색 곱 방지
+        if (stateIcon.sprite != icon) stateIcon.sprite = icon;
+        if (stateIcon.color != iconColor) stateIcon.color = iconColor;
         if (hintText.text != hint) hintText.text = hint;
-        if (muteSlash.activeSelf != muted) muteSlash.SetActive(muted);
     }
 }

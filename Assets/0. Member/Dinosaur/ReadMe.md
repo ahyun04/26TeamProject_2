@@ -628,3 +628,17 @@
 - Host·Client 각각 점프와 달리기에서 완전한 암전 시작·중간 투명도·흐림 감소·연출 종료·상대 화면 미영향·동일 캐릭터 유지·즉시 부활·HUD·KCC·카메라 복원·사망음 시작을 확인했다. 반복 사망에도 연출이 한 번만 재생되고 끝나는 것을 확인했다.
 - 이후 실제 GamePlay로 시작하여 기존 사망 관전자 생성·능력치 UI 숨김·생존자 화면 미영향과 시간 종료·자동 StandBy 복귀까지 확인했다. 물리 Space·Shift 키 조작과 실제 스피커 청취는 이번 검사에 포함하지 않았다.
 - 검사 기록은 outputs/standby-death-effects-20261011에 저장했다. 임시 검사 코드를 제거한 최종 제품 컴파일 결과는 같은 폴더에 기록한다. 기존 셰이더 오류는 이번 변경 범위 밖이며 수정하지 않았다.
+
+## 28. 마이크 상태 아이콘 리소스 적용 — 2026-10-11
+
+- 제작한 흰색 마이크 켜짐·빨간 사선 음소거·회색 X 송신 불가 아이콘을 기존 MicrophoneHUD.prefab에 적용했다. 기존 좌하단 패널·상태 문구·키 안내와 위치는 유지한다. 생존자와 관전자가 참조하는 같은 공용 HUD이므로 양쪽 모두 새 아이콘을 사용한다.
+- VoiceMuteController → MicrophoneUIComponent 호출과 음성 연결·채널·V 음소거·T 눌러 말하기 판정은 변경하지 않았다. MicrophoneUIComponent는 기존 상태를 받아 세 Sprite를 선택한다. 완료된 컬러 PNG는 Image.color=white로 표시해 색이 두 번 곱해지지 않도록 했다.
+- 눌러서 말하기 모드에서 연결은 되어 있지만 T키를 누르지 않은 경우에는 기존 흰색 마이크 Sprite를 회색으로 표시하고 말하기 대기 문구를 유지한다. 연결·송신 불가는 회색 X Sprite, 음소거는 빨간 사선 Sprite다. 기존 음소거 우선 표시를 유지한다.
+- 실제 리소스는 Assets/0. Member/Dinosaur/UI/Microphone 안의 microphone-on.png, microphone-muted.png, microphone-disconnected.png다. 256×256 투명 PNG를 Single Sprite·Full Rect·Bilinear·Clamp·무압축·Mipmap 없음으로 임포트했다. 기존 프리팹·스크립트 GUID를 보존하고 새 폴더·PNG의 .meta를 포함했다.
+- 이전 여러 도형과 별도 음소거 사선은 같은 MicrophoneIcon 위치의 단일 Image로 교체했다. 64×64 이미지 영역을 사용하고 기존 패딩을 포함하므로 마이크 본체의 표시 크기는 기존과 비슷하다. 추가 Inspector 연결은 없다.
+
+확인:
+
+- Unity 2022.3.58f1의 실제 HUD 프리팹을 렌더링하여 켜짐·음소거·송신 불가·PTT 대기·PTT 송신 5가지 상태의 Sprite·색상·문구·레이아웃을 확인했다. 검사 코드는 Editor 어셈블리에서 내부 표시 함수를 호출하도록 반사를 사용했다.
+- Player.prefab와 Spectator.prefab의 기존 MicrophoneHUD 참조를 확인했다. 음성 로직은 변경하지 않았으며 이번 검사는 실제 마이크·T/V 키·새로운 네트워크 참가·청취 검사까지 실행한 것은 아니다.
+- 상태별 프리팹 렌더링과 검사 결과는 outputs/microphone-hud-20261011에 보관한다. 시안·벡터 원본은 outputs/microphone-icons-20261011에 있다. 최종 제품 전용 컴파일 결과는 검사 폴더에 기록한다.

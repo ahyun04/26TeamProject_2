@@ -1,0 +1,4 @@
+Three microphone HUD states: enabled=#FFFFFF, muted=#FF4D4D with diagonal slash, disconnected=#9AA1AD with a circled X.
+PNG: 256x256, RGBA transparent background. SVG: 64x64 viewBox, same microphone geometry.
+Built-in image generation was used for concept exploration. Final resources use fresh SVG geometry rendered with Sharp for consistent UI contours; generated raster drafts were not edited.
+Game scripts, prefabs and voice logic were not changed. Assets are not yet connected to the HUD. No commit or push performed.
