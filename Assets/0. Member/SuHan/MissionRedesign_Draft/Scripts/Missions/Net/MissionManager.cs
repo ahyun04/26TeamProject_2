@@ -66,6 +66,11 @@ namespace TrustNoOne.Missions
         /// <summary>탈출 조건 해금 여부 (탈출구 오브젝트가 읽는다).</summary>
         [Networked] public NetworkBool EscapeUnlocked { get; private set; }
 
+        /// <summary>
+        /// 단체 + 시민 개인 미션이 모두 완료되었는가 (6b 명세 SW4 — 옛 MissionSystem 과 같은 이름 · 의미, GameEndSystem 이 읽는다).
+        /// </summary>
+        [Networked] public NetworkBool CitizenMissionsCompleted { get; private set; }
+
         // ───────────── 이벤트 (호스트에서 발생, GameEndSystem 등이 구독) ─────────────
 
         /// <summary>단체 미션이 전부 완료된 순간 1회.</summary>
@@ -76,6 +81,11 @@ namespace TrustNoOne.Missions
 
         /// <summary>탈출 조건이 해금된 순간 1회.</summary>
         public event Action OnEscapeUnlocked;
+
+        /// <summary>
+        /// 단체 + 시민 개인 미션이 모두 완료된 순간 1회 (6b 명세 SW4 — 옛 MissionSystem 과 같은 이름. GameEndSystem 이 시민 승리를 판정한다).
+        /// </summary>
+        public event Action OnCitizenMissionsCompleted;
 
         /// <summary>
         /// 제한 시간 초과로 어떤 미션이 처음부터 다시 시작될 때 (호스트). 인자 = 그 미션의 Trigger 행동.
@@ -266,6 +276,7 @@ namespace TrustNoOne.Missions
             CitizenProgressRequired = 0;
             TeamCompleted = false;
             EscapeUnlocked = false;
+            CitizenMissionsCompleted = false;
             Initialized = false;
 
             Client?.ApplyClear();
@@ -338,6 +349,43 @@ namespace TrustNoOne.Missions
         public bool IsActionGoalSuccess(PlayerRef player)
         {
             return CanQuery && MissionOutcome.IsActionGoalSuccess(router.Objectives, player);
+        }
+
+        /// <summary>
+        /// 그 살인마의 살인마 미션이 하나 이상 있고 모두 완료되었는가 (호스트 전용, 6b 명세 SW3 — KillManager 의 즉사 기술 해금).
+        /// 미션이 없으면 false — 옛 동작 그대로 (살인마 미션이 기획되기 전까지 즉사 기술은 잠겨 있다).
+        /// </summary>
+        public bool HasCompletedKillerMissions(PlayerRef player)
+        {
+            return CanQuery && MissionOutcome.HasCompletedKillerMissions(router.Objectives, player);
+        }
+
+        /// <summary>
+        /// 시민 전체 합산 진행도 0 ~ 1 (6b 명세 — 옛 MissionSystem.GetCitizenMissionProgress 와 같은 이름 · 의미, 진행 게이지가 읽는다).
+        /// 네트워크 값으로 계산하므로 모든 PC 에서 읽을 수 있다. 필요한 양이 0 이면 0.
+        /// </summary>
+        public float GetCitizenMissionProgress()
+        {
+            return CitizenProgressRequired > 0 ? Mathf.Clamp01((float)CitizenProgressCurrent / CitizenProgressRequired) : 0f;
+        }
+
+        /// <summary>
+        /// 게임 중 나간 사람의 목표(개인 미션 · 행동 목표 · 살인마 미션)를 뺀다 (호스트 전용, 6b 명세 SW4 — 옛 removePlayerMissions).
+        /// 다시 집계해서 남은 사람이 모두 끝낸 상태면 시민 미션 완료 알림이 나간다.
+        /// GameEndSystem 은 퇴장 패배 판정을 먼저 한 뒤 부른다 (마지막 시민의 퇴장이 시민 승리로 처리되지 않게).
+        /// </summary>
+        public void RemovePlayerMissions(PlayerRef player)
+        {
+            if (!CanQuery)
+                return;
+
+            int removed = router.RemoveOwner(player);
+
+            if (removed == 0)
+                return;
+
+            Debug.Log($"[MissionManager] 나간 플레이어 {player} 의 목표 {removed}개를 뺐다");
+            RecomputeAggregates(fireEvents: true);
         }
 
         /// <summary>
@@ -441,11 +489,15 @@ namespace TrustNoOne.Missions
             bool teamCompleted = MissionOutcome.IsTeamCompleted(objectives);
             bool escapeUnlocked = MissionOutcome.IsEscapeUnlocked(objectives, escapeMissionId);
 
+            bool citizenCompleted = MissionOutcome.AreCitizenMissionsCompleted(objectives);
+
             bool teamJustCompleted = teamCompleted && !TeamCompleted;
             bool escapeJustUnlocked = escapeUnlocked && !EscapeUnlocked;
+            bool citizenJustCompleted = citizenCompleted && !CitizenMissionsCompleted;
 
             TeamCompleted = teamCompleted;
             EscapeUnlocked = escapeUnlocked;
+            CitizenMissionsCompleted = citizenCompleted;
 
             List<PlayerRef> newlyCompletedPersonal = null;
 
@@ -482,6 +534,13 @@ namespace TrustNoOne.Missions
             {
                 Debug.Log("[MissionManager] 탈출 조건 해금");
                 OnEscapeUnlocked?.Invoke();
+            }
+
+            // 단체 완료 · 탈출 해금 알림 뒤 — 구독자(GameEndSystem)가 최신 단체 · 탈출 상태를 읽는다
+            if (citizenJustCompleted)
+            {
+                Debug.Log("[MissionManager] 시민 미션(단체 + 시민 개인) 전부 완료");
+                OnCitizenMissionsCompleted?.Invoke();
             }
         }
 

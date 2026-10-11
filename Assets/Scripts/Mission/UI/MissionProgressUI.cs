@@ -4,7 +4,7 @@ using UnityEngine.UI;
 
 public class MissionProgressUI : MonoBehaviour
 {
-    [SerializeField] private MissionSystem missionSystem;
+    [SerializeField] private TrustNoOne.Missions.MissionManager missionSystem; // 새 미션 시스템으로 교체(6b)
     [SerializeField] private Image gaugeFill;
     [SerializeField] private TMP_Text progressText;
 

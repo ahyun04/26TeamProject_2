@@ -94,6 +94,54 @@ namespace TrustNoOne.Missions
         }
 
         /// <summary>
+        /// 시민 미션(단체 + 시민 개인)이 모두 완료되었는가 (6b 명세 SW4 — 옛 MissionSystem.CitizenMissionsCompleted 와 같은 의미).
+        /// 단체 · 개인 목표가 하나도 없으면 false — 설정 실수로 시작하자마자 시민이 이기는 것을 막는다 (IsTeamCompleted 와 같은 안전장치).
+        /// 행동 목표 · 살인마 미션은 보지 않는다 (행동 목표는 GameEndSystem 이 남은 시민마다 따로 본다).
+        /// </summary>
+        public static bool AreCitizenMissionsCompleted(IReadOnlyList<IMissionObjective> objectives)
+        {
+            bool hasMission = false;
+
+            foreach (IMissionObjective objective in objectives)
+            {
+                MissionCategory category = objective.Definition.Category;
+
+                if (category != MissionCategory.Team && category != MissionCategory.Personal)
+                    continue;
+
+                hasMission = true;
+
+                if (objective.Status != ObjectiveStatus.Completed)
+                    return false;
+            }
+
+            return hasMission;
+        }
+
+        /// <summary>
+        /// 그 살인마의 살인마 미션이 하나 이상 있고 모두 완료되었는가 (6b 명세 SW3 — 즉사 기술 해금, KillManager 가 묻는다).
+        /// IsPersonalCompleted 와 달리 "없음"은 false — 기획서 "살인마 미션 → 살인 능력 활성화" 를 미션 없이 열지 않는다
+        /// (옛 동작 그대로: 살인마 미션이 기획되기 전까지 즉사 기술은 잠겨 있다).
+        /// </summary>
+        public static bool HasCompletedKillerMissions(IReadOnlyList<IMissionObjective> objectives, PlayerRef player)
+        {
+            bool hasMission = false;
+
+            foreach (IMissionObjective objective in objectives)
+            {
+                if (objective.Definition.Category != MissionCategory.Killer || objective.Owner != player)
+                    continue;
+
+                hasMission = true;
+
+                if (objective.Status != ObjectiveStatus.Completed)
+                    return false;
+            }
+
+            return hasMission;
+        }
+
+        /// <summary>
         /// 탈출 해금 여부.
         ///  - escapeMissionId 가 지정되고 이번 판에 그 미션이 있으면: 그 미션 완료 시 해금 (기본 TM005 탈출구 개방)
         ///  - 지정이 비었거나 이번 판에 그 미션이 뽑히지 않았으면: 단체 미션 전부 완료 시 해금
