@@ -103,7 +103,12 @@ public class PlayerHudUIComponent : MonoBehaviour
 
     internal void showDeath(NetworkRunner runner) //기존 피격·역할 안내 대신 사망 암전 표시
     {
-        setStatusVisible(false);
+        if (runner.SceneManager != null && runner.SceneManager.MainRunnerScene.name == "StandBy")
+        {
+            hideRole();
+            setCrosshairVisible(false);
+        }
+        else setStatusVisible(false);
         if (deathFeedback != null) deathFeedback.showDeath(runner);
     }
 

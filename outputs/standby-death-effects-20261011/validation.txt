@@ -1,0 +1,4 @@
+PASS 38 checks in two real Photon Host/Client peers: StandBy sprint/jump health depletion, repeat death, single effect playback, local-only screen, immediate revive, same player, HUD/camera/KCC and death audio.
+PASS GamePlay spectator death and automatic result return preserved.
+PASS compiled source matches product; no Scene/Prefab/serialized field/GUID changes; temporary probes/processes removed.
+Tests seeded stamina=0 and health=0.05, then sent actual Fusion movement/jump input. Physical key input and speaker listening were not tested.

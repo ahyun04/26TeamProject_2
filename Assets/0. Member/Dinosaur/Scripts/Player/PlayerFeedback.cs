@@ -71,17 +71,21 @@ public class PlayerFeedback : NetworkBehaviour
         if (hud != null && !health.IsDead) hud.showDamage();
     }
 
-    private void handleDeath() //게임 중 본인의 사망 화면 연출
+    private void handleDeath() //게임과 대기실에서 본인의 사망 화면 연출
     {
-        if (hud == null || Runner.SceneManager == null || Runner.SceneManager.MainRunnerScene.name != "GamePlay") return;
+        if (hud == null || Runner.SceneManager == null) return;
+        string sceneName = Runner.SceneManager.MainRunnerScene.name; //사망이 발생한 실제 네트워크 씬
+        if (sceneName != "GamePlay" && sceneName != "StandBy") return;
         hud.showDeath(Runner);
     }
 
     private void handleRevived() //부활 시 남아 있는 로컬 연출 복원
     {
         if (hud == null) return;
-        hud.cancelDeath();
         hud.setStatusVisible(true);
+        if (Runner.SceneManager != null && Runner.SceneManager.MainRunnerScene.name == "StandBy")
+            hud.showDeath(Runner); //같은 틱의 즉시 부활로 Died가 누락된 Client에도 연출 전달
+        else hud.cancelDeath();
     }
 
     public override void Despawned(NetworkRunner runner, bool hasState) //이벤트와 로컬 UI 정리

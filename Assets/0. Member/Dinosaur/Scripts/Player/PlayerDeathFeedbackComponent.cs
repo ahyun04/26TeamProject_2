@@ -9,7 +9,7 @@ public class PlayerDeathFeedbackComponent : MonoBehaviour
 {
     [SerializeField] private CanvasGroup blackOverlay; //사망 순간 화면을 덮는 검은 배경
     [SerializeField, Min(0f)] private float blackHoldSeconds = 0.3f; //검은 화면 최소 유지 시간
-    [SerializeField, Min(0.01f)] private float blackFadeSeconds = 1.2f; //관전자 화면이 밝아지는 시간
+    [SerializeField, Min(0.01f)] private float blackFadeSeconds = 1.2f; //본인 화면이 밝아지는 시간
     [SerializeField, Min(0.01f)] private float blurFadeSeconds = 1.5f; //흐린 시야가 선명해지는 시간
     [SerializeField, Range(0f, 1.5f)] private float blurRadius = 1.5f; //사망 직후 시야 흐림 강도
 
@@ -18,7 +18,7 @@ public class PlayerDeathFeedbackComponent : MonoBehaviour
     private VolumeProfile blurProfile; //공유 프로필을 수정하지 않는 런타임 설정
     private DepthOfField depthOfField; //기존 URP의 흐림 효과
 
-    internal void showDeath(NetworkRunner runner) //본인의 즉시 관전 전환을 검은 화면으로 가리기
+    internal void showDeath(NetworkRunner runner) //본인의 즉시 관전 전환과 대기실 부활을 검은 화면으로 가리기
     {
         if (deathRoutine != null || blackOverlay == null || !isActiveAndEnabled) return;
         blackOverlay.gameObject.SetActive(true);
@@ -49,13 +49,13 @@ public class PlayerDeathFeedbackComponent : MonoBehaviour
         blurVolume.weight = 1f;
     }
 
-    private IEnumerator fadeDeath(NetworkRunner runner) //관전자 카메라 준비 후 암전과 흐림을 부드럽게 해제
+    private IEnumerator fadeDeath(NetworkRunner runner) //본인 카메라 준비 후 암전과 흐림을 부드럽게 해제
     {
         float startedAt = Time.unscaledTime; //일시 정지에 영향받지 않는 연출 시작 시간
-        while (Time.unscaledTime - startedAt < blackHoldSeconds || !isSpectatorCameraReady(runner))
+        while (Time.unscaledTime - startedAt < blackHoldSeconds || !isLocalCameraReady(runner))
             yield return null;
 
-        float elapsed = 0f; //관전자 화면을 복원한 시간
+        float elapsed = 0f; //본인 화면을 복원한 시간
         float duration = Mathf.Max(blackFadeSeconds, blurFadeSeconds); //두 효과가 모두 끝나는 시간
         while (elapsed < duration)
         {
@@ -69,12 +69,18 @@ public class PlayerDeathFeedbackComponent : MonoBehaviour
         clearEffects();
     }
 
-    private bool isSpectatorCameraReady(NetworkRunner runner) //다른 플레이어의 카메라를 기다리지 않도록 본인 관전자 확인
+    private bool isLocalCameraReady(NetworkRunner runner) //현재 씬에 맞는 본인 카메라 준비 확인
     {
         if (runner == null || !runner.IsRunning) return false;
         NetworkObject player = runner.GetPlayerObject(runner.LocalPlayer); //승패 판정에 남아 있는 본인 몸
-        SpectatorManager spectator = player != null && player.IsValid ? player.GetComponent<SpectatorManager>() : null; //본인의 관전자 참조
         Transform listener = PlayerCameraController.LocalListenerTransform; //현재 실제 시점
+        if (player == null || !player.IsValid || listener == null || !listener.gameObject.activeInHierarchy) return false;
+        if (runner.SceneManager != null && runner.SceneManager.MainRunnerScene.name == "StandBy")
+        {
+            PlayerHealth health = player.GetComponent<PlayerHealth>(); //즉시 부활한 대기실 플레이어
+            return health != null && !health.IsDead && listener.IsChildOf(player.transform);
+        }
+        SpectatorManager spectator = player.GetComponent<SpectatorManager>(); //게임에서 생성한 본인 관전자
         return spectator != null && spectator.spectatorObject != null && spectator.spectatorObject.IsValid &&
             listener != null && listener.gameObject.activeInHierarchy && listener.IsChildOf(spectator.spectatorObject.transform);
     }

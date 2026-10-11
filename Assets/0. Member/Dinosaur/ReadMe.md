@@ -613,3 +613,18 @@
 - 추가 실제 2인 검사 12개에서 Host·Client 각각 두 번씩 StandBy 즉시 부활을 실행해 사망음 시작·부활 후 지속·카메라 유지·관전자 미생성을 확인했다. 검사 프로세스는 스피커 출력을 음소거했으므로 이번에는 실제 청취 확인을 수행하지 않았다.
 - 실제 카메라 화면과 검사 결과는 outputs/death-result-audio-20261011에 보관했다. 숨긴 테스트 창의 기본 ScreenCapture가 검은 이미지였기 때문에 실제 카메라와 UI를 RenderTexture로 렌더해 촬영했다. 결과 화면 촬영 후 확인한 기존 둥근 배경의 모서리 누출은 전체 검은 Image로 수정했다.
 - 기존 Laver_Shader_Graph.shadergraph의 문법 오류와 차단기 _Off_On 속성 오류는 이번 요청 범위 밖이며 유지했다. 최종 제품 전용 Unity C# 컴파일·Fusion 코드 생성은 종료 코드 0으로 통과했다. 모든 테스트 프로세스·임시 코드·테스트 설정을 정리했다. 최종 컴파일 결과는 같은 outputs 폴더에 기록했다.
+
+## 27. StandBy 체력 소진 사망 연출 — 2026-10-11
+
+- 26절의 사망 암전 적용 범위를 StandBy까지 확장했다. 대기실에서 달리기·점프로 스태미나와 체력이 소진되면 본인 화면에 검은 화면 0.3초 유지, 1.2초 밝아짐, 1.5초 흐림 해제가 재생된다. 기존 PlayerHUD.prefab의 PlayerDeathFeedbackComponent 설정값을 그대로 사용한다.
+- PlayerFeedback는 StandBy의 Died와 revived 알림을 같은 표시 진입점으로 전달한다. Host가 같은 틱에 사망·즉시 부활하고 Client에 IsDead가 복제되지 않는 경우에도 기존 Networked 부활 알림으로 연출한다. Host의 두 알림과 중복 요청은 이미 실행 중인 연출을 다시 시작하지 않는다.
+- PlayerDeathFeedbackComponent는 StandBy에서 즉시 부활한 본인 플레이어·카메라가 준비되면 페이드를 진행한다. GamePlay에서는 기존 본인 관전자 카메라 준비를 기다린다. 공유 후처리 설정이나 네트워크 권한은 변경하지 않았다.
+- PlayerHudUIComponent는 StandBy에서 체력·스태미나 UI를 유지하므로 즉시 회복한 수치가 정상적으로 보인다. 대기실의 같은 위치·시선·캐릭터·준비 상태 유지와 체력·스태미나 회복, 아이템 내려놓기, 관전자 미생성, 사망음 유지도 기존 동작을 사용한다.
+- 새 스크립트·프리팹·Scene 저장·Inspector 추가 연결은 없다. PlayerFeedback.cs, PlayerDeathFeedbackComponent.cs, PlayerHudUIComponent.cs만 수정했다. GamePlay의 사망·관전·결과 화면과 자동 StandBy 복귀는 유지한다.
+
+검증:
+
+- 실제 독립 Host·Client와 비공개 Photon 방에서 38개 자동 검사를 통과했다. 검사 복사본에서 스태미나 0·체력 0.05를 준비한 뒤 실제 Fusion 점프·달리기 입력을 전달해 자원 소진 사망을 실행했다.
+- Host·Client 각각 점프와 달리기에서 완전한 암전 시작·중간 투명도·흐림 감소·연출 종료·상대 화면 미영향·동일 캐릭터 유지·즉시 부활·HUD·KCC·카메라 복원·사망음 시작을 확인했다. 반복 사망에도 연출이 한 번만 재생되고 끝나는 것을 확인했다.
+- 이후 실제 GamePlay로 시작하여 기존 사망 관전자 생성·능력치 UI 숨김·생존자 화면 미영향과 시간 종료·자동 StandBy 복귀까지 확인했다. 물리 Space·Shift 키 조작과 실제 스피커 청취는 이번 검사에 포함하지 않았다.
+- 검사 기록은 outputs/standby-death-effects-20261011에 저장했다. 임시 검사 코드를 제거한 최종 제품 컴파일 결과는 같은 폴더에 기록한다. 기존 셰이더 오류는 이번 변경 범위 밖이며 수정하지 않았다.
