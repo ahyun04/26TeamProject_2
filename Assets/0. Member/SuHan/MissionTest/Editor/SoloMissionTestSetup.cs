@@ -14,15 +14,16 @@ using Object = UnityEngine.Object;
 ///  - 단체 TG001 발전기 작동시키기: 진짜 GeneratorStation 3대 (LegacyMissionConverter 로 옛 발전기 프리팹을 변환)
 ///  - 개인 PS001 밸브 / PS002 차단기 / PS003 전선 / PS004 안테나 / PS005 압력 / PS006 필터(+ 청소기 아이템): 진짜 스테이션 (2a~2d, 옛 프리팹 변환 · 압력은 원본 패널 · 피스톤 모델에서 조립, 실패 시 자리 표시)
 ///  - 단체 TG002 코드 순서 맞추기: 진짜 CodeStation (3a, 원본 자판 모델에서 조립, 실패 시 자리 표시)
-///  - 단체 TG004 생명 유지 장치 복구: 진짜 LifeSupportStation (3b, 원본 모델에서 조립 — 화면 상자 · 밸브 옆 압력계 덧붙임) + 산소통 자리 후보 10곳 — 실행 중 본체가 6곳에 산소통을 놓는다. 실패 시 자리 표시
-///  - 단체 TG003 고장난 장비 조립: 진짜 AssemblyStation (3c, 원본 본체 · 부품 모델에서 조립) + 부품 자리 후보 2묶음(주변 4 · 맵 8) — 실행 중 장비가 부품 4개를 놓는다. 실패 시 자리 표시
-///  - 단체 TG005 대형 방화문 열기: 진짜 FireDoorStation (3d, 원본 문 · 패널 · 레버 모델에서 조립) + 레버 자리 후보 6곳 — 실행 중 방화문이 레버 2개를 놓는다. 실패 시 자리 표시
+///  - 단체 TG004 생명 유지 장치 복구: 진짜 LifeSupportStation (3b, 원본 모델에서 조립 — 화면 상자 · 밸브 옆 압력계 덧붙임) — 실행 중 본체가 1층 NavMesh 위 무작위로 산소통 6개를 놓는다 (6b 보강). 실패 시 자리 표시
+///  - 단체 TG003 고장난 장비 조립: 진짜 AssemblyStation (3c, 원본 본체 · 부품 모델에서 조립) — 실행 중 장비가 1층 NavMesh 위에 부품 4개(근처 1 · 멀리 3)를 놓는다 (6b 보강). 실패 시 자리 표시
+///  - 단체 TG005 대형 방화문 열기: 진짜 FireDoorStation (3d, 원본 문 · 패널 · 레버 모델에서 조립) — 실행 중 방화문이 앞쪽 1층 NavMesh 위에 레버 2개를 놓는다 (6b 보강). 실패 시 자리 표시
 ///  - (자리 표시 큐브 목록은 이제 비어 있다 — 단체 미션이 모두 진짜 장치가 됨)
 ///      단체는 Lock(완료 후 잠금), 개인은 ResetForNext(완료 후 원래대로) — 명세 S3
 ///  - 개인 행동 목표 AG101 뛰지 않는다: TestRunReporter (Shift 달리기 감지)
 ///  - 디버그 패널(F9 확정 / F10 공개, 단체 미션 남은 시간), 홀드 게이지 HUD
 ///  - (6a) 네트워크 오브젝트(장치 · 청소기 · 미션 관리자)는 씬에 프리팹 인스턴스로 미리 놓는다 — 씬만 열어도 배치가 보인다. 플레이어만 실행 중에 스폰.
 ///      시작 방식(혼자 / 호스트 / 손님)은 MissionTestBootstrap 시작 화면, 멀티 배정(F5 · F6) · 판 다시 시작(F7)은 MissionTestAssignmentPanel (6a 명세 MT6 · MT7)
+///  - (6b 보강) 1층 아이템 NavMesh: 장치를 다 놓은 뒤 MissionTestLayout 아래 `NavMesh (1층 아이템 구역)` 을 굽는다 (바닥 ±40m) — 산소통 · 부품 · 레버는 그 위 무작위
 ///
 /// [이식이 진행되면] 자리 표시 큐브를 하나씩 진짜 스테이션으로 바꾼다 (PlaceholderStations 에서 빼고 변환 결과를 배치).
 /// [다시 실행해도 안전] 에셋은 값만 갱신, 씬의 MissionTestLayout 은 지우고 새로 만든다 (씬에서 손으로 옮긴 장치 위치도 원래대로 돌아간다).
@@ -143,41 +144,16 @@ public static class SoloMissionTestSetup
     private static readonly PlaceholderSpec LifeSupportFallback =
         Team("Placeholder_TG004_LifeSupport", "생명 유지 장치 복구", "TG004", MissionEventType.LifeSupportRestored, new Vector3(3f, 0f, 16f));
 
-    // 3b 산소통 자리 후보 10곳 (명세 5장): 바닥 곳곳, 다른 스테이션과 겹치지 않는다. 판마다 본체가 이 중 6곳을 고른다 (LS7)
-    private static readonly Vector3[] OxygenTankSpotPositions =
-    {
-        new Vector3(-20f, 0f, 24f), new Vector3(20f, 0f, 24f), new Vector3(-20f, 0f, -16f), new Vector3(20f, 0f, -16f),
-        new Vector3(-24f, 0f, 4f), new Vector3(24f, 0f, 4f), new Vector3(0f, 0f, 28f),
-        new Vector3(-12f, 0f, -20f), new Vector3(12f, 0f, -20f), new Vector3(0f, 0f, -24f),
-    };
-
     // 3c 장비 조립: TG003 자리 표시 자리 (먼 앞줄). 변환에 실패하면 이 자리 표시로 대체한다.
     private static readonly PlaceholderSpec AssemblyFallback =
         Team("Placeholder_TG003_Assembly", "고장난 장비 조립", "TG003", MissionEventType.EquipmentAssembled, new Vector3(-3f, 0f, 16f));
-
-    // 3c 부품 자리 후보 (명세 5장, EA4): 주변 묶음 — 조립 위치 원 밖, 장비에서 4 ~ 5m, 다른 장치와 3.5m 이상
-    private static readonly Vector3[] EquipmentNearSpotPositions =
-    {
-        new Vector3(-7f, 0f, 13f), new Vector3(1.5f, 0f, 12.5f), new Vector3(-6f, 0f, 19.5f), new Vector3(0f, 0f, 19.5f),
-    };
-
-    // 맵 묶음 — 산소통 자리와 10m 이상
-    private static readonly Vector3[] EquipmentFarSpotPositions =
-    {
-        new Vector3(-30f, 0f, 12f), new Vector3(30f, 0f, 12f), new Vector3(-28f, 0f, -24f), new Vector3(28f, 0f, -24f),
-        new Vector3(-10f, 0f, 32f), new Vector3(10f, 0f, 32f), new Vector3(-32f, 0f, -4f), new Vector3(32f, 0f, -4f),
-    };
 
     // 3d 방화문: 옛 TG005 자리 (9, 16) 은 패널 포함 폭 7.6m 가 생명 유지 장치 (3, 16) 과 너무 가까워 (14, 16) 으로 (명세 FD16)
     private static readonly PlaceholderSpec FireDoorFallback =
         Team("Placeholder_TG005_FireDoor", "대형 방화문 열기", "TG005", MissionEventType.FireDoorOpened, new Vector3(14f, 0f, 16f));
 
-    // 3d 레버 자리 후보 6곳 (명세 5장, FD6): 방화문 주변 바닥, 다른 장치 · 아이템 자리와 3m 이상
-    private static readonly Vector3[] FireDoorLeverSpotPositions =
-    {
-        new Vector3(10f, 0f, 11f), new Vector3(18f, 0f, 11f), new Vector3(14f, 0f, 9.5f),
-        new Vector3(21f, 0f, 15f), new Vector3(8f, 0f, 18.5f), new Vector3(18.5f, 0f, 20f),
-    };
+    // 테스트 씬 1층 아이템 NavMesh 범위 (6b 보강 NS3): 바닥(Plane) 위 ±40m, 높이 −0.5 ~ +2.0m
+    private static readonly Bounds TestNavMeshVolume = new Bounds(new Vector3(0f, 0.75f, 0f), new Vector3(80f, 2.5f, 80f));
 
     // 필터 옆 바닥에 청소기 (필터 청소는 청소기를 들어야 한다 — 2c 명세 F1)
     private static readonly Vector3 VacuumToolPosition = new Vector3(10.5f, 0f, -6f);
@@ -579,11 +555,8 @@ public static class SoloMissionTestSetup
         CreateInfoLabel(layoutRoot.transform, "Info (방화문)", FireDoorFallback.Position + new Vector3(0f, 3.2f, 0f),
             "대형 방화문 열기 · TG005\n다른 단체 미션 완료 → 레버 2개 끼우기(우클릭) → 30초 안에 내리기(클릭)");
 
-        // 아이템 자리 후보 (네트워크 오브젝트 아님 — 장치가 실행 중에 묶음 이름으로 찾는다)
-        CreateItemSpots(layoutRoot.transform, LifeSupportStation.TankSpotGroup, "산소통 자리 후보", OxygenTankSpotPositions);
-        CreateItemSpots(layoutRoot.transform, AssemblyStation.NearGroup, "장비 부품 — 장비 주변", EquipmentNearSpotPositions);
-        CreateItemSpots(layoutRoot.transform, AssemblyStation.FarGroup, "장비 부품 — 맵 곳곳", EquipmentFarSpotPositions);
-        CreateItemSpots(layoutRoot.transform, FireDoorStation.LeverSpotGroup, "방화문 레버", FireDoorLeverSpotPositions);
+        // 아이템(산소통 · 장비 부품 · 방화문 레버)은 장치가 실행 중에 1층 NavMesh 위 무작위로 놓는다 (6b 보강 NS1) → 장치를 다 놓은 뒤 굽는다
+        ItemNavMeshBaker.Bake(layoutRoot.transform, TestNavMeshVolume, $"{DataFolder}/SuhanTest_ItemNavMesh.asset");
 
         // 옛 시작 오브젝트(이름 SoloTestBootstrap — 실행 중 스폰 목록 · 미션 관리자 프리팹 연결이 남아 있다)는 지우고 새로 만든다 (6a MT10)
         DestroyIfExists("SoloTestBootstrap");
@@ -620,25 +593,6 @@ public static class SoloMissionTestSetup
         GameObject instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab.gameObject, parent);
         instance.name = name;
         instance.transform.SetPositionAndRotation(position, rotation);
-    }
-
-    /// <summary>아이템 자리 후보 묶음 (ItemSpots) — 네트워크 오브젝트가 아니다. 장치가 실행 중에 묶음 이름으로 찾는다 (3b LS7 · 3c EA4).</summary>
-    private static void CreateItemSpots(Transform parent, string group, string label, Vector3[] positions)
-    {
-        GameObject spotsObject = new GameObject($"ItemSpots {group} ({label})");
-        spotsObject.transform.SetParent(parent, false);
-
-        ItemSpots spots = spotsObject.AddComponent<ItemSpots>();
-        SerializedObject so = new SerializedObject(spots);
-        so.FindProperty("group").stringValue = group;
-        so.ApplyModifiedPropertiesWithoutUndo();
-
-        for (int i = 0; i < positions.Length; i++)
-        {
-            Transform spot = new GameObject($"Spot_{i:00}").transform;
-            spot.SetParent(spotsObject.transform, false);
-            spot.position = positions[i];
-        }
     }
 
     private static void CreateInfoLabel(Transform parent, string name, Vector3 position, string text)

@@ -18,17 +18,14 @@ namespace TrustNoOne.Missions
     /// [제한 시간 — EA3] 기본 없음. TG003 데이터에 시간을 넣으면 초과 시 공통 알림(OnMissionReset → ResetStation → OnResetHost)으로
     ///  붙은 부품이 사라지고 부품을 다시 흩는다.
     /// [동기화 — EA12] 자리별 붙은 시각 4개만. 날아오기는 각 PC 가 Object.RenderTime 으로 계산한다. 부품 목록은 호스트만 안다.
-    /// [배치 — EA4] 무작위 1색은 장비 주변 묶음(ItemSpots "EquipmentNear"), 나머지는 맵 묶음("EquipmentFar")의 서로 다른 자리.
+    /// [배치 — EA4 → 6b 보강 NS7] 1층 NavMesh 위 무작위: 무작위 1색은 장비에서 3.5 ~ 6m(조립 원 + 0.5m 밖), 나머지는 장비에서 10m 이상 · 서로 4m 이상.
     /// </summary>
     public class AssemblyStation : MissionStation
     {
-        /// <summary>장비 주변 자리 후보 묶음 이름 (ItemSpots).</summary>
-        public const string NearGroup = "EquipmentNear";
-
-        /// <summary>맵 곳곳 자리 후보 묶음 이름 (ItemSpots).</summary>
-        public const string FarGroup = "EquipmentFar";
-
         private static readonly string[] ColorNames = { "파랑", "회색", "빨강", "노랑" };
+
+        // 근처 부품은 조립 원 바깥으로 이만큼 더 떨어진다 (NS7)
+        private const float ZoneMargin = 0.5f;
 
         [Header("부품")]
         [Tooltip("부품 아이템 프리팹 4개 (색 순서: 파랑 · 회색 · 빨강 · 노랑 — EquipmentPart 의 색 번호와 같아야 한다)")]
@@ -48,6 +45,23 @@ namespace TrustNoOne.Missions
         [Tooltip("부품이 자리로 날아가는 시간 (초, EA6)")]
         [Min(0f)]
         [SerializeField] private float flyDuration = 0.4f;
+
+        [Header("부품 배치 (1층 NavMesh 위 무작위 — 6b 보강 NS7)")]
+        [Tooltip("장비 근처에 놓을 부품 1개: 장비에서 최소 거리 (m)")]
+        [Min(0f)]
+        [SerializeField] private float nearMin = 3.5f;
+
+        [Tooltip("장비 근처에 놓을 부품 1개: 장비에서 최대 거리 (m)")]
+        [Min(0f)]
+        [SerializeField] private float nearMax = 6f;
+
+        [Tooltip("나머지 부품: 장비에서 최소 거리 (m)")]
+        [Min(0f)]
+        [SerializeField] private float farMin = 10f;
+
+        [Tooltip("부품끼리 최소 거리 (m)")]
+        [Min(0f)]
+        [SerializeField] private float partSpacing = 4f;
 
         [Networked, Capacity(AssemblyRules.PartCount)] private NetworkArray<float> AttachTime => default;
 
@@ -162,45 +176,59 @@ namespace TrustNoOne.Missions
                 PublishProgress(actor);
         }
 
-        /// <summary>호스트: 주변 1색 + 맵 나머지로 부품을 놓는다 (EA4).</summary>
+        /// <summary>호스트: 1층 NavMesh 위 무작위로 부품을 놓는다 — 무작위 1색은 장비 근처, 나머지는 멀리 (EA4 → 6b 보강 NS7).</summary>
         private void PlaceParts()
         {
-            ItemSpots near = ItemSpots.Find(NearGroup);
-            ItemSpots far = ItemSpots.Find(FarGroup);
-            int nearCount = near != null ? near.Count : 0;
-            int farCount = far != null ? far.Count : 0;
+            if (!NavMeshSpawnArea.TryCreate(name, out NavMeshSpawnArea area))
+                return;
 
-            if (nearCount + farCount == 0)
+            if (!area.TryGetOrigin(transform, out Vector3 origin))
             {
-                Debug.LogError($"[AssemblyStation] {name}: 씬에 ItemSpots(묶음 \"{NearGroup}\" · \"{FarGroup}\" — 부품 자리 후보)가 없어 부품을 놓지 못했습니다.");
+                Debug.LogError($"[AssemblyStation] {name}: 장비 근처(3m)에 1층 NavMesh 가 없어 부품을 놓지 못했습니다 (장비 위치 · NavMesh 범위 확인).");
                 return;
             }
 
-            bool[] isNear = new bool[AssemblyRules.PartCount];
-            int[] spot = new int[AssemblyRules.PartCount];
-            int placed = AssemblyRules.PickPlacement(nearCount, farCount, isNear, spot, n => Random.Range(0, n));
-
-            if (placed < AssemblyRules.PartCount)
-                Debug.LogWarning($"[AssemblyStation] {name}: 자리 후보가 모자라 부품을 {placed}개만 놓았습니다.");
-
+            Vector3 machine = transform.position;
+            Vector3[] machineOnly = { machine };
+            Vector3[] zoneOnly = { zoneCenter.position };
+            List<Vector3> placed = new List<Vector3>();
+            // 장비에 오면 무엇을 찾을지 보이게 — 근처에 둘 색 하나는 판마다 무작위 (EA4 와 같은 뜻)
+            int nearColor = Random.Range(0, AssemblyRules.PartCount);
             StringBuilder log = new StringBuilder();
 
             for (int c = 0; c < AssemblyRules.PartCount; c++)
             {
-                if (spot[c] < 0)
-                    continue;
+                bool near = c == nearColor;
+                Vector3 at;
+                bool found;
 
-                Transform at = (isNear[c] ? near : far).Get(spot[c]);
-                NetworkObject spawned = Runner.Spawn(partPrefabs[c], at.position, at.rotation);
+                if (near)
+                    found = area.TryPickNear(origin, machine, nearMin, nearMax,
+                        p => SpawnPointRules.IsFarFromAll(p, zoneOnly, zoneRadius + ZoneMargin) && SpawnPointRules.IsFarFromAll(p, placed, partSpacing),
+                        out at);
+                else
+                    found = area.TryPickAnywhere(origin,
+                        p => SpawnPointRules.IsFarFromAll(p, machineOnly, farMin) && SpawnPointRules.IsFarFromAll(p, placed, partSpacing),
+                        out at);
+
+                if (!found)
+                {
+                    Debug.LogWarning($"[AssemblyStation] {name}: {ColorNames[c]} 부품 자리를 찾지 못했습니다 ({(near ? "근처" : "멀리")}).");
+                    continue;
+                }
+
+                placed.Add(at);
+
+                NetworkObject spawned = Runner.Spawn(partPrefabs[c], at, NavMeshSpawnArea.RandomYaw());
                 EquipmentPart part = spawned != null ? spawned.GetComponent<EquipmentPart>() : null;
 
                 if (part != null)
                     parts.Add(part);
 
-                log.Append(ColorNames[c]).Append(": ").Append(isNear[c] ? "주변 " : "맵 ").Append(at.name).Append("  ");
+                log.Append(ColorNames[c]).Append(near ? ": 근처 " : ": 멀리 ").Append(NavMeshSpawnArea.Describe(at)).Append("  ");
             }
 
-            Debug.Log($"[AssemblyStation] {name}: 부품 {placed}개 배치 — {log}");
+            Debug.Log($"[AssemblyStation] {name}: 부품 {placed.Count}개 배치 — {log}");
         }
 
         private void ClearAttached()

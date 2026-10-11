@@ -31,9 +31,6 @@ namespace TrustNoOne.Missions
         /// <summary>화면에 뜨는 가장 긴 문구 — 변환기가 글자 크기를 이 문구에 맞춘다.</summary>
         public const string LongestScreenText = WarningText + " 5";
 
-        /// <summary>산소통 자리 후보 묶음 이름 (ItemSpots, LS7).</summary>
-        public const string TankSpotGroup = "OxygenTank";
-
         private const int ScreenIdle = 0;
         private const int ScreenCheck = 1;
         private const int ScreenWarning = 2;
@@ -79,6 +76,15 @@ namespace TrustNoOne.Missions
 
         [Tooltip("위험한 통 판정 중 화면 WARNING 글자가 깜빡이는 간격 (초) — 경고 램프 대신 (3b 보강 명세 LM8)")]
         [SerializeField] private float blinkPeriod = 0.25f;
+
+        [Header("산소통 배치 (1층 NavMesh 위 무작위 — 6b 보강 NS6)")]
+        [Tooltip("산소통끼리 최소 거리 (m)")]
+        [Min(0f)]
+        [SerializeField] private float tankSpacing = 4f;
+
+        [Tooltip("본체에서 최소 거리 (m)")]
+        [Min(0f)]
+        [SerializeField] private float tankMinFromStation = 3f;
 
         [Networked] private int SuppliedCount { get; set; }
         [Networked] private float InsertStart { get; set; }
@@ -267,33 +273,48 @@ namespace TrustNoOne.Missions
             return hit;
         }
 
-        /// <summary>호스트: 자리 후보 중 tankCount 곳을 골라 산소통을 만든다 (정상 = requiredSupplies 개, LS2 · LS7).</summary>
+        /// <summary>호스트: 1층 NavMesh 위 무작위 지점에 산소통 tankCount 개를 만든다 (정상 = requiredSupplies 개, LS2 · 6b 보강 NS6).</summary>
         private void PlaceTanks()
         {
-            ItemSpots spots = ItemSpots.Find(TankSpotGroup);
+            if (!NavMeshSpawnArea.TryCreate(name, out NavMeshSpawnArea area))
+                return;
 
-            if (spots == null || spots.Count == 0)
+            if (!area.TryGetOrigin(transform, out Vector3 origin))
             {
-                Debug.LogError($"[LifeSupportStation] {name}: 씬에 ItemSpots(묶음 \"{TankSpotGroup}\" — 산소통 자리 후보)가 없어 산소통을 놓지 못했습니다.");
+                Debug.LogError($"[LifeSupportStation] {name}: 본체 근처(3m)에 1층 NavMesh 가 없어 산소통을 놓지 못했습니다 (본체 위치 · NavMesh 범위 확인).");
                 return;
             }
 
-            int[] picked = new int[tankCount];
-            int count = LifeSupportRules.PickSpots(spots.Count, picked, n => Random.Range(0, n));
-            bool[] dangerous = new bool[count];
-            LifeSupportRules.DrawDangers(dangerous, requiredSupplies, n => Random.Range(0, n));
+            Vector3[] stationOnly = { transform.position };
+            List<Vector3> points = new List<Vector3>();
+
+            for (int i = 0; i < tankCount; i++)
+            {
+                // 본체에서 3m · 다른 산소통에서 4m 이상, 본체에서 걸어갈 수 있는 곳 (NS5 · NS6)
+                if (area.TryPickAnywhere(origin,
+                        p => SpawnPointRules.IsFarFromAll(p, stationOnly, tankMinFromStation) && SpawnPointRules.IsFarFromAll(p, points, tankSpacing),
+                        out Vector3 point))
+                    points.Add(point);
+            }
+
+            int count = points.Count;
+
+            if (count < tankCount)
+                Debug.LogWarning($"[LifeSupportStation] {name}: 산소통 자리를 {count}/{tankCount}개만 찾았습니다 (NavMesh 가 좁거나 간격이 큼).");
 
             if (count < requiredSupplies)
-                Debug.LogWarning($"[LifeSupportStation] {name}: 자리 후보가 {spots.Count}곳뿐이라 정상 산소통이 {requiredSupplies}개가 안 됩니다.");
+                Debug.LogWarning($"[LifeSupportStation] {name}: 정상 산소통이 {requiredSupplies}개가 안 됩니다.");
+
+            bool[] dangerous = new bool[count];
+            LifeSupportRules.DrawDangers(dangerous, requiredSupplies, n => Random.Range(0, n));
 
             StringBuilder log = new StringBuilder();
 
             for (int i = 0; i < count; i++)
             {
-                Transform spot = spots.Get(picked[i]);
                 bool danger = dangerous[i];
 
-                NetworkObject spawned = Runner.Spawn(tankPrefab, spot.position, spot.rotation,
+                NetworkObject spawned = Runner.Spawn(tankPrefab, points[i], NavMeshSpawnArea.RandomYaw(),
                     onBeforeSpawned: (runner, obj) => obj.GetComponent<OxygenTank>().HostSetDangerous(danger));
 
                 OxygenTank tank = spawned != null ? spawned.GetComponent<OxygenTank>() : null;
@@ -301,7 +322,7 @@ namespace TrustNoOne.Missions
                 if (tank != null)
                     tanks.Add(tank);
 
-                log.Append(spot.name).Append(danger ? "(위험) " : "(정상) ");
+                log.Append(NavMeshSpawnArea.Describe(points[i])).Append(danger ? "(위험) " : "(정상) ");
             }
 
             Debug.Log($"[LifeSupportStation] {name}: 산소통 {count}개 배치 — {log}");
