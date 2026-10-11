@@ -110,7 +110,7 @@ public class GameSettingsUIComponent : MonoBehaviour
     {
         if (sceneName == "GamePlay" && gameEndSystem == null)
             gameEndSystem = FindFirstObjectByType<GameEndSystem>();
-        if (SessionDisconnectUIComponent.IsOpen || isGameEnded())
+        if (SessionDisconnectUIComponent.IsOpen || GameResultFeedbackComponent.blocksPlayerInput || isGameEnded())
         {
             if (isOpen) close();
             openButton.gameObject.SetActive(false);
@@ -135,7 +135,7 @@ public class GameSettingsUIComponent : MonoBehaviour
 
     private void LateUpdate() //기존 방 메뉴와 설정 버튼 표시 협력
     {
-        bool canShowButton = !isOpen && !SessionDisconnectUIComponent.IsOpen && !isGameEnded() &&
+        bool canShowButton = !isOpen && !SessionDisconnectUIComponent.IsOpen && !GameResultFeedbackComponent.blocksPlayerInput && !isGameEnded() &&
             (sceneName == "Main" || sceneName == "Lobby" ||
              (sceneName == "StandBy" && LobbyRoomUI.Instance != null));
         if (openButton.gameObject.activeSelf != canShowButton) openButton.gameObject.SetActive(canShowButton);
@@ -154,7 +154,7 @@ public class GameSettingsUIComponent : MonoBehaviour
 
     private void open() //설정창 열기와 본인의 게임 입력 차단
     {
-        if (isOpen || owner == null || SessionDisconnectUIComponent.IsOpen || isGameEnded()) return;
+        if (isOpen || owner == null || SessionDisconnectUIComponent.IsOpen || GameResultFeedbackComponent.blocksPlayerInput || isGameEnded()) return;
         owner.beginSettingsEditing();
         PlayerAppearance.beginCustomization();
         lobbyUI?.beginEditing();

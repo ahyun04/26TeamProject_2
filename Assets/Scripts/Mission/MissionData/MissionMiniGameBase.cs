@@ -252,7 +252,7 @@ public abstract class MissionMiniGameBase : NetworkBehaviour
         RPC_PlayMissionSound(player, false);
     }
 
-    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All, TickAligned = false)]
     private void RPC_PlayMissionSound([RpcTarget] PlayerRef player, bool completed) //수행한 플레이어에게만 결과음 전달
     {
         GameAudio.playMissionResult(completed);

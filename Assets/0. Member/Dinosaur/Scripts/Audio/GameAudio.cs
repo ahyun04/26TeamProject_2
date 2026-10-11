@@ -8,7 +8,8 @@ public class GameAudio : MonoBehaviour
     [SerializeField] private GameSettingsUIComponent settingsUI; //설정창 담당
 
     private static GameAudio instance; //클라이언트 하나의 사운드 진입점
-    internal static bool blocksPlayerInput => instance != null && instance.settingsUI.blocksPlayerInput; //설정창 입력 차단
+    internal static bool blocksPlayerInput => GameResultFeedbackComponent.blocksPlayerInput ||
+        (instance != null && instance.settingsUI.blocksPlayerInput); //설정창과 종료 화면 입력 차단
     internal static bool isLobbySettingsOpen => instance != null && instance.settingsUI.isLobbyOpen; //통합 방 화면 열림 상태
 
     internal static bool showLobbySettings() //기존 방 메뉴의 통합 설정창 호출
@@ -120,6 +121,11 @@ public class GameAudio : MonoBehaviour
     internal static void playMissionResult(bool completed) //호스트가 확정한 본인의 미션 결과 재생
     {
         if (instance != null) instance.audioComponent.playMissionResult(completed);
+    }
+
+    internal static void playPlayerDeath(AudioClip clip, float volume) //부활과 씬 전환에도 본인 사망음 유지
+    {
+        if (instance != null) instance.audioComponent.playPlayerDeath(clip, volume);
     }
 
     private void OnApplicationPause(bool paused) //앱 일시 중단 시 설정 저장

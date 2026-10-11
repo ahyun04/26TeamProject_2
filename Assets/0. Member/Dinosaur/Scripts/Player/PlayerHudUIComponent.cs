@@ -1,4 +1,5 @@
 using System.Collections;
+using Fusion;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -10,6 +11,8 @@ public class PlayerHudUIComponent : MonoBehaviour
     [SerializeField] private Image staminaFill; //스태미나 게이지
     [SerializeField] private TMP_Text staminaText; //현재 스태미나와 최대 스태미나
     [SerializeField] private GameObject crosshair; //화면 중앙의 작은 흰색 십자
+    [SerializeField] private GameObject statusPanel; //관전 전환 때 숨길 체력과 스태미나
+    [SerializeField] private PlayerDeathFeedbackComponent deathFeedback; //로컬 사망 화면 연출
     [SerializeField] private PlayerDamageFeedbackComponent damageFeedback; //피격 화면 연출
     [SerializeField] private CanvasGroup rolePanel; //검은 배경 역할 안내
     [SerializeField] private TMP_Text roleText; //본인의 역할
@@ -31,6 +34,7 @@ public class PlayerHudUIComponent : MonoBehaviour
         if (stamina != null) refreshStamina(stamina.CurrentStamina, stamina.MaxStamina);
         hideRole();
         setCrosshairVisible(false);
+        cancelDeath();
     }
 
     private void OnEnable() //표시 재활성화 시 이벤트와 값 복원
@@ -86,6 +90,26 @@ public class PlayerHudUIComponent : MonoBehaviour
     internal void showDamage() //피격 연출 시작
     {
         if (damageFeedback != null) damageFeedback.showDamage();
+    }
+
+    internal void setStatusVisible(bool visible) //화면 연출은 유지하고 능력치 UI만 숨김
+    {
+        if (statusPanel != null) statusPanel.SetActive(visible);
+        if (damageFeedback != null) damageFeedback.enabled = visible;
+        if (visible) return;
+        hideRole();
+        setCrosshairVisible(false);
+    }
+
+    internal void showDeath(NetworkRunner runner) //기존 피격·역할 안내 대신 사망 암전 표시
+    {
+        setStatusVisible(false);
+        if (deathFeedback != null) deathFeedback.showDeath(runner);
+    }
+
+    internal void cancelDeath() //게임 종료와 부활 시 사망 후처리 정리
+    {
+        if (deathFeedback != null) deathFeedback.cancelDeath();
     }
 
     internal void setCrosshairVisible(bool visible) //역할 안내와 메뉴 상태에 맞춰 조준점 표시

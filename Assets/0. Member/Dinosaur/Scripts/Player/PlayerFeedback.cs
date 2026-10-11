@@ -23,6 +23,9 @@ public class PlayerFeedback : NetworkBehaviour
         hud = Instantiate(hudPrefab);
         hud.initialize(health, GetComponent<PlayerStamina>());
         health.Damaged += handleDamage;
+        health.Died += handleDeath;
+        health.revived += handleRevived;
+        if (health.IsDead) handleDeath();
     }
 
     public override void Render() //Client에도 역할 정보가 도착한 뒤 한 번 안내
@@ -38,8 +41,11 @@ public class PlayerFeedback : NetworkBehaviour
             gameEndSystem.Object.IsValid && gameEndSystem.IsGameEnded)
         {
             hud.hideRole();
+            hud.cancelDeath();
             return;
         }
+        if (SessionDisconnectUIComponent.IsOpen) hud.cancelDeath();
+        if (health != null && health.IsDead) return;
         if (roleShown) return;
 
         if (roleAssignment == null || roleAssignment.Object == null || !roleAssignment.Object.IsValid ||
@@ -57,17 +63,35 @@ public class PlayerFeedback : NetworkBehaviour
 
     internal void setVisible(bool visible) //관전자에게 체력과 스태미나 UI 숨김
     {
-        if (hud != null) hud.gameObject.SetActive(visible);
+        if (hud != null) hud.setStatusVisible(visible);
     }
 
     private void handleDamage() //본인의 피격 화면 표시
     {
-        if (hud != null) hud.showDamage();
+        if (hud != null && !health.IsDead) hud.showDamage();
+    }
+
+    private void handleDeath() //게임 중 본인의 사망 화면 연출
+    {
+        if (hud == null || Runner.SceneManager == null || Runner.SceneManager.MainRunnerScene.name != "GamePlay") return;
+        hud.showDeath(Runner);
+    }
+
+    private void handleRevived() //부활 시 남아 있는 로컬 연출 복원
+    {
+        if (hud == null) return;
+        hud.cancelDeath();
+        hud.setStatusVisible(true);
     }
 
     public override void Despawned(NetworkRunner runner, bool hasState) //이벤트와 로컬 UI 정리
     {
-        if (health != null) health.Damaged -= handleDamage;
+        if (health != null)
+        {
+            health.Damaged -= handleDamage;
+            health.Died -= handleDeath;
+            health.revived -= handleRevived;
+        }
         if (hud != null) Destroy(hud.gameObject);
         hud = null;
         roleAssignment = null;

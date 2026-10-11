@@ -63,14 +63,16 @@ public class PlayerAudioComponent : NetworkBehaviour
         deathPlayed = true;
         footstepSource.Stop();
         applyVolume();
-        if (deathSound != null) deathSource.PlayOneShot(deathSound);
+        if (deathSound == null) return;
+        if (HasInputAuthority) GameAudio.playPlayerDeath(deathSound, deathVolume);
+        else deathSource.PlayOneShot(deathSound);
     }
 
     private void resetAfterRevive() //부활 후 사망음과 발소리 재생 상태 초기화
     {
+        if (!HasStateAuthority && !deathPlayed) playDeath(); //같은 틱의 즉시 부활은 사망 상태가 복제되지 않아 부활 알림으로 보완
         deathPlayed = false;
         distanceToNextStep = 0f;
-        deathSource.Stop();
     }
 
     private void applyVolume() //전체와 효과음 설정 적용

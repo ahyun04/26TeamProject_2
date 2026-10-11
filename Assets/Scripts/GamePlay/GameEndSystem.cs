@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using Fusion;
 using UnityEngine;
@@ -25,6 +26,63 @@ public class GameEndSystem : NetworkBehaviour
     private readonly List<PlayerRef> players = new();
     private readonly Dictionary<PlayerRef, PlayerHealth> playerHealths = new();
     private readonly HashSet<PlayerRef> departedPlayers = new(); //패배 확정 후 퇴장한 플레이어
+    private readonly HashSet<PlayerRef> pendingResultPlayers = new(); //씬 전환 전에 결과 보관을 확인할 참가자
+    private bool resultRequestsSent; //종료 결과 전달 중복 방지
+    private bool returnRequested; //자동 대기실 복귀 중복 방지
+
+    public override void FixedUpdateNetwork() //모든 연결 참가자가 결과를 보관한 뒤 호스트만 자동 복귀
+    {
+        if (!HasStateAuthority || !IsGameEnded || returnRequested) return;
+        if (!resultRequestsSent) preparePlayerResults();
+        pendingResultPlayers.RemoveWhere(player => !isConnected(player));
+        if (!resultRequestsSent || pendingResultPlayers.Count != 0) return;
+        NetworkBootstrap bootstrap = FindFirstObjectByType<NetworkBootstrap>(); //기존 씬 전환 진입점
+        if (bootstrap == null) return;
+        returnRequested = true;
+        bootstrap.returnAfterGameEnd(this);
+    }
+
+    private bool isConnected(PlayerRef player) //결과 보관 대기 중 퇴장한 참가자 제외
+    {
+        foreach (PlayerRef connected in Runner.ActivePlayers)
+            if (connected == player) return true;
+        return false;
+    }
+
+    private void preparePlayerResults() //호스트가 확정한 본인 역할과 결과만 해당 참가자에게 전달
+    {
+        if (roleAssignment == null || roleAssignment.Object == null || !roleAssignment.Object.IsValid) return;
+        foreach (PlayerRef player in Runner.ActivePlayers)
+            if (GetPlayerResult(player) != PlayerResult.None && roleAssignment.TryGetRole(player, out _))
+                pendingResultPlayers.Add(player);
+        resultRequestsSent = true;
+        foreach (PlayerRef player in new List<PlayerRef>(pendingResultPlayers))
+        {
+            roleAssignment.TryGetRole(player, out PlayerRole role); //이미 검증한 참가자 역할
+            RPC_prepareGameResult(player, role, GetPlayerResult(player));
+        }
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All, TickAligned = false)]
+    private void RPC_prepareGameResult([RpcTarget] PlayerRef target, PlayerRole role, PlayerResult result) //씬이 사라지기 전 로컬 결과 보관 요청
+    {
+        NetworkBootstrap bootstrap = FindFirstObjectByType<NetworkBootstrap>(); //클라이언트의 지속 세션 진입점
+        if (bootstrap != null && bootstrap.prepareGameResult(Runner, role, result))
+            StartCoroutine(confirmResultNextFrame());
+    }
+
+    private IEnumerator confirmResultNextFrame() //수신 RPC 처리에서 벗어난 뒤 결과 보관 응답 전송
+    {
+        yield return null;
+        if (Object != null && Object.IsValid && Runner != null && Runner.IsRunning) RPC_confirmGameResult();
+    }
+
+    [Rpc(RpcSources.All, RpcTargets.StateAuthority, HostMode = RpcHostMode.SourceIsHostPlayer, TickAligned = false)]
+    private void RPC_confirmGameResult(RpcInfo info = default) //실제 요청한 참가자의 결과 보관 응답만 승인
+    {
+        if (!HasStateAuthority || !IsGameEnded || !resultRequestsSent || !isConnected(info.Source)) return;
+        pendingResultPlayers.Remove(info.Source);
+    }
 
     public override void Spawned()
     {

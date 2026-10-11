@@ -49,6 +49,7 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
     private bool returningToRoom; //대기실 복귀 중복 방지
     private bool _isMigrating; //방장 이탈로 호스트 마이그레이션 진행 중 (이 동안은 연결 종료 안내를 띄우지 않음)
     private SessionDisconnectUIComponent disconnectUI; //현재 연결 종료 안내창
+    private GameResultFeedbackComponent resultFeedback; //씬 전환을 넘어 유지하는 본인 결과 화면
 
     public static event Action<NetworkRunner, PlayerRef> OnPlayerJoinedEvent;
     public static event Action<NetworkRunner, PlayerRef> OnPlayerLeftEvent;
@@ -102,6 +103,7 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
     {
         if (_leaving) return;
         _leaving = true;
+        clearGameResult();
         try
         {
             GetSceneRefByName(lobbySceneName);
@@ -227,6 +229,34 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
         _isPrivate = room.IsPrivate;
     }
 
+    internal bool prepareGameResult(NetworkRunner source, PlayerRole role, PlayerResult result) //같은 세션의 본인 결과와 검은 화면 보관
+    {
+        if (source != _runner || _runner == null || !_runner.IsRunning || _leaving || disconnected) return false;
+        if (resultFeedback != null) return true;
+        GameResultUI ui = FindFirstObjectByType<GameResultUI>(); //기존 게임 결과 표시 진입점
+        resultFeedback = ui != null ? ui.prepareResult(source, role, result) : null;
+        if (resultFeedback == null) Debug.LogError("[NetworkBootstrap] 종료 화면을 준비할 수 없습니다.");
+        return resultFeedback != null;
+    }
+
+    internal async void returnAfterGameEnd(GameEndSystem gameEnd) //확정 결과가 전달된 게임의 자동 대기실 복귀
+    {
+        if (_runner == null || gameEnd == null || gameEnd.Object == null || !gameEnd.Object.IsValid ||
+            gameEnd.Runner != _runner || !gameEnd.IsGameEnded) return;
+        await returnToStandBy();
+    }
+
+    private void clearGameResult() //퇴장과 연결 실패 시 검은 화면 제거
+    {
+        if (resultFeedback != null) resultFeedback.cancel();
+        resultFeedback = null;
+    }
+
+    private void OnDestroy() //세션 진입점이 제거될 때 남은 결과 화면 정리
+    {
+        clearGameResult();
+    }
+
     internal async Task<bool> returnToStandBy() //종료된 게임의 참가자들을 방장 권한으로 대기실에 복귀
     {
         if (_runner == null || !_runner.IsRunning || !_runner.IsServer ||
@@ -274,6 +304,7 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
             return;
 
         disconnected = true;
+        clearGameResult();
         sessionConnected = false;
         LockdownProtocol.Lobby.Invite.GlobalLobbyInviteTransport.Instance?.UpdateLocalRoomStatus(false, null, false);
         Cursor.lockState = CursorLockMode.None;
@@ -423,6 +454,8 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
             room.InitializeRoom(_roomName, _maxPlayers, _isPrivate, runner.LocalPlayer);
         }
         OnSceneLoadDoneEvent?.Invoke(runner);
+        if (resultFeedback != null && runner.SceneManager != null && runner.SceneManager.MainRunnerScene.name == roomSceneName)
+            resultFeedback.showAfterSceneLoad(runner, roomSceneName);
     }
     public void OnSceneLoadStart(NetworkRunner runner) { }
     public void OnObjectExitAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
