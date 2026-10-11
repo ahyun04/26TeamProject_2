@@ -14,7 +14,7 @@ using Object = UnityEngine.Object;
 ///  - 단체 TG001 발전기 작동시키기: 진짜 GeneratorStation 3대 (LegacyMissionConverter 로 옛 발전기 프리팹을 변환)
 ///  - 개인 PS001 밸브 / PS002 차단기 / PS003 전선 / PS004 안테나 / PS005 압력 / PS006 필터(+ 청소기 아이템): 진짜 스테이션 (2a~2d, 옛 프리팹 변환 · 압력은 원본 패널 · 피스톤 모델에서 조립, 실패 시 자리 표시)
 ///  - 단체 TG002 코드 순서 맞추기: 진짜 CodeStation (3a, 원본 자판 모델에서 조립, 실패 시 자리 표시)
-///  - 단체 TG004 생명 유지 장치 복구: 진짜 LifeSupportStation (3b, 기본 도형 자리 표시) + 산소통 자리 후보 10곳 — 실행 중 본체가 6곳에 산소통을 놓는다. 실패 시 자리 표시
+///  - 단체 TG004 생명 유지 장치 복구: 진짜 LifeSupportStation (3b, 원본 모델에서 조립 — 화면 상자 · 밸브 옆 압력계 덧붙임) + 산소통 자리 후보 10곳 — 실행 중 본체가 6곳에 산소통을 놓는다. 실패 시 자리 표시
 ///  - 단체 TG003 고장난 장비 조립: 진짜 AssemblyStation (3c, 원본 본체 · 부품 모델에서 조립) + 부품 자리 후보 2묶음(주변 4 · 맵 8) — 실행 중 장비가 부품 4개를 놓는다. 실패 시 자리 표시
 ///  - 단체 TG005 대형 방화문 열기: 진짜 FireDoorStation (3d, 원본 문 · 패널 · 레버 모델에서 조립) + 레버 자리 후보 6곳 — 실행 중 방화문이 레버 2개를 놓는다. 실패 시 자리 표시
 ///  - (자리 표시 큐브 목록은 이제 비어 있다 — 단체 미션이 모두 진짜 장치가 됨)
@@ -304,6 +304,11 @@ public static class SoloMissionTestSetup
 
         // 3b 밸브 버전(기획 변경으로 폐기)의 프리팹 — 변환기 출력 폴더에 있다
         yield return "Assets/0. Member/SuHan/MissionRedesign_Draft/Prefabs/Missions/OxygenValve_Station.prefab";
+
+        // 3b 보강(실제 모델 적용)으로 안 쓰게 된 자리 표시 재질 (보강 명세 LM12) — LifeSupport_Screen · LifeSupport_Off 는 계속 쓴다
+        yield return "Assets/0. Member/SuHan/MissionRedesign_Draft/Materials/LifeSupport_TankBody.mat";
+        yield return "Assets/0. Member/SuHan/MissionRedesign_Draft/Materials/LifeSupport_Body.mat";
+        yield return "Assets/0. Member/SuHan/MissionRedesign_Draft/Materials/LifeSupport_Socket.mat";
     }
 
     // ═════════════════════════════════════════════════════════════

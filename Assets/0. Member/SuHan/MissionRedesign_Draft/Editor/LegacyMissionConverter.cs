@@ -56,30 +56,42 @@ public static class LegacyMissionConverter
     private const float CodeScreenUvTolerance = 0.004f;
     private const string TmpDefaultFontPath = "Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset";
 
-    // 3b 생명 유지 장치 · 산소통: 모델이 없어 기본 도형으로 조립한다 (명세 LS9 — 모델이 생기면 Build 함수만 바꾼다)
+    // 3b 생명 유지 장치 · 산소통: 원본 본체 · 산소통 모델에서 조립한다 (3b 보강 명세 LM1 — 원본은 복사해서 쓰고 수정하지 않음)
     public const string LifeSupportStationPath = OutputFolder + "/LifeSupport_Station.prefab";
     public const string OxygenTankPath = ItemPrefabFolder + "/OxygenTank_Item.prefab";
     private const string OxygenTankFirstPersonPath = ItemPrefabFolder + "/OxygenTank_FP.prefab";
     private const string OxygenTankDataPath = ItemDataFolder + "/OxygenTankData.asset";
+    private const string LifeSupportModelPath = SourceModelFolder + "/Life_support_system.fbx";
+    private const string OxygenTankModelPath = SourceModelFolder + "/Life_support_oxygen_tank.fbx";
+    // 본체 모델 안의 빈 노드 = 앞면 세로 홈의 바닥 = 산소통이 서는 자리 (보강 명세 1장 · LM3)
+    private const string LifeSupportTankSeatNode = "Life_support_oxygen_tank_axes";
     private const string DraftMaterialFolder = "Assets/0. Member/SuHan/MissionRedesign_Draft/Materials";
     private const float LifeSupportInteractRange = 3f;
 
     // 산소통 아이템 번호: 기존 아이템 데이터(10 청소기 · 11 · 12 · 13)와 겹치지 않게
     private const int OxygenTankItemId = 20;
 
-    // 크기 (m): 산소통 지름 0.25 · 높이 0.6, 본체 1 × 1.6 × 0.6, 화면 0.8 × 0.35 (명세 4장)
-    private const float OxygenTankDiameter = 0.25f;
-    private const float OxygenTankHeight = 0.6f;
-    private static readonly Vector3 LifeSupportBodySize = new Vector3(1f, 1.6f, 0.6f);
-    private static readonly Vector2 LifeSupportScreenSize = new Vector2(0.8f, 0.35f);
-    private const float LifeSupportScreenHeight = 1.25f;
-    private const float LifeSupportShelfHeight = 0.35f;
+    // 화면 상자 (보강 명세 LM4): 모델에 화면으로 쓸 면이 없어 꼭대기 위에 받침 + 상자를 얹고 뒤로 15° 눕힌다 (m)
+    private static readonly Vector3 LifeSupportScreenBoxSize = new Vector3(0.5f, 0.26f, 0.05f);
+    private static readonly Vector2 LifeSupportScreenSize = new Vector2(0.46f, 0.22f);
+    private static readonly Vector3 LifeSupportScreenStandSize = new Vector3(0.08f, 0.06f, 0.06f);
+    private const float LifeSupportScreenTilt = 15f;
 
-    // 자리 표시 색
-    private static readonly Color OxygenTankColor = new Color(0.75f, 0.12f, 0.1f);
-    private static readonly Color LampOffColor = new Color(0.35f, 0.35f, 0.35f);
-    private static readonly Color LifeSupportBodyColor = new Color(0.22f, 0.24f, 0.27f);
-    private static readonly Color SocketColor = new Color(0.08f, 0.08f, 0.09f);
+    // 산소통 압력계 (보강 명세 LM10 — 기획서 그림처럼 밸브 옆 둥근 압력계 1개):
+    // 높이 = 모델 높이의 90% (FBX 분석상 밸브 머리의 목, 약 0.69m), 그 높이 ±3cm 정점으로 붙일 면을 찾는다 (m)
+    private const float OxygenTankGaugeHeightRatio = 0.9f;
+    private const float OxygenTankGaugeBand = 0.03f;
+    private const float OxygenTankGaugeRimDiameter = 0.075f;
+    private const float OxygenTankGaugeRimThickness = 0.015f;
+    private const float OxygenTankGaugeFaceDiameter = 0.06f;
+
+    // 1인칭 산소통 (LM11): 모델 사본 0.5배를 화면 오른쪽 아래에 세운다 (위치는 에디터 확인 후 조정)
+    private const float OxygenTankFirstPersonScale = 0.5f;
+    private static readonly Vector3 OxygenTankFirstPersonPosition = new Vector3(0.25f, -0.44f, 0.55f);
+
+    // 덧붙인 부품 색: 압력계 꺼짐(회색 — 멀리서 보이는 색) · 화면 상자 · 받침 · 압력계 테두리(짙은 회색)
+    private static readonly Color GaugeOffColor = new Color(0.35f, 0.35f, 0.35f);
+    private static readonly Color LifeSupportFrameColor = new Color(0.16f, 0.17f, 0.19f);
 
     // 3c 장비 조립: 원본 본체 · 부품 모델에서 조립한다 (원본은 복사해서 쓰고 수정하지 않음)
     public const string AssemblyStationPath = OutputFolder + "/Assembly_Station.prefab";
@@ -211,8 +223,8 @@ public static class LegacyMissionConverter
         Convert("코드", CodeModelPath, "Code_Station", CodeStationPath, BuildCode);
 
     /// <summary>
-    /// 생명 유지 장치 본체 (3b 명세 4장): 산소통 아이템을 먼저 만들고, 빈 루트에서 본체를 조립한다.
-    /// 모델이 없어 기본 도형 자리 표시다 (LS9).
+    /// 생명 유지 장치 본체 (3b 명세 4장 · 보강 명세 3장): 산소통 아이템을 먼저 만들고, 원본 본체 모델을 복사해 조립한다.
+    /// 화면 상자 · 꽂힌 산소통 · 콜라이더 · 섬광을 덧붙인다 (LM2 ~ LM6).
     /// </summary>
     public static NetworkObject CreateLifeSupportStation()
     {
@@ -224,7 +236,7 @@ public static class LegacyMissionConverter
             return null;
         }
 
-        return Assemble("생명 유지 장치", "LifeSupport_Station", LifeSupportStationPath, copy => BuildLifeSupport(copy, tankPrefab));
+        return Convert("생명 유지 장치", LifeSupportModelPath, "LifeSupport_Station", LifeSupportStationPath, copy => BuildLifeSupport(copy, tankPrefab));
     }
 
     /// <summary>산소통 아이템 (3b 명세 4장): 1인칭 모델 → 아이템 데이터 → 월드 아이템 순서로 만든다 (청소기와 같은 순서).</summary>
@@ -240,7 +252,7 @@ public static class LegacyMissionConverter
         if (data == null)
             return null;
 
-        return Assemble("산소통", "OxygenTank_Item", OxygenTankPath, copy => BuildOxygenTank(copy, data), false);
+        return Convert("산소통", OxygenTankModelPath, "OxygenTank_Item", OxygenTankPath, copy => BuildOxygenTank(copy, data), false);
     }
 
     /// <summary>
@@ -1354,14 +1366,29 @@ public static class LegacyMissionConverter
     }
 
     // ═════════════════════════════════════════════════════════════
-    //  3b: 생명 유지 장치 · 산소통 (신규 — 모델이 없어 기본 도형으로 조립)
+    //  3b: 생명 유지 장치 · 산소통 (원본 모델에서 조립 — 3b 보강: 화면 상자 · 압력계 덧붙임)
     // ═════════════════════════════════════════════════════════════
 
-    /// <summary>산소통 1인칭 모델: 화면 오른쪽 아래에 보이는 작은 빨간 원기둥 (콜라이더 없음). 위치는 에디터 확인 후 조정.</summary>
+    /// <summary>
+    /// 산소통 1인칭 모델 (보강 명세 LM11): 빈 루트 + 산소통 모델 사본 0.5배를 화면 오른쪽 아래에 세운다. 콜라이더 · 압력계 없음
+    /// (1인칭 모델은 아이템 데이터 하나를 같이 써서 통마다 색을 다르게 할 수 없다 — 3b 열린 항목 6). 위치는 에디터 확인 후 조정.
+    /// </summary>
     private static bool BuildOxygenTankFirstPerson(GameObject copy)
     {
-        Material body = GetOrCreateColorMaterial("LifeSupport_TankBody", OxygenTankColor);
-        CreateShape(PrimitiveType.Cylinder, "Body (몸통)", copy.transform, new Vector3(0.25f, -0.25f, 0.55f), new Vector3(0.12f, 0.18f, 0.12f), body, false);
+        GameObject model = LoadSourceModel(OxygenTankModelPath);
+
+        if (model == null)
+            return false;
+
+        GameObject view = Object.Instantiate(model, copy.transform);
+        view.name = "Model (모델)";
+        view.transform.localPosition = OxygenTankFirstPersonPosition;
+        view.transform.localRotation = Quaternion.identity;
+        view.transform.localScale = Vector3.one * OxygenTankFirstPersonScale;
+
+        foreach (Collider collider in view.GetComponentsInChildren<Collider>(true))
+            Object.DestroyImmediate(collider);
+
         return true;
     }
 
@@ -1407,8 +1434,9 @@ public static class LegacyMissionConverter
     }
 
     /// <summary>
-    /// 산소통 (3b 명세 4장): 빨간 원기둥 몸통(바닥이 루트 원점) + 압력계 구. 루트에 NetworkObject · ItemWorldView · OxygenTank.
-    /// 압력계는 원래 재질이 회색이고 가까이 가면 Neon_green / Neon_red 로 바뀐다 (LS1).
+    /// 산소통 (3b 명세 4장 · 보강 명세 LM9 · LM10): 원본 산소통 모델 복사(루트 = 메시, 바닥이 원점) + 밸브 옆 둥근 압력계.
+    /// 루트에 NetworkObject · 메시 크기 콜라이더(조준 레이어 — 줍기 · 조준) · ItemWorldView · OxygenTank.
+    /// 압력계 눈금판만 가까이 가면 Neon_green / Neon_red 로 바뀌고 (LS1), 멀면 회색이다.
     /// </summary>
     private static bool BuildOxygenTank(GameObject copy, ItemData data)
     {
@@ -1421,97 +1449,180 @@ public static class LegacyMissionConverter
             return false;
         }
 
+        MeshFilter meshFilter = copy.GetComponent<MeshFilter>();
+        Renderer bodyRenderer = copy.GetComponent<Renderer>();
+
+        if (meshFilter == null || meshFilter.sharedMesh == null || bodyRenderer == null)
+        {
+            Debug.LogError("[LegacyMissionConverter] 산소통: 모델 루트에 메시가 없습니다 (모델이 바뀌었는지 확인).");
+            return false;
+        }
+
         copy.layer = InteractableLayer;
         copy.AddComponent<NetworkObject>();
+        BoxCollider box = AddMeshBoxCollider(copy);
 
-        // 기본 원기둥은 지름 1 · 높이 2 → 크기 (지름, 높이 / 2, 지름). 조준 · 줍기용 콜라이더는 그대로 둔다
-        GameObject body = CreateShape(PrimitiveType.Cylinder, "Body (몸통)", copy.transform,
-            new Vector3(0f, OxygenTankHeight * 0.5f, 0f), new Vector3(OxygenTankDiameter, OxygenTankHeight * 0.5f, OxygenTankDiameter),
-            GetOrCreateColorMaterial("LifeSupport_TankBody", OxygenTankColor), true);
-        body.layer = InteractableLayer;
+        // 조준하면 외곽선 (미션 아이템 공통 — 3c EA16). 루트의 모델 메시로만 — 압력계는 빼서 외곽선이 압력계 색을 가리지 않게
+        MissionOutlineBuilder.Attach(copy, copy);
 
-        GameObject gauge = CreateShape(PrimitiveType.Sphere, "Gauge (압력계)", copy.transform,
-            new Vector3(0f, OxygenTankHeight + 0.03f, 0f), Vector3.one * 0.08f,
-            GetOrCreateColorMaterial("LifeSupport_Off", LampOffColor), false);
+        if (!BuildOxygenTankGauge(copy.transform, meshFilter.sharedMesh, out Renderer face, out Renderer[] gaugeParts))
+            return false;
 
         ItemWorldView view = copy.AddComponent<ItemWorldView>();
         SerializedObject viewSO = new SerializedObject(view);
-        SetObjectArray(viewSO.FindProperty("renderers"), body.GetComponent<Renderer>(), gauge.GetComponent<Renderer>());
-        SetObjectArray(viewSO.FindProperty("colliders"), body.GetComponent<Collider>());
+        SetObjectArray(viewSO.FindProperty("renderers"), bodyRenderer, gaugeParts[0], gaugeParts[1], gaugeParts[2]);
+        SetObjectArray(viewSO.FindProperty("colliders"), box);
         viewSO.ApplyModifiedPropertiesWithoutUndo();
 
         OxygenTank tank = copy.AddComponent<OxygenTank>();
         SerializedObject so = new SerializedObject(tank);
         so.FindProperty("data").objectReferenceValue = data;
-        so.FindProperty("gaugeRenderer").objectReferenceValue = gauge.GetComponent<Renderer>();
+        so.FindProperty("gaugeRenderer").objectReferenceValue = face;
         so.FindProperty("safeMaterial").objectReferenceValue = safe;
         so.FindProperty("dangerMaterial").objectReferenceValue = danger;
         so.ApplyModifiedPropertiesWithoutUndo();
 
-        // 조준하면 외곽선 (미션 아이템 공통 — 3c 테스트 후 추가 EA16). 몸통만 — 압력계 구는 빼서 외곽선이 압력계 색을 가리지 않게
-        MissionOutlineBuilder.Attach(copy, body);
-
-        Debug.Log($"[LegacyMissionConverter] 산소통: 아이템 번호 {OxygenTankItemId}, 지름 {OxygenTankDiameter}m · 높이 {OxygenTankHeight}m");
+        Debug.Log($"[LegacyMissionConverter] 산소통: 아이템 번호 {OxygenTankItemId}, 모델 크기 {meshFilter.sharedMesh.bounds.size}");
         return true;
     }
 
     /// <summary>
-    /// 생명 유지 장치 본체 (3b 명세 4장): 상자 몸체(바닥이 원점, 앞 = +Z) + 앞면 화면 · LCD 글자 + 받침 · 꽂는 자리 · 꽂힌 통 + 경고 램프 + 폭발 섬광.
-    /// 콜라이더 둘: 몸체(단단함, 기본 레이어 — 플레이어가 통과하지 않게) / 조준 영역(트리거, 조준 레이어 — 내 미션이 아니면 공통 틀이 끈다).
+    /// 산소통 압력계 (보강 명세 LM10 — 기획서 그림처럼 밸브 옆 둥근 압력계 1개): 테두리 원판 + 눈금판 + 바늘. 콜라이더 없음.
+    /// 자리: 모델 높이의 90%(밸브 머리의 목) ± 3cm 정점 중 덜 튀어나온 옆면(손잡이 반대쪽)에 바깥을 보게 붙인다.
+    /// 옆면은 조립 때 메시에서 고른다 — FBX 분석상 손잡이는 +X · 빈 쪽은 −X 인데, Unity 가져오기 때 좌우가 뒤집힐 수 있어 숫자로 정하지 않는다.
+    /// </summary>
+    /// <param name="face">색이 바뀌는 눈금판 (OxygenTank.gaugeRenderer)</param>
+    /// <param name="parts">테두리 · 눈금판 · 바늘 렌더러 (ItemWorldView 가 들었을 때 함께 숨긴다)</param>
+    private static bool BuildOxygenTankGauge(Transform root, Mesh mesh, out Renderer face, out Renderer[] parts)
+    {
+        face = null;
+        parts = null;
+
+        Bounds bounds = mesh.bounds;
+        float height = bounds.min.y + bounds.size.y * OxygenTankGaugeHeightRatio;
+        float minX = float.MaxValue;
+        float maxX = float.MinValue;
+
+        foreach (Vector3 vertex in mesh.vertices)
+        {
+            if (Mathf.Abs(vertex.y - height) > OxygenTankGaugeBand)
+                continue;
+
+            minX = Mathf.Min(minX, vertex.x);
+            maxX = Mathf.Max(maxX, vertex.x);
+        }
+
+        if (minX > maxX)
+        {
+            Debug.LogError($"[LegacyMissionConverter] 산소통: 높이 {height:0.00}m 근처에 정점이 없어 압력계 자리를 찾지 못했습니다.");
+            return false;
+        }
+
+        // 덜 튀어나온 쪽 = 비어 있는 옆면 (반대쪽은 손잡이)
+        bool negativeSide = bounds.center.x - minX <= maxX - bounds.center.x;
+        Vector3 outward = negativeSide ? Vector3.left : Vector3.right;
+        Vector3 surfacePoint = new Vector3(negativeSide ? minX : maxX, height, bounds.center.z);
+        // 기본 원기둥의 축(위)을 바깥으로 돌린다
+        Quaternion discRotation = Quaternion.FromToRotation(Vector3.up, outward);
+
+        Material frame = GetOrCreateColorMaterial("LifeSupport_Frame", LifeSupportFrameColor);
+        Material off = GetOrCreateColorMaterial("LifeSupport_Off", GaugeOffColor);
+        Material black = GetOrCreateColorMaterial("LifeSupport_Screen", Color.black);
+
+        // 기본 원기둥은 지름 1 · 높이 2 → 크기 (지름, 두께 / 2, 지름). 테두리는 목 표면에서 바깥으로 두께만큼
+        GameObject rim = CreateShape(PrimitiveType.Cylinder, "Gauge Rim (압력계 테두리)", root,
+            surfacePoint + outward * (OxygenTankGaugeRimThickness * 0.5f),
+            new Vector3(OxygenTankGaugeRimDiameter, OxygenTankGaugeRimThickness * 0.5f, OxygenTankGaugeRimDiameter), frame, false);
+        rim.transform.localRotation = discRotation;
+
+        // 눈금판: 테두리 바깥면에서 1mm 더 나온 얇은 원판 — 이것만 색이 바뀐다
+        GameObject gaugeFace = CreateShape(PrimitiveType.Cylinder, "Gauge (압력계 눈금판)", root,
+            surfacePoint + outward * (OxygenTankGaugeRimThickness + 0.001f),
+            new Vector3(OxygenTankGaugeFaceDiameter, 0.001f, OxygenTankGaugeFaceDiameter), off, false);
+        gaugeFace.transform.localRotation = discRotation;
+
+        // 바늘 (장식 — 색은 바뀌지 않는다): 눈금판 위 가는 막대, 가운데에서 30° 기운 위쪽으로. 막대의 Z = 바깥, Y = 길이 방향
+        Quaternion needleRotation = Quaternion.LookRotation(outward, Vector3.up) * Quaternion.Euler(0f, 0f, 30f);
+        Vector3 needleCenter = surfacePoint + outward * (OxygenTankGaugeRimThickness + 0.004f)
+            + needleRotation * Vector3.up * (OxygenTankGaugeFaceDiameter * 0.18f);
+        GameObject needle = CreateShape(PrimitiveType.Cube, "Gauge Needle (압력계 바늘)", root, needleCenter,
+            new Vector3(0.004f, OxygenTankGaugeFaceDiameter * 0.36f, 0.002f), black, false);
+        needle.transform.localRotation = needleRotation;
+
+        face = gaugeFace.GetComponent<Renderer>();
+        parts = new[] { rim.GetComponent<Renderer>(), face, needle.GetComponent<Renderer>() };
+
+        Debug.Log($"[LegacyMissionConverter] 산소통 압력계: 높이 {height:0.00}m, {(negativeSide ? "−X" : "+X")} 옆면 " +
+                  $"(목 표면 x {surfacePoint.x:0.000}m, 반대쪽 {(negativeSide ? maxX : minX):0.000}m)");
+        return true;
+    }
+
+    /// <summary>
+    /// 생명 유지 장치 본체 (3b 명세 4장 · 보강 명세 LM2 ~ LM6): 원본 본체 모델 복사(루트 = 메시, 바닥이 원점, 앞 = +Z)
+    /// + 자리 노드에 꽂힌 산소통 모습 + 꼭대기 화면 상자 + 폭발 섬광. 경고 램프는 없다 (LM7 — 화면 깜빡임이 대신).
+    /// 콜라이더 둘: 몸체(메시 크기, 단단함, 기본 레이어 — 플레이어가 통과하지 않게) / 조준 영역(트리거, 조준 레이어 — 내 미션이 아니면 공통 틀이 끈다).
     /// </summary>
     private static bool BuildLifeSupport(GameObject copy, NetworkObject tankPrefab)
     {
         Material warning = AssetDatabase.LoadAssetAtPath<Material>($"{SourceMaterialFolder}/Neon_red.mat");
-        Material done = AssetDatabase.LoadAssetAtPath<Material>($"{SourceMaterialFolder}/Neon_green.mat");
 
-        if (warning == null || done == null)
-            Debug.LogWarning("[LegacyMissionConverter] 생명 유지 장치: Neon_red / Neon_green 재질을 찾지 못해 경고 램프 · 섬광이 보이지 않습니다.");
+        if (warning == null)
+            Debug.LogWarning("[LegacyMissionConverter] 생명 유지 장치: Neon_red 재질을 찾지 못해 폭발 섬광이 보이지 않습니다.");
 
-        Material bodyMaterial = GetOrCreateColorMaterial("LifeSupport_Body", LifeSupportBodyColor);
+        GameObject tankModel = LoadSourceModel(OxygenTankModelPath);
+        MeshFilter meshFilter = copy.GetComponent<MeshFilter>();
+
+        if (tankModel == null)
+            return false;
+
+        if (meshFilter == null || meshFilter.sharedMesh == null)
+        {
+            Debug.LogError("[LegacyMissionConverter] 생명 유지 장치: 모델 루트에 메시가 없습니다 (모델이 바뀌었는지 확인).");
+            return false;
+        }
+
+        Transform seat = FindDescendant(copy.transform, LifeSupportTankSeatNode);
+
+        if (seat == null)
+        {
+            Debug.LogError($"[LegacyMissionConverter] 생명 유지 장치: 산소통 자리 노드 '{LifeSupportTankSeatNode}' 를 찾지 못했습니다 (모델이 바뀌었는지 확인).");
+            return false;
+        }
+
         Transform root = copy.transform;
         copy.AddComponent<NetworkObject>();
+        Bounds bounds = meshFilter.sharedMesh.bounds;
 
-        Vector3 size = LifeSupportBodySize;
-        float front = size.z * 0.5f;
-        GameObject body = CreateShape(PrimitiveType.Cube, "Body (몸체)", root, new Vector3(0f, size.y * 0.5f, 0f), size, bodyMaterial, true);
+        // 몸체: 메시 크기 상자 (기본 레이어 — 단단함, 조준 검사 대상 아님)
+        AddMeshBoxCollider(copy);
 
         GameObject aim = new GameObject("Aim (조준 영역)");
         aim.layer = InteractableLayer;
         aim.transform.SetParent(root, false);
-        aim.transform.localPosition = body.transform.localPosition;
+        aim.transform.localPosition = bounds.center;
         BoxCollider aimCollider = aim.AddComponent<BoxCollider>();
         aimCollider.isTrigger = true;
-        aimCollider.size = size + Vector3.one * 0.04f;
+        aimCollider.size = bounds.size + Vector3.one * 0.04f;
 
-        // 화면: 앞면 위쪽 검은 판 + 3mm 앞 LCD 글자 (글자 앞면(−Z)이 +Z 를 보게)
-        CreateShape(PrimitiveType.Cube, "Screen (화면)", root, new Vector3(0f, LifeSupportScreenHeight, front + 0.01f),
-            new Vector3(LifeSupportScreenSize.x, LifeSupportScreenSize.y, 0.02f), GetOrCreateColorMaterial("LifeSupport_Screen", Color.black), false);
-        LcdDisplay display = CreateLcdText(root, new Vector3(0f, LifeSupportScreenHeight, front + 0.023f), Quaternion.LookRotation(Vector3.back, Vector3.up),
-            LifeSupportScreenSize * 0.9f, LifeSupportStation.LongestScreenText, LifeSupportStation.IdleText(0, 3));
+        // 꽂힌 산소통: 자리 노드(홈 바닥)에 산소통 모델 사본 — 판정 중에만 보인다 (LM3)
+        GameObject inserted = Object.Instantiate(tankModel, root);
+        inserted.name = "Inserted Tank (꽂힌 산소통)";
+        inserted.transform.localPosition = root.InverseTransformPoint(seat.position);
+        inserted.transform.localRotation = Quaternion.identity;
 
-        // 꽂는 자리: 앞으로 튀어나온 받침 + 짙은 원판. 꽂힌 통 = 산소통 몸통과 같은 모양 (평소 숨김)
-        Vector3 shelfCenter = new Vector3(0f, LifeSupportShelfHeight, front + 0.15f);
-        CreateShape(PrimitiveType.Cube, "Shelf (받침)", root, shelfCenter, new Vector3(0.45f, 0.06f, 0.3f), bodyMaterial, false);
-        Vector3 socketCenter = shelfCenter + Vector3.up * 0.04f;
-        CreateShape(PrimitiveType.Cylinder, "Socket (꽂는 자리)", root, socketCenter, new Vector3(0.32f, 0.01f, 0.32f),
-            GetOrCreateColorMaterial("LifeSupport_Socket", SocketColor), false);
-        GameObject inserted = CreateShape(PrimitiveType.Cylinder, "Inserted Tank (꽂힌 산소통)", root,
-            socketCenter + Vector3.up * (OxygenTankHeight * 0.5f + 0.01f), new Vector3(OxygenTankDiameter, OxygenTankHeight * 0.5f, OxygenTankDiameter),
-            GetOrCreateColorMaterial("LifeSupport_TankBody", OxygenTankColor), false);
+        foreach (Collider collider in inserted.GetComponentsInChildren<Collider>(true))
+            Object.DestroyImmediate(collider);
+
         inserted.SetActive(false);
 
-        GameObject lamp = CreateShape(PrimitiveType.Sphere, "Warning Lamp (경고 램프)", root, new Vector3(0f, size.y + 0.06f, 0f), Vector3.one * 0.12f,
-            GetOrCreateColorMaterial("LifeSupport_Off", LampOffColor), false);
+        LcdDisplay display = BuildLifeSupportScreen(root, bounds, out Vector3 screenCenter);
 
-        GameObject flash = CreateShape(PrimitiveType.Sphere, "Flash (폭발 섬광)", root, new Vector3(0f, size.y * 0.5f, 0f), Vector3.one, warning, false);
+        GameObject flash = CreateShape(PrimitiveType.Sphere, "Flash (폭발 섬광)", root, bounds.center, Vector3.one, warning, false);
         flash.SetActive(false);
 
         LifeSupportVisual visual = copy.AddComponent<LifeSupportVisual>();
         SerializedObject visualSO = new SerializedObject(visual);
         visualSO.FindProperty("insertedTank").objectReferenceValue = inserted;
-        visualSO.FindProperty("warningLamp").objectReferenceValue = lamp.GetComponent<Renderer>();
-        visualSO.FindProperty("warningMaterial").objectReferenceValue = warning;
-        visualSO.FindProperty("doneMaterial").objectReferenceValue = done;
         visualSO.FindProperty("flash").objectReferenceValue = flash.transform;
         visualSO.ApplyModifiedPropertiesWithoutUndo();
 
@@ -1523,10 +1634,55 @@ public static class LegacyMissionConverter
         AddCollider(so, aimCollider);
         so.ApplyModifiedPropertiesWithoutUndo();
 
-        MissionOutlineBuilder.Attach(copy, body);
+        // 조준 외곽선: 루트의 모델 메시로만 (화면 상자 · 꽂힌 산소통은 빠진다 — 루트의 메시가 먼저 잡힌다)
+        MissionOutlineBuilder.Attach(copy, copy);
 
-        Debug.Log($"[LegacyMissionConverter] 생명 유지 장치: 몸체 {size}, 화면 높이 {LifeSupportScreenHeight}m, 꽂는 자리 {socketCenter}, 산소통 프리팹 {tankPrefab.name}");
+        Debug.Log($"[LegacyMissionConverter] 생명 유지 장치: 모델 크기 {bounds.size}, 산소통 자리 {inserted.transform.localPosition}, " +
+                  $"화면 중심 {screenCenter} (뒤로 {LifeSupportScreenTilt}°), 산소통 프리팹 {tankPrefab.name}");
         return true;
+    }
+
+    /// <summary>
+    /// 본체 화면 상자 (보강 명세 LM4 — 모델에 화면으로 쓸 면이 없다): 꼭대기 위 받침 + 상자(짙은 회색) + 검은 판 + 녹색 LCD 글자,
+    /// 뒤로 15° 눕힘. 콜라이더 없음 (조준 · 충돌에 끼지 않게). 위치는 모델 메시 범위(꼭대기 높이 · 앞뒤 중심)에서 계산한다.
+    /// </summary>
+    private static LcdDisplay BuildLifeSupportScreen(Transform root, Bounds bounds, out Vector3 center)
+    {
+        Material frame = GetOrCreateColorMaterial("LifeSupport_Frame", LifeSupportFrameColor);
+        Material black = GetOrCreateColorMaterial("LifeSupport_Screen", Color.black);
+        float top = bounds.max.y;
+
+        CreateShape(PrimitiveType.Cube, "Screen Stand (화면 받침)", root,
+            new Vector3(bounds.center.x, top + LifeSupportScreenStandSize.y * 0.5f, bounds.center.z), LifeSupportScreenStandSize, frame, false);
+
+        // 화면 묶음: 크기 1 인 빈 오브젝트를 기울이고 그 아래에 상자 · 판 · 글자를 둔다 (늘린 상자의 자식이 같이 늘어나지 않게)
+        center = new Vector3(bounds.center.x, top + LifeSupportScreenStandSize.y + LifeSupportScreenBoxSize.y * 0.5f, bounds.center.z);
+        GameObject screen = new GameObject("Screen (화면)");
+        screen.transform.SetParent(root, false);
+        screen.transform.localPosition = center;
+        // X 축 −15°: 화면 앞면(+Z)이 조금 위를 본다 — 선 사람 눈높이에서 읽기 쉽게
+        screen.transform.localRotation = Quaternion.Euler(-LifeSupportScreenTilt, 0f, 0f);
+
+        float front = LifeSupportScreenBoxSize.z * 0.5f;
+        CreateShape(PrimitiveType.Cube, "Screen Box (화면 상자)", screen.transform, Vector3.zero, LifeSupportScreenBoxSize, frame, false);
+        CreateShape(PrimitiveType.Cube, "Screen Panel (화면 판)", screen.transform, new Vector3(0f, 0f, front + 0.002f),
+            new Vector3(LifeSupportScreenSize.x, LifeSupportScreenSize.y, 0.004f), black, false);
+
+        // 글자: 판 바로 앞, 글자 앞면(−Z)이 +Z 를 보게. 크기는 가장 긴 문구에 맞춘다
+        return CreateLcdText(screen.transform, new Vector3(0f, 0f, front + 0.006f), Quaternion.LookRotation(Vector3.back, Vector3.up),
+            LifeSupportScreenSize * 0.9f, LifeSupportStation.LongestScreenText, LifeSupportStation.IdleText(0, 3));
+    }
+
+    /// <summary>이름으로 자손(자신 포함)을 찾는다. 없으면 null.</summary>
+    private static Transform FindDescendant(Transform root, string name)
+    {
+        foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
+        {
+            if (child.name == name)
+                return child;
+        }
+
+        return null;
     }
 
     /// <summary>기본 도형 부품을 만든다. keepCollider 가 false 면 도형의 기본 콜라이더를 지운다 (조준 · 충돌에 끼지 않게).</summary>

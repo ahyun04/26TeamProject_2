@@ -77,7 +77,7 @@ namespace TrustNoOne.Missions
         [Tooltip("폭발 뒤 화면에 DAMAGED 를 띄우는 시간 (초)")]
         [SerializeField] private float damagedScreenTime = 2f;
 
-        [Tooltip("위험한 통 판정 중 경고 램프가 깜빡이는 간격 (초)")]
+        [Tooltip("위험한 통 판정 중 화면 WARNING 글자가 깜빡이는 간격 (초) — 경고 램프 대신 (3b 보강 명세 LM8)")]
         [SerializeField] private float blinkPeriod = 0.25f;
 
         [Networked] private int SuppliedCount { get; set; }
@@ -205,7 +205,6 @@ namespace TrustNoOne.Missions
             if (Completed)
             {
                 visual.ShowInserted(false);
-                visual.ShowLamp(LifeSupportVisual.DoneLamp);
                 ShowOnScreen(ScreenSuccess, 0, false);
                 return;
             }
@@ -217,13 +216,21 @@ namespace TrustNoOne.Missions
             {
                 bool danger = InsertedDangerous;
                 int seconds = LifeSupportRules.CountdownSeconds(t, InsertStart, countdown);
-                bool blinkOn = danger && LifeSupportRules.IsBlinkOn(t, InsertStart, blinkPeriod);
-                visual.ShowLamp(blinkOn ? LifeSupportVisual.WarningLamp : MaterialSwapper.Original);
-                ShowOnScreen(danger ? ScreenWarning : ScreenCheck, seconds, danger);
+
+                // 위험한 통 판정 중에는 WARNING 글자가 켜졌다 꺼졌다 한다 — 경고 램프 대신 (3b 보강 명세 LM8).
+                // 넣은 시각 기준이라 손님 화면도 같은 박자로 깜빡인다 (시각 공식)
+                if (danger && !LifeSupportRules.IsBlinkOn(t, InsertStart, blinkPeriod))
+                {
+                    if (display != null)
+                        display.Show(string.Empty, true);
+                }
+                else
+                {
+                    ShowOnScreen(danger ? ScreenWarning : ScreenCheck, seconds, danger);
+                }
+
                 return;
             }
-
-            visual.ShowLamp(MaterialSwapper.Original);
 
             if (LifeSupportRules.IsShowing(t, ExplodeStart, damagedScreenTime))
                 ShowOnScreen(ScreenDamaged, 0, true);
