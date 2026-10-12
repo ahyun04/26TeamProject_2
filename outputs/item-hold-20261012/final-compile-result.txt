@@ -1,0 +1,7 @@
+Unity 2022.3.58f1 product-only C# compile and Fusion IL weaving: PASS (return code 0).
+Private standalone Windows Host/Client checks: 65/65 PASS.
+Original Hold animation, finger curves, existing controller state blocks and old GUIDs preserved.
+Only new IsHolding parameter, arms layer/mask, local animation selection and knife position offset added.
+Preview video uses the real Animator controller and per-frame baked skinned meshes to capture poses consistently.
+Known existing Laver_Shader_Graph shader parse error was outside this change and remained in executable build (Succeeded, errors=1).
+No Scene, first-person item prefab, authority, damage, stamina, package or Git commit changes.

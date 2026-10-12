@@ -16,6 +16,10 @@ public class PlayerAnimation : NetworkBehaviour
     private int thumbsUpSequence { get; set; } //호스트가 승인한 제스처 횟수
 
     private PlayerHealth health; //플레이어 생존 상태
+    private PlayerItemController items; //기존 네트워크 아이템 장착 상태
+    private int holdLayerIndex = -1; //팔 전용 아이템 들기 레이어
+    private float holdResumeTime; //공격과 제스처 진입 중 Hold 덮어쓰기 방지
+    private static readonly int isHoldingHash = Animator.StringToHash("IsHolding"); //아이템을 들고 있는 상태
     private static readonly int isDeadHash = Animator.StringToHash("IsDead"); //사망 상태
     private static readonly int attackHash = Animator.StringToHash("Attack"); //공격 재생 요청
     private static readonly int attackSpeedHash = Animator.StringToHash("AttackSpeed"); //공격 재생 배속
@@ -24,6 +28,8 @@ public class PlayerAnimation : NetworkBehaviour
     {
         if (animator == null || (health != null && health.IsDead)) return;
         animator.SetFloat(attackSpeedHash, attackClip != null ? attackClip.length / Mathf.Max(0.01f, duration) : 1f);
+        holdResumeTime = Mathf.Max(holdResumeTime, Time.time + Mathf.Max(0f, duration));
+        if (holdLayerIndex >= 0) animator.SetLayerWeight(holdLayerIndex, 0f);
         animator.SetTrigger(attackHash);
     }
 
@@ -44,6 +50,8 @@ public class PlayerAnimation : NetworkBehaviour
             playerMovement = GetComponent<PlayerMovement>();
 
         health = GetComponent<PlayerHealth>();
+        items = GetComponent<PlayerItemController>();
+        if (animator != null) holdLayerIndex = animator.GetLayerIndex("Item Hold");
     }
 
     private void Update()
@@ -75,7 +83,23 @@ public class PlayerAnimation : NetworkBehaviour
 
     private void playThumbsUp() //승인된 제스처를 각 클라이언트에서 한 번 재생
     {
-        if (canPlayThumbsUp()) animator.SetTrigger(IsThumbsUp);
+        if (!canPlayThumbsUp()) return;
+        holdResumeTime = Mathf.Max(holdResumeTime, Time.time + 0.25f);
+        if (holdLayerIndex >= 0) animator.SetLayerWeight(holdLayerIndex, 0f);
+        animator.SetTrigger(IsThumbsUp);
+    }
+
+    private void updateHold() //장착 상태는 기존 동기화 값을 사용하고 팔 모션만 로컬 표시
+    {
+        if (holdLayerIndex < 0) return;
+        bool isHolding = health != null && health.CanAct && items != null &&
+                         items.CurrentItemObject != null && items.CurrentItemObject.IsValid; //미션 도구도 동일하게 들기 적용
+        AnimatorStateInfo current = animator.GetCurrentAnimatorStateInfo(0); //현재 기본 모션
+        AnimatorStateInfo next = animator.IsInTransition(0) ? animator.GetNextAnimatorStateInfo(0) : default; //전환 대상 모션
+        bool actionPlaying = current.shortNameHash == attackHash || next.shortNameHash == attackHash ||
+                             current.shortNameHash == IsThumbsUp || next.shortNameHash == IsThumbsUp; //공격과 제스처 우선
+        animator.SetBool(isHoldingHash, isHolding);
+        animator.SetLayerWeight(holdLayerIndex, isHolding && !actionPlaying && Time.time >= holdResumeTime ? 1f : 0f);
     }
 
     public override void Render()
@@ -84,6 +108,7 @@ public class PlayerAnimation : NetworkBehaviour
             return;
 
         animator.SetBool(isDeadHash, health != null && health.IsDead);
+        updateHold();
         if (health != null && health.IsDead)
             return;
 

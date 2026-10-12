@@ -1,0 +1,72 @@
+{
+  "scene": "GamePlay",
+  "running": true,
+  "holds": [
+    {
+      "owner": 1,
+      "baseState": -453240694,
+      "nextState": 0,
+      "layerState": -1074224583,
+      "attackCount": 1,
+      "hasItem": true,
+      "holding": true,
+      "dead": false,
+      "visible": false,
+      "fpVisible": true,
+      "attacking": false,
+      "gesturing": false,
+      "weight": 1.0,
+      "normalizedTime": 2.2923171520233154,
+      "gripError": 8.63167442730628e-05,
+      "legAngle": 359.76416015625,
+      "item": "칼",
+      "clip": "ANM_Player_Hold"
+    },
+    {
+      "owner": 2,
+      "baseState": -453240694,
+      "nextState": 0,
+      "layerState": -1074224583,
+      "attackCount": 1,
+      "hasItem": true,
+      "holding": true,
+      "dead": false,
+      "visible": true,
+      "fpVisible": false,
+      "attacking": false,
+      "gesturing": false,
+      "weight": 1.0,
+      "normalizedTime": 2.1771037578582764,
+      "gripError": 8.63167442730628e-05,
+      "legAngle": 359.76416015625,
+      "item": "칼",
+      "clip": "ANM_Player_Hold"
+    }
+  ],
+  "players": [
+    {
+      "id": 1,
+      "role": "Citizen",
+      "local": true,
+      "dead": false,
+      "escaped": false,
+      "spectator": false,
+      "cameraActive": true,
+      "hudActive": true,
+      "health": 60.0,
+      "stamina": 80.625
+    },
+    {
+      "id": 2,
+      "role": "Killer",
+      "local": false,
+      "dead": false,
+      "escaped": false,
+      "spectator": false,
+      "cameraActive": false,
+      "hudActive": false,
+      "health": 60.0,
+      "stamina": 75.0
+    }
+  ]
+}

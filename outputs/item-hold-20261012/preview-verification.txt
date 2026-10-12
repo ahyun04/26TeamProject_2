@@ -1,0 +1,5 @@
+Current player prefab, new Hold layer evaluated through Animator.Update in Unity 2022.3.58f1.
+Matched animated paths: 19; changed rotations vs idle: 19.
+Video: 1280x720, 24 fps, 144 frames / 6 seconds, no audio.
+Left: original idle + existing knife; right: original Hold arm/finger curves over idle body + same knife offsets.
+Original non-loop Hold keeps its final pose while equipped. Left uses the prior knife offset and Idle; right uses the adjusted grip and Hold layer. Real network checks are recorded separately.
