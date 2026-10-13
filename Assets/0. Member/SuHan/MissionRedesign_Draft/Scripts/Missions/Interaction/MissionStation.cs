@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Fusion;
 using UnityEngine;
 
@@ -20,6 +21,7 @@ namespace TrustNoOne.Missions
     ///  - 완료: 완료 이벤트 발행 + 완료 후 동작(Lock / ResetForNext)
     ///  - 초기화: 제한 시간 실패(MissionManager.OnMissionReset)와 ResetForNext 가 같은 경로(ResetStation)를 쓴다
     ///  - 배정: 미션 배정이 끝난 순간 OnMissionsAssignedHost (호스트) — 아이템 장치가 이번 판에 뽑혔을 때만 아이템을 놓는다 (7a 명세 TC12)
+    ///  - 눌림 보여 주기: 호스트가 받은 부품 눌림을 모든 PC 에 알려 같은 부품이 눌리는 모습이 보이게 한다 (7b — 누른 본인은 건너뜀)
     ///
     /// [근거] stage1 명세 S2(조작은 그대로, 규칙만 공통), S3(개인용은 완료 후 초기화), S4(공통 베이스 + 하위 클래스),
     ///  S6(제한 시간 판정은 Core, 오브젝트는 알림에 반응만). 옛 MissionMiniGameBase 에서 미니게임마다 흩어져 있던
@@ -76,6 +78,9 @@ namespace TrustNoOne.Missions
 
         // 호스트: 미션 배정 완료(MissionManager.Initialized)를 마지막으로 본 값 — 꺼짐 → 켜짐 순간에 훅을 한 번 부른다 (7a 명세 TC12)
         private bool assignedSeen;
+
+        // 이 장치에 연결된 누르는 부품들 — 처음 쓸 때 한 번 찾는다 (7b 눌림 보여 주기)
+        private StationButton[] buttons;
 
         /// <summary>
         /// 이 스테이션이 지금 이 PC 의 플레이어에게 상호작용 대상인가 (= 잠기지 않았고 내 미션). 연출용 — 규칙은 호스트가 따로 강제한다.
@@ -164,8 +169,52 @@ namespace TrustNoOne.Missions
         [Rpc(RpcSources.All, RpcTargets.StateAuthority, HostMode = RpcHostMode.SourceIsHostPlayer)]
         private void RPC_PressPart(int partIndex, float pressTime, RpcInfo info = default)
         {
-            if (!info.Source.IsNone)
-                OnPartPressedAt(info.Source, partIndex, pressTime);
+            if (info.Source.IsNone)
+                return;
+
+            // 다른 사람에게도 눌림을 보여 준다 — 받아들였는지와 상관없이 (7b, 사용자 결정 A: 누른 사람 화면과 같게).
+            // 잠긴 장치는 클라이언트에서 누를 수 없으니(StationButton) 보내지 않는다
+            if (!Completed)
+                RPC_ShowPress(partIndex, info.Source);
+
+            OnPartPressedAt(info.Source, partIndex, pressTime);
+        }
+
+        /// <summary>
+        /// 모든 피어: partIndex 부품의 눌림 애니메이션을 재생한다 (7b — 버튼 눌림 동기화). 판정과 무관한 순간 연출이라 늦게 들어온 사람에게 다시 보여 주지 않는다.
+        /// 누른 본인은 StationButton.Interact 에서 이미 재생했으므로 건너뛴다 (두 번 눌리지 않게).
+        /// </summary>
+        [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+        private void RPC_ShowPress(int partIndex, PlayerRef presser)
+        {
+            if (presser == Runner.LocalPlayer)
+                return;
+
+            foreach (StationButton button in GetButtons())
+            {
+                if (button != null && button.PartIndex == partIndex)
+                    button.PlayPressAnimation();
+            }
+        }
+
+        /// <summary>이 장치에 연결된 StationButton (꺼진 것 포함). 부품의 Awake 가 아직 안 돌았으면(장치 칸이 비어 있음) 가장 가까운 부모 장치로 판단한다.</summary>
+        private StationButton[] GetButtons()
+        {
+            if (buttons != null)
+                return buttons;
+
+            List<StationButton> mine = new List<StationButton>();
+
+            foreach (StationButton button in GetComponentsInChildren<StationButton>(true))
+            {
+                MissionStation owner = button.Station != null ? button.Station : button.GetComponentInParent<MissionStation>(true);
+
+                if (owner == this)
+                    mine.Add(button);
+            }
+
+            buttons = mine.ToArray();
+            return buttons;
         }
 
         /// <summary>

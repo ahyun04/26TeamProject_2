@@ -7,7 +7,7 @@ namespace TrustNoOne.Missions
     /// <summary>
     /// [역할] 스테이션에 붙은 "누르는 부품"(버튼·레버·자판). 옛 MissionButton 을 옮긴 것.
     ///  좌클릭(IInteractable) → station.PressPart(partIndex) → 호스트에서 OnPartPressed(actor, partIndex)
-    ///  눌림 애니메이션은 이 PC 에서만 재생한다 (결과는 스테이션의 동기화 상태로 나타남).
+    ///  눌림 애니메이션은 누른 PC 에서 바로 재생하고, 다른 PC 에는 스테이션이 호스트를 거쳐 알려 준다 (RPC_ShowPress — 7b 버튼 눌림 동기화, 누른 본인은 건너뜀).
     ///
     /// [NetworkObject 없음] 부품은 스테이션의 NetworkObject 를 대신 알려준다(TargetObject). 옛 구조와 같다 (명세 S5).
     /// [배치 규칙] 부품은 "자기 콜라이더가 있는 오브젝트"(또는 스테이션보다 아래 조상)에 둔다.
@@ -39,6 +39,12 @@ namespace TrustNoOne.Missions
 
         public NetworkObject TargetObject => station != null ? station.Object : null;
 
+        /// <summary>이 부품이 붙은 스테이션 (7b — 스테이션이 번호로 자기 부품을 찾을 때).</summary>
+        public MissionStation Station => station;
+
+        /// <summary>스테이션이 어느 부품인지 구분하는 번호.</summary>
+        public int PartIndex => partIndex;
+
         private void Awake()
         {
             if (station == null)
@@ -58,8 +64,16 @@ namespace TrustNoOne.Missions
                 return;
 
             station.PressPart(partIndex);
+            PlayPressAnimation();
+        }
 
-            if (buttonVisual == null)
+        /// <summary>
+        /// 눌림 애니메이션만 재생한다 (판정과 무관). 누른 사람은 Interact 에서 바로, 다른 사람은 스테이션의 눌림 보여 주기(RPC_ShowPress)에서 부른다 (7b).
+        /// 애니메이션 대상이 없거나(차단기 · 방화문 레버, 안테나 화면 버튼) 꺼져 있으면 아무것도 하지 않는다.
+        /// </summary>
+        public void PlayPressAnimation()
+        {
+            if (buttonVisual == null || !isActiveAndEnabled)
                 return;
 
             // 연속 클릭 시 기존 애니메이션을 중단하고 처음부터 다시
