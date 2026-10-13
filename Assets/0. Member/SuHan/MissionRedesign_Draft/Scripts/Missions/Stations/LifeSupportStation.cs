@@ -126,7 +126,22 @@ namespace TrustNoOne.Missions
             SuppliedCount = 0;
             InsertStart = LifeSupportRules.NotStarted;
             ExplodeStart = LifeSupportRules.NotStarted;
-            PlaceTanks();
+        }
+
+        /// <summary>호스트: 미션 배정 직후 — 이번 판에 생명 유지 장치 미션이 뽑혔을 때만 산소통을 놓는다 (7a 명세 TC11 · TC12). 다시 배정되면 먼저 치운다.</summary>
+        protected override void OnMissionsAssignedHost(bool usedThisRound)
+        {
+            base.OnMissionsAssignedHost(usedThisRound);
+
+            if (!validSetup)
+                return;
+
+            ClearTanks();
+
+            if (usedThisRound)
+                PlaceTanks();
+            else
+                Debug.Log($"[LifeSupportStation] {name}: 이번 판에 뽑히지 않아 산소통을 놓지 않습니다.");
         }
 
         /// <summary>호스트: 산소통이 우클릭으로 넣기를 요청한다 (OxygenTank.UseAsStateAuthority). 받아들이면 true.</summary>

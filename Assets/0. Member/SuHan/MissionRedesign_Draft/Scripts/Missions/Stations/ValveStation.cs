@@ -3,8 +3,8 @@ using UnityEngine;
 namespace TrustNoOne.Missions
 {
     /// <summary>
-    /// [역할] 밸브 (개인 미션 PS001 "밸브 잠그기" · ValveClosed). 옛 ValveMission 이식. 2a 명세 2-3.
-    ///  F 를 누르고 있는 동안 밸브가 돌고, 이번 판 목표 회전량(360~720°)에 도달하면 완료 → 다음 사람을 위해 원래대로(ResetForNext).
+    /// [역할] 밸브 (단체 미션 TG006 "밸브 잠그기" · ValveClosed — 7a 전에는 개인 PS001). 옛 ValveMission 이식. 2a 명세 2-3.
+    ///  F 를 누르고 있는 동안 밸브가 돌고, 이번 판 목표 회전량(360~720°)에 도달하면 완료 → 잠김, 돌린 모습 그대로(Lock — 7a 명세 TC9).
     ///  손을 떼거나 범위를 벗어나면 처음부터 (명세 P1).
     ///
     /// [코드가 거의 없는 이유] 회전·목표 각도·완료는 전부 RotationHoldStation 과 HoldStation 에 있다.

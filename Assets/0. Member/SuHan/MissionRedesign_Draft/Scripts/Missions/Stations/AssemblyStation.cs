@@ -81,7 +81,25 @@ namespace TrustNoOne.Missions
 
             // Networked 기본값 0 이면 "0초에 붙은 자리"로 보인다 → 빈 자리(−1)로 시작
             ClearAttached();
-            PlaceParts();
+        }
+
+        /// <summary>호스트: 미션 배정 직후 — 이번 판에 장비 조립 미션이 뽑혔을 때만 부품을 놓는다 (7a 명세 TC11 · TC12). 다시 배정되면 먼저 치운다.</summary>
+        protected override void OnMissionsAssignedHost(bool usedThisRound)
+        {
+            base.OnMissionsAssignedHost(usedThisRound);
+
+            if (!validSetup)
+                return;
+
+            for (int i = parts.Count - 1; i >= 0; i--)
+                MissionItems.Despawn(Runner, parts[i]);
+
+            parts.Clear();
+
+            if (usedThisRound)
+                PlaceParts();
+            else
+                Debug.Log($"[AssemblyStation] {name}: 이번 판에 뽑히지 않아 부품을 놓지 않습니다.");
         }
 
         /// <summary>호스트: 들고 있는 부품을 매 틱 확인해 조립 위치 안이면 붙인다 (EA1 · EA8 · EA13).</summary>

@@ -4,9 +4,9 @@ using UnityEngine;
 namespace TrustNoOne.Missions
 {
     /// <summary>
-    /// [역할] 전선 연결 (개인 미션 PS003 "전선 연결하기" · WiresConnected). 옛 WiringMission 이식. 2b 명세 2-7.
+    /// [역할] 전선 연결 (단체 미션 TG008 "전선 연결하기" · WiresConnected — 7a 전에는 개인 PS003). 옛 WiringMission 이식. 2b 명세 2-7.
     ///  1) 시작점(StationDragPart 0~3)을 끌어 같은 색 도착점(StationDropTarget 0~3)에 놓으면 연결 (기획서 "같은 색 선끼리 연결")
-    ///  2) 넷 다 이으면 레버(StationButton, LeverPart)를 당겨 완료 (결정 W1 — 옛 조작 유지) → 다음 사람을 위해 다시 섞임(ResetForNext)
+    ///  2) 넷 다 이으면 레버(StationButton, LeverPart)를 당겨 완료 (결정 W1 — 옛 조작 유지) → 잠김, 이은 모습 그대로(Lock — 7a 명세 TC9)
     ///
     /// [색] 시작점 색은 판마다 무작위(WiringRules.ShuffleColors), 도착점 색은 프리팹 고정(endColors).
     /// [판정 순서 — W4] 색 · 빈 자리 판정(CanConnect)을 먼저 하고, 통과했을 때만 조작자를 확정한다 → 잘못 놓은 시도로 busy 가 되지 않는다.

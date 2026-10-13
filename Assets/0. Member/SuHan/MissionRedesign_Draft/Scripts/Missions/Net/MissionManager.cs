@@ -36,8 +36,9 @@ namespace TrustNoOne.Missions
         /// <summary>
         /// 공개 배열 용량. 기획서 예시(Pool 7개 중 4개)보다 여유를 둔 값.
         /// 초과하는 단체 미션은 호스트 판정은 되지만 클라이언트에 표시되지 않으므로 오류 로그를 남긴다.
+        /// 7a: 8 → 12 (테스트 후 추가 — 테스트 씬은 단체 11개 전부를 쓴다, 7a 명세 TC14 · TC16)
         /// </summary>
-        private const int MaxTeamMissions = 8;
+        private const int MaxTeamMissions = 12;
 
         [Header("데이터")]
         [SerializeField] private MissionPool pool;
@@ -321,6 +322,12 @@ namespace TrustNoOne.Missions
             {
                 resettingByRequest = false;
             }
+        }
+
+        /// <summary>호스트: 이번 판 목표 중에 이 행동을 해야 하는 목표가 있나 (7a 명세 TC12 — 아이템은 뽑힌 미션에만). 초기화 전이면 false.</summary>
+        public bool IsEventInPlan(MissionEventType eventType)
+        {
+            return CanQuery && MissionOutcome.UsesEvent(router.Objectives, eventType);
         }
 
         /// <summary>호스트: except 행동을 쓰는 미션을 뺀 이번 판의 단체 미션이 모두 끝났나 (3d 명세 FD11 — 방화문 해금 규칙). 초기화 전이면 false.</summary>

@@ -9,7 +9,7 @@ namespace TrustNoOne.Missions
         /// <summary>모두에게 잠긴다 (단체 미션용. 예: 발전기 「수리 완료」). 미션 초기화 알림이 오면 풀린다.</summary>
         Lock = 0,
 
-        /// <summary>바로 원래 상태로 돌아간다 (개인 미션용). 같은 미니게임을 받은 다른 사람도 직접 해야 하고, 누가 끝냈는지 드러나지 않는다.</summary>
+        /// <summary>바로 원래 상태로 돌아간다 (개인 미션용). 같은 미니게임을 받은 다른 사람도 직접 해야 하고, 누가 끝냈는지 드러나지 않는다. 7a 부터 쓰는 장치 없음 — 옛 개인 미니게임 6종이 단체가 됨 (7a 명세 TC15).</summary>
         ResetForNext = 1,
     }
 
@@ -19,6 +19,7 @@ namespace TrustNoOne.Missions
     ///  - 취소: 사용 중 매 틱 생존·범위 재검사 (기획서 공통 취소 조건)
     ///  - 완료: 완료 이벤트 발행 + 완료 후 동작(Lock / ResetForNext)
     ///  - 초기화: 제한 시간 실패(MissionManager.OnMissionReset)와 ResetForNext 가 같은 경로(ResetStation)를 쓴다
+    ///  - 배정: 미션 배정이 끝난 순간 OnMissionsAssignedHost (호스트) — 아이템 장치가 이번 판에 뽑혔을 때만 아이템을 놓는다 (7a 명세 TC12)
     ///
     /// [근거] stage1 명세 S2(조작은 그대로, 규칙만 공통), S3(개인용은 완료 후 초기화), S4(공통 베이스 + 하위 클래스),
     ///  S6(제한 시간 판정은 Core, 오브젝트는 알림에 반응만). 옛 MissionMiniGameBase 에서 미니게임마다 흩어져 있던
@@ -51,7 +52,7 @@ namespace TrustNoOne.Missions
         [Tooltip("거리 기준점. 비우면 이 오브젝트의 Transform.")]
         [SerializeField] private Transform rangeCenter;
 
-        [Tooltip("Lock: 완료되면 모두에게 잠김(단체) / ResetForNext: 완료되면 원래대로(개인)")]
+        [Tooltip("Lock: 완료되면 모두에게 잠김(단체) / ResetForNext: 완료되면 원래대로(개인 — 7a 부터 쓰는 장치 없음)")]
         [SerializeField] private CompletionPolicy completionPolicy = CompletionPolicy.Lock;
 
         [Header("연출 (선택)")]
@@ -72,6 +73,9 @@ namespace TrustNoOne.Missions
         private IMissionActorGate gate;
         private bool subscribedToReset;
         private bool? collidersEnabled;
+
+        // 호스트: 미션 배정 완료(MissionManager.Initialized)를 마지막으로 본 값 — 꺼짐 → 켜짐 순간에 훅을 한 번 부른다 (7a 명세 TC12)
+        private bool assignedSeen;
 
         /// <summary>
         /// 이 스테이션이 지금 이 PC 의 플레이어에게 상호작용 대상인가 (= 잠기지 않았고 내 미션). 연출용 — 규칙은 호스트가 따로 강제한다.
@@ -349,6 +353,7 @@ namespace TrustNoOne.Missions
                 return;
 
             EnsureManager();
+            DetectMissionsAssigned();
 
             // 조작 여부와 상관없이 매 틱 (예: 압력 — 잘못 눌러 멈춘 피스톤 재개, 2d 명세 PR12)
             OnHostTickAlways();
@@ -366,6 +371,20 @@ namespace TrustNoOne.Missions
             }
 
             OnHostTick(actor);
+        }
+
+        /// <summary>호스트: 미션 배정이 끝난 순간(판을 다시 시작해 다시 배정되면 또) 훅을 한 번 부른다.</summary>
+        private void DetectMissionsAssigned()
+        {
+            bool assigned = manager != null && manager.Object != null && manager.Object.IsValid && manager.Initialized;
+
+            if (assigned == assignedSeen)
+                return;
+
+            assignedSeen = assigned;
+
+            if (assigned)
+                OnMissionsAssignedHost(manager.IsEventInPlan(completionEvent));
         }
 
         private bool IsInRange(PlayerRef actor)
@@ -460,6 +479,12 @@ namespace TrustNoOne.Missions
 
         /// <summary>호스트: 끄는 부품(fromPart)을 놓는 곳(toPart)에 놓았을 때. 권한 검사는 자동으로 하지 않는다 (OnPartPressed 와 같음).</summary>
         protected virtual void OnPartsConnected(PlayerRef actor, int fromPart, int toPart) { }
+
+        /// <summary>
+        /// 호스트: 미션 배정이 끝난 순간 한 번 (판을 다시 시작해 다시 배정되면 또). usedThisRound = 이번 판 목표 중에 이 장치의 완료 행동을 해야 하는 것이 있나.
+        /// 아이템을 놓는 장치(생명 유지 · 장비 조립 · 방화문)가 "뽑힌 판에만" 놓을 때 쓴다 (7a 명세 TC11 · TC12). 기본은 아무것도 하지 않는다.
+        /// </summary>
+        protected virtual void OnMissionsAssignedHost(bool usedThisRound) { }
 
         /// <summary>호스트: 원래 상태로 되돌릴 때 자기 [Networked] 상태를 초기화한다.</summary>
         protected virtual void OnResetHost() { }

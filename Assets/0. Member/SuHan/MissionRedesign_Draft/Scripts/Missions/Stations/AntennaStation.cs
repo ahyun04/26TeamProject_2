@@ -6,13 +6,13 @@ using UnityEngine.UI;
 namespace TrustNoOne.Missions
 {
     /// <summary>
-    /// [역할] 안테나 (개인 미션 PS004 "안테나 방향 맞추기" · AntennaAligned). 옛 AntennaMission + AntennaLockButton 이식. 2a 명세 2-4.
+    /// [역할] 안테나 (단체 미션 TG009 "안테나 방향 맞추기" · AntennaAligned — 7a 전에는 개인 PS004). 옛 AntennaMission + AntennaLockButton 이식. 2a 명세 2-4.
     ///  1) F 를 누르고 있으면 안테나가 돈다 (RotationHoldStation)
     ///  2) 목표 회전량에 도달하면 "준비 완료" — 완료가 아니다. F 를 떼도 유지된다.
-    ///  3) 고정 버튼(StationButton, partIndex 0)을 누르면 완료 → 다음 사람을 위해 원래대로(ResetForNext)
+    ///  3) 고정 버튼(StationButton, partIndex 0)을 누르면 완료 → 잠김, 맞춘 각도 · 게이지 100% 그대로(Lock — 7a 명세 TC9)
     ///
     /// [옛 코드와 다른 점 — 명세 P6] 1)~3)을 같은 사람이 이어서 해야 한다.
-    ///  옛 코드는 준비 상태가 남아 아무나 고정할 수 있었다. 개인 미션은 본인 행동으로만 진행해야 한다(stage1 S3).
+    ///  옛 코드는 준비 상태가 남아 아무나 고정할 수 있었다. 개인 미션은 본인 행동으로만 진행해야 한다(stage1 S3). 7a 에서 단체가 됐지만 이 규칙은 그대로 (7a 명세 TC10).
     ///  준비 후 범위를 벗어나거나 행동 불가가 되면 베이스가 취소 → 처음부터 (명세 P5).
     /// [화면 UI] 옛 안테나 프리팹의 게이지·퍼센트 글자를 그대로 쓴다.
     /// </summary>

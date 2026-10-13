@@ -12,13 +12,13 @@ using Object = UnityEngine.Object;
 ///
 /// [배치] (stage1 명세 5절)
 ///  - 단체 TG001 발전기 작동시키기: 진짜 GeneratorStation 3대 (LegacyMissionConverter 로 옛 발전기 프리팹을 변환)
-///  - 개인 PS001 밸브 / PS002 차단기 / PS003 전선 / PS004 안테나 / PS005 압력 / PS006 필터(+ 청소기 아이템): 진짜 스테이션 (2a~2d, 옛 프리팹 변환 · 압력은 원본 패널 · 피스톤 모델에서 조립, 실패 시 자리 표시)
+///  - 단체 TG006 밸브 / TG007 차단기 / TG008 전선 / TG009 안테나 / TG010 압력 / TG011 필터(+ 청소기 아이템) — 7a 전에는 개인 PS001 ~ PS006: 진짜 스테이션 (2a~2d, 옛 프리팹 변환 · 압력은 원본 패널 · 피스톤 모델에서 조립, 실패 시 자리 표시)
 ///  - 단체 TG002 코드 순서 맞추기: 진짜 CodeStation (3a, 원본 자판 모델에서 조립, 실패 시 자리 표시)
 ///  - 단체 TG004 생명 유지 장치 복구: 진짜 LifeSupportStation (3b, 원본 모델에서 조립 — 화면 상자 · 밸브 옆 압력계 덧붙임) — 실행 중 본체가 1층 NavMesh 위 무작위로 산소통 6개를 놓는다 (6b 보강). 실패 시 자리 표시
 ///  - 단체 TG003 고장난 장비 조립: 진짜 AssemblyStation (3c, 원본 본체 · 부품 모델에서 조립) — 실행 중 장비가 1층 NavMesh 위에 부품 4개(근처 1 · 멀리 3)를 놓는다 (6b 보강). 실패 시 자리 표시
 ///  - 단체 TG005 대형 방화문 열기: 진짜 FireDoorStation (3d, 원본 문 · 패널 · 레버 모델에서 조립) — 실행 중 방화문이 앞쪽 1층 NavMesh 위에 레버 2개를 놓는다 (6b 보강). 실패 시 자리 표시
 ///  - (자리 표시 큐브 목록은 이제 비어 있다 — 단체 미션이 모두 진짜 장치가 됨)
-///      단체는 Lock(완료 후 잠금), 개인은 ResetForNext(완료 후 원래대로) — 명세 S3
+///      모두 Lock(완료 후 잠금, 끝난 모습 그대로) — 명세 S3 · 7a TC9
 ///  - 개인 행동 목표 AG101 뛰지 않는다: TestRunReporter (Shift 달리기 감지)
 ///  - 디버그 패널(F9 확정 / F10 공개, 단체 미션 남은 시간), 홀드 게이지 HUD
 ///  - (6a) 네트워크 오브젝트(장치 · 청소기 · 미션 관리자)는 씬에 프리팹 인스턴스로 미리 놓는다 — 씬만 열어도 배치가 보인다. 플레이어만 실행 중에 스폰.
@@ -56,13 +56,13 @@ public static class SoloMissionTestSetup
     // 밸브 손잡이 중심 높이 (모델 피벗 = 손잡이 중심). 옛 게임 씬에서도 벽에 달려 있다.
     private const float ValveMountHeight = 1.2f;
 
-    // 단체를 매 판 몇 개 뽑을지는 기획서에 없어 우선 전부 (명세 7절 열린 항목 1)
-    private const int TeamCount = 5;
-    private const int PersonalCount = 2;
+    // 단체 11개 전부 · 개인 0 (7a 명세 TC14 — 한 번 실행으로 모든 장치 확인. 무작위 7개는 메인 씬 · T28 에서 확인,
+    //  테스트 씬에서 보려면 MissionPool_SoloTest 의 Team Mission Count 를 손으로 7 로)
+    private const int TeamCount = 11;
+    private const int PersonalCount = 0;
     private const int ActionGoalCount = 1;
 
     private static readonly Color TeamColor = new Color(0.35f, 0.55f, 1f);
-    private static readonly Color PersonalColor = new Color(0.35f, 0.85f, 0.45f);
 
     // ═════════════════════════════════════════════════════════════
     //  미션 정의 (새 기획서. ID 는 기획서에 없어 TG / PS / AG101~ 로 붙였다 — 명세 5절)
@@ -78,6 +78,7 @@ public static class SoloMissionTestSetup
         public int Required = 1;
         public float TimeLimit;
         public TimeLimitMode TimeLimitMode = TimeLimitMode.SinceLastProgress;
+        public bool AlwaysInclude;
     }
 
     private static readonly DefSpec[] Definitions =
@@ -86,14 +87,15 @@ public static class SoloMissionTestSetup
         new DefSpec { Id = "TG002", Name = "코드 순서 맞추기", Category = MissionCategory.Team, Kind = ObjectiveKind.Count, Trigger = MissionEventType.SecurityCodeEntered },
         new DefSpec { Id = "TG003", Name = "고장난 장비 조립", Category = MissionCategory.Team, Kind = ObjectiveKind.Count, Trigger = MissionEventType.EquipmentAssembled, Required = 4 },
         new DefSpec { Id = "TG004", Name = "생명 유지 장치 복구", Category = MissionCategory.Team, Kind = ObjectiveKind.Count, Trigger = MissionEventType.LifeSupportRestored, Required = 3, TimeLimit = LifeSupportTimeLimit, TimeLimitMode = TimeLimitMode.SinceFirstProgress },
-        new DefSpec { Id = "TG005", Name = "대형 방화문 열기", Category = MissionCategory.Team, Kind = ObjectiveKind.Count, Trigger = MissionEventType.FireDoorOpened },
+        new DefSpec { Id = "TG005", Name = "대형 방화문 열기", Category = MissionCategory.Team, Kind = ObjectiveKind.Count, Trigger = MissionEventType.FireDoorOpened, AlwaysInclude = true },
 
-        new DefSpec { Id = "PS001", Name = "밸브 잠그기", Category = MissionCategory.Personal, Kind = ObjectiveKind.Count, Trigger = MissionEventType.ValveClosed },
-        new DefSpec { Id = "PS002", Name = "차단기 올리기", Category = MissionCategory.Personal, Kind = ObjectiveKind.Count, Trigger = MissionEventType.BreakerRestored },
-        new DefSpec { Id = "PS003", Name = "전선 연결하기", Category = MissionCategory.Personal, Kind = ObjectiveKind.Count, Trigger = MissionEventType.WiresConnected },
-        new DefSpec { Id = "PS004", Name = "안테나 방향 맞추기", Category = MissionCategory.Personal, Kind = ObjectiveKind.Count, Trigger = MissionEventType.AntennaAligned },
-        new DefSpec { Id = "PS005", Name = "압력 수치 맞추기", Category = MissionCategory.Personal, Kind = ObjectiveKind.Count, Trigger = MissionEventType.PressureStabilized },
-        new DefSpec { Id = "PS006", Name = "필터 청소하기", Category = MissionCategory.Personal, Kind = ObjectiveKind.Count, Trigger = MissionEventType.FilterCleaned },
+        // 7a: 옛 개인 미니게임 6종 → 단체 (명세 TC1 · TC6)
+        new DefSpec { Id = "TG006", Name = "밸브 잠그기", Category = MissionCategory.Team, Kind = ObjectiveKind.Count, Trigger = MissionEventType.ValveClosed },
+        new DefSpec { Id = "TG007", Name = "차단기 올리기", Category = MissionCategory.Team, Kind = ObjectiveKind.Count, Trigger = MissionEventType.BreakerRestored },
+        new DefSpec { Id = "TG008", Name = "전선 연결하기", Category = MissionCategory.Team, Kind = ObjectiveKind.Count, Trigger = MissionEventType.WiresConnected },
+        new DefSpec { Id = "TG009", Name = "안테나 방향 맞추기", Category = MissionCategory.Team, Kind = ObjectiveKind.Count, Trigger = MissionEventType.AntennaAligned },
+        new DefSpec { Id = "TG010", Name = "압력 수치 맞추기", Category = MissionCategory.Team, Kind = ObjectiveKind.Count, Trigger = MissionEventType.PressureStabilized },
+        new DefSpec { Id = "TG011", Name = "필터 청소하기", Category = MissionCategory.Team, Kind = ObjectiveKind.Count, Trigger = MissionEventType.FilterCleaned },
 
         new DefSpec { Id = "AG101", Name = "뛰지 않는다", Category = MissionCategory.ActionGoal, Kind = ObjectiveKind.Avoid, Trigger = MissionEventType.PlayerRan },
     };
@@ -122,19 +124,19 @@ public static class SoloMissionTestSetup
 
     };
 
-    // 2a 에서 실제 미니게임으로 바뀐 개인 미션. 변환에 실패하면 이 자리 표시로 대체한다 (발전기와 같은 규칙).
+    // 2a 에서 실제 미니게임으로 바뀐 옛 개인 미션 (7a 부터 단체). 변환에 실패하면 이 자리 표시로 대체한다 (발전기와 같은 규칙).
     private static readonly PlaceholderSpec ValveFallback =
-        Personal("Placeholder_PS001_Valve", "밸브 잠그기", "PS001", MissionEventType.ValveClosed, new Vector3(-12.5f, 0f, -8f));
+        Team("Placeholder_TG006_Valve", "밸브 잠그기", "TG006", MissionEventType.ValveClosed, new Vector3(-12.5f, 0f, -8f));
     private static readonly PlaceholderSpec BreakerFallback =
-        Personal("Placeholder_PS002_Breaker", "차단기 올리기", "PS002", MissionEventType.BreakerRestored, new Vector3(-7.5f, 0f, -8f));
+        Team("Placeholder_TG007_Breaker", "차단기 올리기", "TG007", MissionEventType.BreakerRestored, new Vector3(-7.5f, 0f, -8f));
     private static readonly PlaceholderSpec AntennaFallback =
-        Personal("Placeholder_PS004_Antenna", "안테나 방향 맞추기", "PS004", MissionEventType.AntennaAligned, new Vector3(2.5f, 0f, -8f));
+        Team("Placeholder_TG009_Antenna", "안테나 방향 맞추기", "TG009", MissionEventType.AntennaAligned, new Vector3(2.5f, 0f, -8f));
     private static readonly PlaceholderSpec WiringFallback =
-        Personal("Placeholder_PS003_Wiring", "전선 연결하기", "PS003", MissionEventType.WiresConnected, new Vector3(-2.5f, 0f, -8f));
+        Team("Placeholder_TG008_Wiring", "전선 연결하기", "TG008", MissionEventType.WiresConnected, new Vector3(-2.5f, 0f, -8f));
     private static readonly PlaceholderSpec FilterFallback =
-        Personal("Placeholder_PS006_Filter", "필터 청소하기", "PS006", MissionEventType.FilterCleaned, new Vector3(12.5f, 0f, -8f));
+        Team("Placeholder_TG011_Filter", "필터 청소하기", "TG011", MissionEventType.FilterCleaned, new Vector3(12.5f, 0f, -8f));
     private static readonly PlaceholderSpec PressureFallback =
-        Personal("Placeholder_PS005_Pressure", "압력 수치 맞추기", "PS005", MissionEventType.PressureStabilized, new Vector3(7.5f, 0f, -8f));
+        Team("Placeholder_TG010_Pressure", "압력 수치 맞추기", "TG010", MissionEventType.PressureStabilized, new Vector3(7.5f, 0f, -8f));
 
     // 3a 에서 실제 미니게임으로 바뀐 단체 미션. 변환에 실패하면 이 자리 표시로 대체한다.
     private static readonly PlaceholderSpec CodeFallback =
@@ -167,18 +169,9 @@ public static class SoloMissionTestSetup
         };
     }
 
-    private static PlaceholderSpec Personal(string prefab, string title, string id, MissionEventType e, Vector3 position)
-    {
-        return new PlaceholderSpec
-        {
-            PrefabName = prefab, Label = $"{title} (자리 표시)\n{id} · 완료 후 초기화\n[F 2초]", Event = e,
-            Policy = CompletionPolicy.ResetForNext, Color = PersonalColor, Position = position,
-        };
-    }
-
     private const string InfoText =
         "가까운 앞줄: 발전기 3대 (버튼 클릭 → 3초, 1대 고치면 다음 1대까지 2분)\n" +
-        "먼 앞줄: 단체 미션 — 코드 · 장비 조립 · 생명 유지 장치 · 방화문 (모두 실제)  /  뒤: 개인 미션 6종 — 모두 실제 미니게임\n" +
+        "먼 앞줄: 단체 미션 — 코드 · 장비 조립 · 생명 유지 장치 · 방화문 (모두 실제)  /  뒤: 단체 미션 6종(7a — 옛 개인) — 끝나면 잠김\n" +
         "방화문(먼 앞줄 오른쪽): 다른 단체 미션 완료 → 레버 2개 패널에 끼우기(우클릭) → 30초 안에 내리기(클릭)   F8 = 방화문 빼고 단체 미션 즉시 완료(테스트)\n" +
         "장비 조립(먼 앞줄 왼쪽): 부품 4개(1개는 장비 주변)를 찾아 들고 장비 앞 바닥 원 안으로 → 자동으로 붙음\n" +
         "생명 유지 장치(먼 앞줄): 산소통 6개 중 정상 3개만 본체에 — 가까이서 압력계 확인 → 들기(좌클릭) → 본체에 우클릭, 첫 공급부터 120초\n" +
@@ -261,6 +254,9 @@ public static class SoloMissionTestSetup
         for (int i = 1; i <= 7; i++) yield return $"{DataFolder}/TM00{i}.asset";
         for (int i = 1; i <= 8; i++) yield return $"{DataFolder}/PM00{i}.asset";
         for (int i = 1; i <= 6; i++) yield return $"{DataFolder}/AG00{i}.asset";
+
+        // 7a: 옛 개인 미션 테스트 데이터 (TG006 ~ TG011 이 대신한다)
+        for (int i = 1; i <= 6; i++) yield return $"{DataFolder}/PS00{i}.asset";
 
         yield return $"{DataFolder}/TM_Door.asset";
         yield return $"{DataFolder}/PM_Door.asset";
@@ -350,6 +346,7 @@ public static class SoloMissionTestSetup
         so.FindProperty("requiredCount").intValue = spec.Required;
         so.FindProperty("timeLimitSeconds").floatValue = spec.TimeLimit;
         so.FindProperty("timeLimitMode").intValue = (int)spec.TimeLimitMode;
+        so.FindProperty("alwaysInclude").boolValue = spec.AlwaysInclude;
         so.ApplyModifiedPropertiesWithoutUndo();
 
         if (isNew)
@@ -535,17 +532,17 @@ public static class SoloMissionTestSetup
         CreateInfoLabel(layoutRoot.transform, "Info (조작 안내)", new Vector3(0f, 0.8f, 4f), InfoText);
         CreateInfoLabel(layoutRoot.transform, "Info (발전기)", new Vector3(0f, 2.2f, 11f), $"발전기 ×3 · TG001 · 제한 {GeneratorTimeLimit:0}초 체인");
         CreateInfoLabel(layoutRoot.transform, "Info (밸브)", ValveFallback.Position + new Vector3(0f, 2.4f, 0f),
-            "밸브 잠그기 · PS001\nF 유지 4~8초 (떼면 처음부터)");
+            "밸브 잠그기 · TG006\nF 유지 4~8초 (떼면 처음부터)");
         CreateInfoLabel(layoutRoot.transform, "Info (차단기)", BreakerFallback.Position + new Vector3(0f, 2.4f, 0f),
-            "차단기 올리기 · PS002\n레버 클릭 → 전부 올리기");
+            "차단기 올리기 · TG007\n레버 클릭 → 전부 올리기");
         CreateInfoLabel(layoutRoot.transform, "Info (안테나)", AntennaFallback.Position + new Vector3(0f, 2.4f, 0f),
-            "안테나 방향 맞추기 · PS004\nF 유지 → 고정 버튼 클릭");
+            "안테나 방향 맞추기 · TG009\nF 유지 → 고정 버튼 클릭");
         CreateInfoLabel(layoutRoot.transform, "Info (전선)", WiringFallback.Position + new Vector3(0f, 2.4f, 0f),
-            "전선 연결하기 · PS003\n같은 색끼리 끌어서 연결 → 레버");
+            "전선 연결하기 · TG008\n같은 색끼리 끌어서 연결 → 레버");
         CreateInfoLabel(layoutRoot.transform, "Info (필터)", FilterFallback.Position + new Vector3(0f, 2.4f, 0f),
-            "필터 청소하기 · PS006\n청소기 줍기(좌클릭) → 먼지 조준 → 우클릭 · G 내려놓기");
+            "필터 청소하기 · TG011\n청소기 줍기(좌클릭) → 먼지 조준 → 우클릭 · G 내려놓기");
         CreateInfoLabel(layoutRoot.transform, "Info (압력)", PressureFallback.Position + new Vector3(0f, 2.4f, 0f),
-            "압력 수치 맞추기 · PS005\n버튼 클릭 → 초록 구간에서 멈추기 (연결은 무작위)");
+            "압력 수치 맞추기 · TG010\n버튼 클릭 → 초록 구간에서 멈추기 (연결은 무작위)");
         CreateInfoLabel(layoutRoot.transform, "Info (코드)", CodeFallback.Position + new Vector3(0f, 2.4f, 0f),
             "코드 순서 맞추기 · TG002\n빨강 → 파란불 순서 기억 → 숫자 입력 → 파랑");
         CreateInfoLabel(layoutRoot.transform, "Info (생명 유지 장치)", LifeSupportFallback.Position + new Vector3(0f, 2.4f, 0f),

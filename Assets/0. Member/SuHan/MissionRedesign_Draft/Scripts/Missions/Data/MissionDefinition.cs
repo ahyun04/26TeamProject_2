@@ -49,6 +49,10 @@ namespace TrustNoOne.Missions
         [Tooltip("SinceLastProgress: 진행할 때마다 다시 계산(발전기) / SinceFirstProgress: 첫 진행부터 계산(생명 유지 장치)")]
         [SerializeField] private TimeLimitMode timeLimitMode = TimeLimitMode.SinceLastProgress;
 
+        [Header("배정 (7a)")]
+        [Tooltip("켜면 이 미션은 매 판 항상 뽑힌다 (개수 안에서 먼저). 예) 대형 방화문 — 탈출 미션이라 빠지면 안 된다")]
+        [SerializeField] private bool alwaysInclude;
+
         [Header("충돌 검사 (간접 관계만 수동 입력)")]
         [Tooltip("이 미션을 수행하려면 반드시 해야 하는 행동 (Count형의 Trigger는 자동 포함).")]
         [SerializeField] private MissionEventType[] extraRequires;
@@ -66,6 +70,7 @@ namespace TrustNoOne.Missions
         public float TimeLimitSeconds => Mathf.Max(0f, timeLimitSeconds);
         public TimeLimitMode TimeLimitMode => timeLimitMode;
         public bool HasTimeLimit => timeLimitSeconds > 0f;
+        public bool AlwaysInclude => alwaysInclude;
 
         /// <summary>이 미션을 하려면 event 를 반드시 해야 하는가? (충돌 검사용)</summary>
         public bool RequiresEvent(MissionEventType eventType)
