@@ -38,7 +38,12 @@ namespace LockdownProtocol.Lobby
             leaveRoomButton.onClick.AddListener(OnLeaveClicked);
             if (leaveConfirmYes != null) leaveConfirmYes.onClick.AddListener(OnLeaveConfirmed);
             if (leaveConfirmNo != null) leaveConfirmNo.onClick.AddListener(HideLeaveConfirm);
-            if (leaveConfirmPanel != null) leaveConfirmPanel.SetActive(false);
+            if (leaveConfirmPanel != null)
+            {
+                leaveConfirmPanel.SetActive(false);
+                if (leaveConfirmPanel.transform.parent != transform)
+                    leaveConfirmPanel.transform.SetParent(transform, false); //숨겨진 미니 HUD와 독립적으로 확인창 표시
+            }
         }
 
         private void OnDisable()
