@@ -137,7 +137,8 @@ public static class LegacyMissionConverter
         new Vector3(-3.324f, 0f, -6.621f),
     };
 
-    // 개인 미니게임 공통 거리 (2a 명세 3장). 발전기는 1단계 값 3.5 유지.
+    // 옛 개인 미니게임 6종 공통 거리 (2a 명세 3장). 발전기는 1단계 값 3.5 유지.
+    // 7a: 6종은 단체 미션 → 완료 후 잠금(Lock — 끝난 모습 그대로, 7a 명세 TC9)
     private const float PersonalInteractRange = 3f;
 
     private static readonly string[] LegacyTypeNames =
@@ -457,6 +458,12 @@ public static class LegacyMissionConverter
         CopyFloat(oldButtonSO, "returnTime", buttonSO, "returnTime");
         buttonSO.ApplyModifiedPropertiesWithoutUndo();
 
+        // 거리 기준점 = 버튼 (7a 테스트 후 추가 — 명세 TC17). 루트가 기준이면 씬에서 모델 · 버튼만 옮긴 발전기는
+        // 버튼 바로 앞에서도 루트와 멀어 "범위 밖"으로 거부된다 (메인 씬 Generator_C: 자식만 약 6m 옮겨져 4.8 ~ 5.1m 로 거부)
+        stationSO.Update();
+        stationSO.FindProperty("rangeCenter").objectReferenceValue = partObject.transform;
+        stationSO.ApplyModifiedPropertiesWithoutUndo();
+
         // 조준 시 외곽선: 버튼을 조준해서 누르는 미니게임이라 버튼 모델에 붙인다 (눌림 애니메이션을 따라 움직인다)
         Transform buttonVisual = buttonSO.FindProperty("buttonVisual").objectReferenceValue as Transform;
         MissionOutlineBuilder.Attach(copy, buttonVisual != null ? buttonVisual.gameObject : buttonObject);
@@ -484,7 +491,7 @@ public static class LegacyMissionConverter
 
         // 루트: ValveMission → ValveStation. 부품 없음 — 모델 콜라이더에서 위로 올라가면 루트의 ValveStation(F 홀드)이 잡힌다.
         ValveStation station = copy.AddComponent<ValveStation>();
-        SerializedObject so = ConfigureStation(station, MissionEventType.ValveClosed, CompletionPolicy.ResetForNext, PersonalInteractRange);
+        SerializedObject so = ConfigureStation(station, MissionEventType.ValveClosed, CompletionPolicy.Lock, PersonalInteractRange);
         CopyReference(oldSO, "rotatingPart", so, "rotatingPart");
         CopyVector3(oldSO, "rotationAxis", so, "rotationAxis");
         CopyFloat(oldSO, "rotationSpeed", so, "rotationSpeed");
@@ -529,7 +536,7 @@ public static class LegacyMissionConverter
         }
 
         AntennaStation station = copy.AddComponent<AntennaStation>();
-        SerializedObject so = ConfigureStation(station, MissionEventType.AntennaAligned, CompletionPolicy.ResetForNext, PersonalInteractRange);
+        SerializedObject so = ConfigureStation(station, MissionEventType.AntennaAligned, CompletionPolicy.Lock, PersonalInteractRange);
         CopyReference(oldSO, "antennaTransform", so, "rotatingPart");
         CopyVector3(oldSO, "rotationAxis", so, "rotationAxis");
         CopyFloat(oldSO, "rotationSpeed", so, "rotationSpeed");
@@ -583,7 +590,7 @@ public static class LegacyMissionConverter
         SerializedObject oldSO = new SerializedObject(oldMission);
 
         BreakerStation station = copy.AddComponent<BreakerStation>();
-        SerializedObject so = ConfigureStation(station, MissionEventType.BreakerRestored, CompletionPolicy.ResetForNext, PersonalInteractRange);
+        SerializedObject so = ConfigureStation(station, MissionEventType.BreakerRestored, CompletionPolicy.Lock, PersonalInteractRange);
         CopyColliders(oldSO, so, copy);
 
         BreakerLeverVisual[] visuals = new BreakerLeverVisual[oldLevers.Count];
@@ -664,7 +671,7 @@ public static class LegacyMissionConverter
         SerializedObject oldSO = new SerializedObject(oldMission);
 
         WiringStation station = copy.AddComponent<WiringStation>();
-        SerializedObject so = ConfigureStation(station, MissionEventType.WiresConnected, CompletionPolicy.ResetForNext, PersonalInteractRange);
+        SerializedObject so = ConfigureStation(station, MissionEventType.WiresConnected, CompletionPolicy.Lock, PersonalInteractRange);
         CopyColliders(oldSO, so, copy);
 
         WireVisual[] wires = new WireVisual[wireCount];
@@ -860,7 +867,7 @@ public static class LegacyMissionConverter
         }
 
         FilterStation station = copy.AddComponent<FilterStation>();
-        SerializedObject so = ConfigureStation(station, MissionEventType.FilterCleaned, CompletionPolicy.ResetForNext, PersonalInteractRange);
+        SerializedObject so = ConfigureStation(station, MissionEventType.FilterCleaned, CompletionPolicy.Lock, PersonalInteractRange);
 
         // F8: 먼지 콜라이더는 FilterStation 이 직접 관리한다 → 베이스 목록은 비운다
         so.FindProperty("interactionColliders").ClearArray();
@@ -1030,7 +1037,7 @@ public static class LegacyMissionConverter
             copy.AddComponent<NetworkObject>();
 
         PressureStation station = copy.AddComponent<PressureStation>();
-        SerializedObject so = ConfigureStation(station, MissionEventType.PressureStabilized, CompletionPolicy.ResetForNext, PersonalInteractRange);
+        SerializedObject so = ConfigureStation(station, MissionEventType.PressureStabilized, CompletionPolicy.Lock, PersonalInteractRange);
 
         PressureVisual[] visuals = new PressureVisual[PressureStation.PistonCount];
 

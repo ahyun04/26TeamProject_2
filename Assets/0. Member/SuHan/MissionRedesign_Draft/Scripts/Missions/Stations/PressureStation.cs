@@ -4,9 +4,9 @@ using UnityEngine;
 namespace TrustNoOne.Missions
 {
     /// <summary>
-    /// [역할] 압력 수치 맞추기 (개인 미션 PS005 · PressureStabilized). 신규 미니게임. 2d 명세 3-3.
+    /// [역할] 압력 수치 맞추기 (단체 미션 TG010 · PressureStabilized — 7a 전에는 개인 PS005). 신규 미니게임. 2d 명세 3-3.
     ///  피스톤 A/B/C 가 각자 속도로 오르내린다. 버튼(StationButton 0~2)은 판마다 무작위로 피스톤 하나에 몰래 연결된다(PR7).
-    ///  버튼을 눌러 연결된 피스톤이 초록 구간이면 고정(초록불), 아니면 1초 멈춤(빨간불) 후 재개(PR2). 셋 다 고정하면 완료 → 다시 뽑기(ResetForNext).
+    ///  버튼을 눌러 연결된 피스톤이 초록 구간이면 고정(초록불), 아니면 1초 멈춤(빨간불) 후 재개(PR2). 셋 다 고정하면 완료 → 잠김, 고정된 모습 그대로(Lock — 7a 명세 TC9).
     ///
     /// [동기화 — PR3] 높이는 매 틱 보내지 않는다. 공식 값(속도 · 위상 · 누적 정지 시간 · 멈춤 구간 · 고정)만 동기화하고
     ///  모든 PC 가 PressureRules.HeightAt 으로 같은 높이를 계산한다. 화면은 Object.RenderTime(이 오브젝트가 지금 그려지는 시각) 기준.

@@ -103,7 +103,25 @@ namespace TrustNoOne.Missions
             CountdownStart = FireDoorRules.NotStarted;
             FailStart = FireDoorRules.NotStarted;
             OpenStart = FireDoorRules.NotStarted;
-            PlaceLevers();
+        }
+
+        /// <summary>호스트: 미션 배정 직후 레버를 놓는다 (방화문은 매 판 항상 포함이지만 다른 아이템 장치와 같은 경로 — 7a 명세 TC4 · TC12). 다시 배정되면 먼저 치운다.</summary>
+        protected override void OnMissionsAssignedHost(bool usedThisRound)
+        {
+            base.OnMissionsAssignedHost(usedThisRound);
+
+            if (!validSetup)
+                return;
+
+            for (int i = levers.Count - 1; i >= 0; i--)
+                MissionItems.Despawn(Runner, levers[i]);
+
+            levers.Clear();
+
+            if (usedThisRound)
+                PlaceLevers();
+            else
+                Debug.Log($"[FireDoorStation] {name}: 이번 판에 뽑히지 않아 레버를 놓지 않습니다.");
         }
 
         /// <summary>호스트: 레버가 우클릭으로 패널에 끼우기를 요청한다 (FireDoorLever.UseAsStateAuthority). 받아들이면 true.</summary>

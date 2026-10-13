@@ -12,7 +12,7 @@ using Object = UnityEngine.Object;
 /// <summary>
 /// [에디터 전용, 1클릭 도구] 메인 게임 씬(GamePlay)의 옛 미션을 지우고 새 미션을 놓는다 (6b 명세 3장).
 ///
-/// [하는 일] 실제 게임 데이터 준비(없을 때만) → 옛 미션 프리팹 제거 → 옛 MissionSystem 컴포넌트만 제거 →
+/// [하는 일] 옛 개인 미션 6종을 단체로 옮기기(7a — 한 번) → 실제 게임 데이터 준비(없을 때만) · 풀 숫자 7a 값(옛 기본값일 때만) → 옛 미션 프리팹 제거 → 옛 MissionSystem 컴포넌트만 제거 →
 ///  `Missions (새 미션)` 아래에 MissionManager · PlayerHealthActorGate · 새 장치(없을 때만) → 옛 아이템 자리 후보 묶음 제거 →
 ///  팀원 스크립트의 미션 시스템 칸 연결 → 미션 목록 패널의 옛 MissionUI 를 MissionListUI 로 바꿔 끼우기(6c) → 1층 아이템 NavMesh 굽기(6b 보강 — 매번) → 새 5종 겹침 경고 → 저장.
 /// [다시 실행해도 안전 — SW7] 이름으로 찾아 이미 있으면 건드리지 않는다 → 기획자가 옮긴 배치 · 바꾼 데이터 숫자가 남는다.
@@ -22,7 +22,7 @@ using Object = UnityEngine.Object;
 /// [팀원 타입을 이름으로 다루는 이유] 엔진 밖 컴파일 검사(VerifyAll)에 팀원 스크립트가 없다 → 팀원 타입(MissionSystem · RoleAssignment 등)을
 ///  코드에 직접 쓰지 않고 타입 이름 · 직렬화 칸 이름으로 찾는다.
 /// [겹침 경고] 새 5종만 검사한다. 옛 미션 자리(벽에 붙은 밸브 · 차단기 등)는 원래 배치라 경고가 소음이 된다.
-/// [근거] 6b 명세 SW1 · SW2 · SW5 · SW6 · SW7 · SW8 · SW11 · SW12 (사용자 결정 — 질문 1 ~ 6, 접근 1), 6b 보강 명세 NS2 · NS4 · NS12
+/// [근거] 6b 명세 SW1 · SW2 · SW5 · SW6 · SW7 · SW8 · SW11 · SW12 (사용자 결정 — 질문 1 ~ 6, 접근 1), 6b 보강 명세 NS2 · NS4 · NS12 · 7a 명세 TC6 · TC13
 /// </summary>
 public static class GamePlayMissionInstaller
 {
@@ -39,9 +39,21 @@ public static class GamePlayMissionInstaller
     // 방화문 = 탈출 미션 (EscapeUnlocked — 팀원 탈출 코드와의 연결은 6d)
     private const string EscapeMissionId = "TG005";
 
-    // 한 판: 단체 5 전부 · 시민마다 개인 2 · 살인마 0 · 행동 목표 0 (SW5 — 사용자 결정 A, 4단계 진행 안 함)
-    private const int TeamCount = 5;
-    private const int PersonalCount = 2;
+    // 한 판: 단체 7 (방화문 항상 + 나머지 10개 중 무작위 6) · 개인 0 · 살인마 0 · 행동 목표 0
+    // (7a 명세 TC2 · TC3 — 사용자 결정, SW5 의 개인 2 · 단체 5 전부에서 바뀜)
+    private const int TeamCount = 7;
+    private const int PersonalCount = 0;
+
+    // 6b 까지의 기본값 — 풀 숫자가 이 값 그대로일 때만 7a 값으로 바꾼다 (기획자가 바꾼 숫자는 보존 — 7a 명세 TC13)
+    private const int OldTeamCount = 5;
+    private const int OldPersonalCount = 2;
+
+    // 7a: 옛 개인 미션 → 단체 미션 (같은 순서, 명세 TC6). 파일 이름을 바꿔 GUID 를 유지한다 → 풀 연결 · 기획자가 바꾼 값이 남는다
+    private static readonly string[,] PersonalToTeam =
+    {
+        { "PS001", "TG006" }, { "PS002", "TG007" }, { "PS003", "TG008" },
+        { "PS004", "TG009" }, { "PS005", "TG010" }, { "PS006", "TG011" },
+    };
 
     // 미션 목록 칸의 줄 간격 (6c 테스트 후 — 위에서부터 붙여 쌓을 때)
     private const float ListLineSpacing = 4f;
@@ -58,6 +70,7 @@ public static class GamePlayMissionInstaller
         public int Required = 1;
         public float TimeLimit;
         public TimeLimitMode Mode = TimeLimitMode.SinceLastProgress;
+        public bool AlwaysInclude;
     }
 
     // 실제 게임 미션 정의 (SW11): 값은 테스트에서 검증한 값. 테스트 설정 메뉴와 따로 둔다 — 기획 조정으로 달라질 수 있다
@@ -67,13 +80,14 @@ public static class GamePlayMissionInstaller
         new DefSpec { Id = "TG002", Name = "코드 순서 맞추기", Category = MissionCategory.Team, Trigger = MissionEventType.SecurityCodeEntered },
         new DefSpec { Id = "TG003", Name = "고장난 장비 조립", Category = MissionCategory.Team, Trigger = MissionEventType.EquipmentAssembled, Required = 4 },
         new DefSpec { Id = "TG004", Name = "생명 유지 장치 복구", Category = MissionCategory.Team, Trigger = MissionEventType.LifeSupportRestored, Required = 3, TimeLimit = 120f, Mode = TimeLimitMode.SinceFirstProgress },
-        new DefSpec { Id = "TG005", Name = "대형 방화문 열기", Category = MissionCategory.Team, Trigger = MissionEventType.FireDoorOpened },
-        new DefSpec { Id = "PS001", Name = "밸브 잠그기", Category = MissionCategory.Personal, Trigger = MissionEventType.ValveClosed },
-        new DefSpec { Id = "PS002", Name = "차단기 올리기", Category = MissionCategory.Personal, Trigger = MissionEventType.BreakerRestored },
-        new DefSpec { Id = "PS003", Name = "전선 연결하기", Category = MissionCategory.Personal, Trigger = MissionEventType.WiresConnected },
-        new DefSpec { Id = "PS004", Name = "안테나 방향 맞추기", Category = MissionCategory.Personal, Trigger = MissionEventType.AntennaAligned },
-        new DefSpec { Id = "PS005", Name = "압력 수치 맞추기", Category = MissionCategory.Personal, Trigger = MissionEventType.PressureStabilized },
-        new DefSpec { Id = "PS006", Name = "필터 청소하기", Category = MissionCategory.Personal, Trigger = MissionEventType.FilterCleaned },
+        new DefSpec { Id = "TG005", Name = "대형 방화문 열기", Category = MissionCategory.Team, Trigger = MissionEventType.FireDoorOpened, AlwaysInclude = true },
+        // 7a: 옛 개인 미니게임 6종 → 단체 (제한 시간 없음 — 기획서 6종 설명에 없다, 명세 TC7 · 안테나는 2대 중 1대, TC8)
+        new DefSpec { Id = "TG006", Name = "밸브 잠그기", Category = MissionCategory.Team, Trigger = MissionEventType.ValveClosed },
+        new DefSpec { Id = "TG007", Name = "차단기 올리기", Category = MissionCategory.Team, Trigger = MissionEventType.BreakerRestored },
+        new DefSpec { Id = "TG008", Name = "전선 연결하기", Category = MissionCategory.Team, Trigger = MissionEventType.WiresConnected },
+        new DefSpec { Id = "TG009", Name = "안테나 방향 맞추기", Category = MissionCategory.Team, Trigger = MissionEventType.AntennaAligned },
+        new DefSpec { Id = "TG010", Name = "압력 수치 맞추기", Category = MissionCategory.Team, Trigger = MissionEventType.PressureStabilized },
+        new DefSpec { Id = "TG011", Name = "필터 청소하기", Category = MissionCategory.Team, Trigger = MissionEventType.FilterCleaned },
     };
 
     private sealed class Placement
@@ -126,10 +140,14 @@ public static class GamePlayMissionInstaller
         if (!TryOpenGamePlay(out Scene scene))
             return;
 
+        // 7a: 옛 개인 데이터를 단체로 먼저 옮긴다 (EnsureGameData 가 새 TG 파일을 따로 만들지 않게)
+        int movedToTeam = MigratePersonalToTeam();
         MissionPool pool = EnsureGameData();
 
         if (pool == null)
             return;
+
+        bool poolUpdated = UpdatePoolForTeamOnly(pool);
 
         int removedOld = RemoveOldMissionInstances(scene);
         int removedSystems = RemoveOldMissionSystems(scene);
@@ -167,7 +185,7 @@ public static class GamePlayMissionInstaller
         // 저장할 때 Fusion 이 씬 오브젝트의 정렬 키를 굽는다 (호스트 · 손님이 같은 오브젝트로 짝을 맞추는 번호)
         EditorSceneManager.SaveScene(scene);
 
-        Debug.Log($"[GamePlayMissionInstaller] 완료 — 옛 미션 {removedOld}개 · 옛 MissionSystem 컴포넌트 {removedSystems}개 제거, " +
+        Debug.Log($"[GamePlayMissionInstaller] 완료 — 개인 → 단체 {movedToTeam}개 옮김, 풀 숫자 {(poolUpdated ? $"단체 {TeamCount} · 개인 {PersonalCount} 으로 바꿈" : "그대로")}, 옛 미션 {removedOld}개 · 옛 MissionSystem 컴포넌트 {removedSystems}개 제거, " +
                   $"새 장치 {placedNow.Count}개 놓음 · {skipped}개 이미 있어 건너뜀, MissionManager {(managerCreated ? "새로 만듦" : "있음")}, " +
                   $"PlayerHealthActorGate {(gateCreated ? "새로 만듦" : "있음")}, 옛 자리 후보 묶음 {spotGroupsRemoved}개 제거, NavMesh {(navMeshBaked ? "구움" : "실패")}, " +
                   $"미션 시스템 칸 {wired}개 연결, 미션 목록 UI {listSwapped}개 교체 · 칸 설정 {listLayoutFixed}개 고침, 겹침 경고 {overlaps}개. 멀티 테스트 전에는 SuHan/Build Full Game (Windows) 로 다시 빌드하세요.");
@@ -282,6 +300,82 @@ public static class GamePlayMissionInstaller
         return pool;
     }
 
+    /// <summary>
+    /// 7a: 옛 개인 미션 데이터(PS001 ~ PS006)를 단체(TG006 ~ TG011)로 옮긴다 — PS 파일이 있고 TG 파일이 없을 때만 (명세 TC6 · TC13).
+    /// 파일 이름을 바꿔 GUID 를 유지하므로 풀 연결과 기획자가 바꾼 값(필요 횟수 등)이 그대로 남는다. ID · 분류만 바꾼다.
+    /// </summary>
+    private static int MigratePersonalToTeam()
+    {
+        int moved = 0;
+
+        for (int i = 0; i < PersonalToTeam.GetLength(0); i++)
+        {
+            string oldId = PersonalToTeam[i, 0];
+            string newId = PersonalToTeam[i, 1];
+            string oldPath = $"{DataFolder}/{oldId}.asset";
+            string newPath = $"{DataFolder}/{newId}.asset";
+            MissionDefinition old = AssetDatabase.LoadAssetAtPath<MissionDefinition>(oldPath);
+
+            if (old == null || AssetDatabase.LoadAssetAtPath<MissionDefinition>(newPath) != null)
+                continue;
+
+            string error = AssetDatabase.RenameAsset(oldPath, newId);
+
+            if (!string.IsNullOrEmpty(error))
+            {
+                Debug.LogError($"[GamePlayMissionInstaller] {oldId} → {newId} 이름 바꾸기 실패: {error}");
+                continue;
+            }
+
+            SerializedObject so = new SerializedObject(old);
+            so.FindProperty("id").stringValue = newId;
+            so.FindProperty("category").intValue = (int)MissionCategory.Team;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(old);
+            moved++;
+        }
+
+        if (moved > 0)
+        {
+            AssetDatabase.SaveAssets();
+            Debug.Log($"[GamePlayMissionInstaller] 옛 개인 미션 {moved}개를 단체 미션(TG006 ~ TG011)으로 옮겼습니다 (7a).");
+        }
+
+        return moved;
+    }
+
+    /// <summary>
+    /// 7a: 풀 숫자가 옛 기본값(단체 5 · 개인 2) 그대로면 단체 7 · 개인 0 으로 바꾸고 방화문(TG005)을 "매 판 항상 포함"으로 켠다 (명세 TC13).
+    /// 기획자가 숫자를 바꿨다면 손대지 않는다.
+    /// </summary>
+    private static bool UpdatePoolForTeamOnly(MissionPool pool)
+    {
+        SerializedObject so = new SerializedObject(pool);
+        SerializedProperty team = so.FindProperty("teamMissionCount");
+        SerializedProperty personal = so.FindProperty("personalMissionsPerCitizen");
+
+        if (team.intValue != OldTeamCount || personal.intValue != OldPersonalCount)
+            return false;
+
+        team.intValue = TeamCount;
+        personal.intValue = PersonalCount;
+        so.ApplyModifiedPropertiesWithoutUndo();
+        EditorUtility.SetDirty(pool);
+
+        MissionDefinition escape = AssetDatabase.LoadAssetAtPath<MissionDefinition>($"{DataFolder}/{EscapeMissionId}.asset");
+
+        if (escape != null)
+        {
+            SerializedObject escapeSO = new SerializedObject(escape);
+            escapeSO.FindProperty("alwaysInclude").boolValue = true;
+            escapeSO.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(escape);
+        }
+
+        AssetDatabase.SaveAssets();
+        return true;
+    }
+
     private static MissionDefinition LoadOrCreateDefinition(DefSpec spec, ref int created)
     {
         string path = $"{DataFolder}/{spec.Id}.asset";
@@ -301,6 +395,7 @@ public static class GamePlayMissionInstaller
         so.FindProperty("requiredCount").intValue = spec.Required;
         so.FindProperty("timeLimitSeconds").floatValue = spec.TimeLimit;
         so.FindProperty("timeLimitMode").intValue = (int)spec.Mode;
+        so.FindProperty("alwaysInclude").boolValue = spec.AlwaysInclude;
         so.ApplyModifiedPropertiesWithoutUndo();
 
         AssetDatabase.CreateAsset(asset, path);

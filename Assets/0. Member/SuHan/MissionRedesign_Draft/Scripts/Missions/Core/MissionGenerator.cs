@@ -20,6 +20,7 @@ namespace TrustNoOne.Missions
     ///  - 행동 목표: **충돌만은 절대 타협하지 않는다**. 충돌 없는 후보가 없으면 지급하지 않고 경고한다.
     ///    행동 목표는 단체 미션과도 충돌 검사한다 (기획서엔 개인 미션만 언급되나, 단체 "발전기 수리" +
     ///    목표 "발전기 만지지 않기"는 원천 패배라 기획 의도로 보기 어렵다).
+    ///  - 단체 미션: "매 판 항상 포함" 정의(예: 대형 방화문)를 먼저 넣고 나머지를 무작위로 채운다 (7a 명세 TC3 ~ TC5).
     ///  - 랜덤 소스를 주입받으므로 시드를 고정하면 같은 결과를 재현할 수 있다 (검증/디버깅용).
     /// </summary>
     public class MissionGenerator
@@ -140,6 +141,7 @@ namespace TrustNoOne.Missions
             List<MissionDefinition> candidates = new List<MissionDefinition>();
             pool.GetByCategory(category, candidates);
             Shuffle(candidates);
+            MoveAlwaysIncludedToFront(candidates);
 
             foreach (MissionDefinition candidate in candidates)
             {
@@ -181,6 +183,28 @@ namespace TrustNoOne.Missions
                 usedIds.Add(definition.Id);
 
             return result;
+        }
+
+        /// <summary>
+        /// "매 판 항상 포함"(AlwaysInclude) 정의를 앞으로 모은다 — 섞은 순서는 그대로 (7a 명세 TC4 · TC5).
+        /// Pick 은 앞에서부터 개수만큼 고르므로 항상 포함이 먼저 들어가고, 개수보다 많으면 그중 섞인 순서대로.
+        /// </summary>
+        private static void MoveAlwaysIncludedToFront(List<MissionDefinition> candidates)
+        {
+            List<MissionDefinition> always = new List<MissionDefinition>();
+            List<MissionDefinition> rest = new List<MissionDefinition>();
+
+            foreach (MissionDefinition candidate in candidates)
+            {
+                if (candidate.AlwaysInclude)
+                    always.Add(candidate);
+                else
+                    rest.Add(candidate);
+            }
+
+            candidates.Clear();
+            candidates.AddRange(always);
+            candidates.AddRange(rest);
         }
 
         private static bool IsEligible(

@@ -4,8 +4,8 @@ using UnityEngine;
 namespace TrustNoOne.Missions
 {
     /// <summary>
-    /// [역할] 필터 청소 (개인 미션 PS006 "필터 청소하기" · FilterCleaned). 옛 FilterCleaningMission + VacuumDust 의 상태 · 규칙. 2c 명세 3-4.
-    ///  청소기(VacuumTool)를 든 채 먼지를 우클릭 → RequestSuction → 0.6초 흡입 → 치움 → 전부 치우면 완료 → 다시 생김(ResetForNext)
+    /// [역할] 필터 청소 (단체 미션 TG011 "필터 청소하기" · FilterCleaned — 7a 전에는 개인 PS006). 옛 FilterCleaningMission + VacuumDust 의 상태 · 규칙. 2c 명세 3-4.
+    ///  청소기(VacuumTool)를 든 채 먼지를 우클릭 → RequestSuction → 0.6초 흡입 → 치움 → 전부 치우면 완료 → 잠김, 치운 모습 그대로(Lock — 7a 명세 TC9)
     ///
     /// [상태를 여기서 모두 갖는 이유 — F2] 먼지 5개가 각자 조작자 · 중단 규칙을 들면 규칙이 흩어진다. 먼지는 주소 + 모습만(FilterDust).
     /// [한 번에 하나 — F3] SuckingIndex 하나만 둔다.

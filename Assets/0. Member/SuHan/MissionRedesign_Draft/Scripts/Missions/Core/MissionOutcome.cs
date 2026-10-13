@@ -94,6 +94,23 @@ namespace TrustNoOne.Missions
         }
 
         /// <summary>
+        /// 이번 판 목표 중에 eventType 을 "해야 하는" 목표가 있는가 (상태는 보지 않는다 — 이미 끝났어도 참).
+        /// "하지 말기"(Avoid) 목표의 행동은 쓰는 것으로 보지 않는다. 아이템을 놓는 장치가 이번 판에 뽑혔는지 묻는다 (7a 명세 TC11 · TC12).
+        /// </summary>
+        public static bool UsesEvent(IReadOnlyList<IMissionObjective> objectives, MissionEventType eventType)
+        {
+            foreach (IMissionObjective objective in objectives)
+            {
+                MissionDefinition definition = objective.Definition;
+
+                if (definition != null && definition.Kind != ObjectiveKind.Avoid && definition.Trigger == eventType)
+                    return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
         /// 시민 미션(단체 + 시민 개인)이 모두 완료되었는가 (6b 명세 SW4 — 옛 MissionSystem.CitizenMissionsCompleted 와 같은 의미).
         /// 단체 · 개인 목표가 하나도 없으면 false — 설정 실수로 시작하자마자 시민이 이기는 것을 막는다 (IsTeamCompleted 와 같은 안전장치).
         /// 행동 목표 · 살인마 미션은 보지 않는다 (행동 목표는 GameEndSystem 이 남은 시민마다 따로 본다).
