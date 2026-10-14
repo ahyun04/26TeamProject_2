@@ -96,9 +96,8 @@ public static class LegacyMissionConverter
     // 3c 장비 조립: 원본 본체 · 부품 모델에서 조립한다 (원본은 복사해서 쓰고 수정하지 않음)
     public const string AssemblyStationPath = OutputFolder + "/Assembly_Station.prefab";
     private const string AssemblyMachineModelPath = SourceModelFolder + "/Equipment_repair_machine_main.fbx";
-    private const float AssemblyZoneRadius = 2.5f;      // 조립 위치 원 반경 (3c EA1)
-    private const float AssemblyZoneGap = 2.5f;         // 장비 앞면에서 원 중심까지 (m)
-    private const float AssemblyFlyStartHeight = 1.2f;  // 날아오기 시작 높이 (EA12)
+    private const float AssemblyFlyStartGap = 1f;       // 날아오기 시작점: 장비 앞면에서 (m) — 7c AR9 (바닥 원이 없어짐)
+    private const float AssemblyInteractRange = 4f;     // 공통 범위: 장비 루트에서 (m) — 7c AR6 (자리에서 3m 인 팀원 검사와 맞춤)
 
     // 부품 아이템 번호: 21 파랑 · 22 회색 · 23 빨강 · 24 노랑 (기존 10 ~ 13 · 20 과 겹치지 않게, EA10)
     private const int EquipmentPartFirstItemId = 21;
@@ -107,7 +106,6 @@ public static class LegacyMissionConverter
     private static readonly string[] EquipmentPartColors = { "blue", "gray", "red", "yellow" };
     private static readonly string[] EquipmentPartNames = { "Blue", "Gray", "Red", "Yellow" };
     private static readonly string[] EquipmentPartKoreanNames = { "파랑", "회색", "빨강", "노랑" };
-    private static readonly Color AssemblyZoneColor = new Color(0.1f, 0.55f, 0.55f);
 
     // 3d 방화문: 원본 문 · 패널 · 레버 모델에서 조립한다 (원본은 복사해서 쓰고 수정하지 않음)
     public const string FireDoorStationPath = OutputFolder + "/FireDoor_Station.prefab";
@@ -1894,6 +1892,7 @@ public static class LegacyMissionConverter
 
         // 자리마다 그 색 부품 모델 사본 (로컬 0, 숨김 — 붙으면 보임, EA9)
         Transform[] attached = new Transform[slots.Length];
+        AssemblySlot[] slotComponents = new AssemblySlot[slots.Length];
 
         for (int c = 0; c < slots.Length; c++)
         {
@@ -1907,20 +1906,23 @@ public static class LegacyMissionConverter
             attachedPart.transform.localPosition = Vector3.zero;
             attachedPart.transform.localRotation = Quaternion.identity;
             attachedPart.transform.localScale = Vector3.one;
-            attachedPart.SetActive(false);
             attached[c] = attachedPart.transform;
+
+            // 7c: 자리 = 조준 주소 (중첩 NetworkObject · AssemblySlot · 조준 레이어 상자 · 부품 모양 외곽선 — AR3 · AR7).
+            // 상자 · 외곽선은 사본을 숨기기 전에 잰다 (꺼진 렌더러는 경계가 비어 있다)
+            slotComponents[c] = BuildAssemblySlot(slots[c], attachedPart, c);
+            attachedPart.SetActive(false);
         }
 
-        // 조립 위치: 앞면 + 2.5m 앞 바닥 원판 (지름 5m · 두께 2cm, 콜라이더 없음) + 그 1.2m 위 날아오기 시작점
-        GameObject zone = new GameObject("Zone (조립 위치)");
-        zone.transform.SetParent(root, false);
-        zone.transform.localPosition = new Vector3(0f, 0f, front + AssemblyZoneGap);
-        CreateShape(PrimitiveType.Cylinder, "Ring (바닥 원)", zone.transform, new Vector3(0f, 0.01f, 0f),
-            new Vector3(AssemblyZoneRadius * 2f, 0.01f, AssemblyZoneRadius * 2f), GetOrCreateColorMaterial("Assembly_Zone", AssemblyZoneColor), false);
+        // 날아오기 시작점: 장비 앞 1m · 자리 평균 높이 (7c AR9 — 바닥 원이 없어져 원 중심 위에서 옮김)
+        float slotY = 0f;
+
+        foreach (Transform slot in slots)
+            slotY += root.InverseTransformPoint(slot.position).y / slots.Length;
 
         GameObject flyStart = new GameObject("FlyStart (날아오기 시작)");
-        flyStart.transform.SetParent(zone.transform, false);
-        flyStart.transform.localPosition = Vector3.up * AssemblyFlyStartHeight;
+        flyStart.transform.SetParent(root, false);
+        flyStart.transform.localPosition = new Vector3(0f, slotY, front + AssemblyFlyStartGap);
 
         if (copy.GetComponent<NetworkObject>() == null)
             copy.AddComponent<NetworkObject>();
@@ -1937,18 +1939,60 @@ public static class LegacyMissionConverter
         visualSO.FindProperty("doneMaterial").objectReferenceValue = done;
         visualSO.ApplyModifiedPropertiesWithoutUndo();
 
-        // 범위 = 원 반경 + 0.3m, 범위 기준점 = 원 중심 → 공통 범위 검사가 곧 "원 안" (EA8)
+        // 범위 = 장비 루트에서 4m (7c AR6 — 기준점 비움). 자리 4개를 장치에 연결하고, 각 자리에 장치를 알려 준다
         AssemblyStation station = copy.AddComponent<AssemblyStation>();
-        SerializedObject so = ConfigureStation(station, MissionEventType.EquipmentAssembled, CompletionPolicy.Lock, AssemblyZoneRadius + 0.3f);
-        so.FindProperty("rangeCenter").objectReferenceValue = zone.transform;
+        SerializedObject so = ConfigureStation(station, MissionEventType.EquipmentAssembled, CompletionPolicy.Lock, AssemblyInteractRange);
         SetObjectArray(so.FindProperty("partPrefabs"), partPrefabs);
-        so.FindProperty("zoneCenter").objectReferenceValue = zone.transform;
-        so.FindProperty("zoneRadius").floatValue = AssemblyZoneRadius;
+        SetObjectArray(so.FindProperty("slots"), slotComponents);
+
+        foreach (AssemblySlot slotComponent in slotComponents)
+        {
+            SerializedObject slotSO = new SerializedObject(slotComponent);
+            slotSO.FindProperty("station").objectReferenceValue = station;
+            slotSO.ApplyModifiedPropertiesWithoutUndo();
+        }
         so.FindProperty("visual").objectReferenceValue = visual;
         so.ApplyModifiedPropertiesWithoutUndo();
 
-        Debug.Log($"[LegacyMissionConverter] 장비: 자리 4개 찾음 (평균 z {slotZ:0.00} > 몸체 중심 z {centerZ:0.00}), 앞면 z {front:0.00}, 조립 위치 {zone.transform.localPosition} 반경 {AssemblyZoneRadius}m, 부품 프리팹 4종");
+        Debug.Log($"[LegacyMissionConverter] 장비: 자리 4개 찾음 (평균 z {slotZ:0.00} > 몸체 중심 z {centerZ:0.00}), 앞면 z {front:0.00}, 자리 4개 조준 주소 · 날아오기 시작 {flyStart.transform.localPosition} · 범위 {AssemblyInteractRange}m, 부품 프리팹 4종");
         return true;
+    }
+
+    /// <summary>
+    /// 장비 자리 하나를 조준 주소로 만든다 (7c 명세 AR3 · AR7): 조준 레이어 · 중첩 NetworkObject · 부품 크기 상자(트리거 아님 — 방화문 패널과 같음) ·
+    /// AssemblySlot(색) · 부품 모양 외곽선(자리 노드 아래 — 사본을 숨겨도 켜지게). 장치 연결은 BuildAssembly 가 장치를 만든 뒤에 한다.
+    /// </summary>
+    private static AssemblySlot BuildAssemblySlot(Transform slot, GameObject attachedPart, int color)
+    {
+        GameObject slotObject = slot.gameObject;
+        slotObject.layer = InteractableLayer;
+
+        if (slotObject.GetComponent<NetworkObject>() == null)
+            slotObject.AddComponent<NetworkObject>();   // 조준 주소 (AR3 — 팀원 코드의 3m 기준이 자리가 된다)
+
+        Renderer[] renderers = attachedPart.GetComponentsInChildren<Renderer>();
+        BoxCollider box = slotObject.AddComponent<BoxCollider>();
+
+        if (renderers.Length > 0)
+        {
+            Bounds bounds = renderers[0].bounds;
+
+            for (int i = 1; i < renderers.Length; i++)
+                bounds.Encapsulate(renderers[i].bounds);
+
+            box.center = slot.InverseTransformPoint(bounds.center);
+            Vector3 size = slot.InverseTransformVector(bounds.size);
+            box.size = new Vector3(Mathf.Abs(size.x), Mathf.Abs(size.y), Mathf.Abs(size.z));
+        }
+
+        AssemblySlot slotComponent = slotObject.AddComponent<AssemblySlot>();
+        SerializedObject slotSO = new SerializedObject(slotComponent);
+        slotSO.FindProperty("colorIndex").intValue = color;
+        slotSO.FindProperty("slotCollider").objectReferenceValue = box;
+        slotSO.ApplyModifiedPropertiesWithoutUndo();
+
+        MissionOutlineBuilder.AttachDetached(slotObject, attachedPart, slot);
+        return slotComponent;
     }
 
     // ═════════════════════════════════════════════════════════════

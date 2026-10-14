@@ -31,6 +31,7 @@ public static class MissionOutlineBuilder
     private const string MaterialPath = MaterialFolder + "/MissionOutline.mat";
     private const float OutlineThickness = 0.02f;
     private const string OutlineObjectName = "Outline (조준 시 표시)";
+    private const string OutlineAnchorName = "Outline Anchor (외곽선 기준점)";
     private const string MeshFolder = "Assets/0. Member/SuHan/MissionRedesign_Draft/Meshes";
 
     /// <summary>
@@ -54,6 +55,50 @@ public static class MissionOutlineBuilder
 
         GameObject outline = CreateOutlineObject(meshFilter.transform, meshFilter.sharedMesh, material, OutlineObjectName);
         ConfigurePrompt(promptRoot, outline);
+    }
+
+    /// <summary>
+    /// Attach 와 같지만 외곽선을 meshSource 아래가 아니라 outlineParent 아래에 만든다 (7c 명세 AR7).
+    /// 숨겨 둔 오브젝트(SetActive false — 예: 장비 자리의 붙는 부품 사본) 아래에 두면 외곽선도 같이 꺼지기 때문이다.
+    /// 외곽선 위치 · 회전 · 크기는 meshSource 의 메시와 같게 맞춘다 (빈 기준점 오브젝트를 하나 둔다).
+    /// </summary>
+    public static void AttachDetached(GameObject promptRoot, GameObject meshSource, Transform outlineParent)
+    {
+        Material material = GetOrCreateMaterial();
+
+        if (material == null)
+            return;
+
+        MeshFilter meshFilter = meshSource != null ? meshSource.GetComponentInChildren<MeshFilter>(true) : null;
+
+        if (meshFilter == null || meshFilter.sharedMesh == null || outlineParent == null)
+        {
+            Debug.LogWarning($"[MissionOutlineBuilder] '{(meshSource != null ? meshSource.name : "null")}' 에 메시가 없어 외곽선을 붙이지 않습니다.");
+            return;
+        }
+
+        Transform existing = outlineParent.Find(OutlineAnchorName);
+
+        if (existing != null)
+            Object.DestroyImmediate(existing.gameObject);
+
+        GameObject anchor = new GameObject(OutlineAnchorName);
+        anchor.layer = outlineParent.gameObject.layer;
+        anchor.transform.SetParent(outlineParent, false);
+        anchor.transform.SetPositionAndRotation(meshFilter.transform.position, meshFilter.transform.rotation);
+
+        Vector3 parentScale = outlineParent.lossyScale;
+        Vector3 meshScale = meshFilter.transform.lossyScale;
+        anchor.transform.localScale = new Vector3(
+            meshScale.x / NonZero(parentScale.x), meshScale.y / NonZero(parentScale.y), meshScale.z / NonZero(parentScale.z));
+
+        GameObject outline = CreateOutlineObject(anchor.transform, meshFilter.sharedMesh, material, OutlineObjectName);
+        ConfigurePrompt(promptRoot, outline);
+    }
+
+    private static float NonZero(float value)
+    {
+        return Mathf.Abs(value) < 1e-6f ? 1f : value;
     }
 
     /// <summary>

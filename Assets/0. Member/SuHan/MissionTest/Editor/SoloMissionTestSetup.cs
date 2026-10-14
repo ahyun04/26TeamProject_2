@@ -173,7 +173,7 @@ public static class SoloMissionTestSetup
         "가까운 앞줄: 발전기 3대 (버튼 클릭 → 3초, 1대 고치면 다음 1대까지 2분)\n" +
         "먼 앞줄: 단체 미션 — 코드 · 장비 조립 · 생명 유지 장치 · 방화문 (모두 실제)  /  뒤: 단체 미션 6종(7a — 옛 개인) — 끝나면 잠김\n" +
         "방화문(먼 앞줄 오른쪽): 다른 단체 미션 완료 → 레버 2개 패널에 끼우기(우클릭) → 30초 안에 내리기(클릭)   F8 = 방화문 빼고 단체 미션 즉시 완료(테스트)\n" +
-        "장비 조립(먼 앞줄 왼쪽): 부품 4개(1개는 장비 주변)를 찾아 들고 장비 앞 바닥 원 안으로 → 자동으로 붙음\n" +
+        "장비 조립(먼 앞줄 왼쪽): 부품 4개(1개는 장비 주변)를 찾아 들고 맞는 색 자리를 조준 → 우클릭(7c)\n" +
         "생명 유지 장치(먼 앞줄): 산소통 6개 중 정상 3개만 본체에 — 가까이서 압력계 확인 → 들기(좌클릭) → 본체에 우클릭, 첫 공급부터 120초\n" +
         "Shift 달리기 = AG101 '뛰지 않는다' 위반   F9 내 행동 확정 / F10 전체 공개\n" +
         "멀티: 에디터 [호스트] + 빌드 [손님] → 호스트 F5 손님 = 시민 / F6 손님 1명 = 범인   F7 판 다시 시작";
@@ -281,6 +281,9 @@ public static class SoloMissionTestSetup
         yield return "Assets/0. Member/SuHan/MissionRedesign_Draft/Materials/LifeSupport_TankBody.mat";
         yield return "Assets/0. Member/SuHan/MissionRedesign_Draft/Materials/LifeSupport_Body.mat";
         yield return "Assets/0. Member/SuHan/MissionRedesign_Draft/Materials/LifeSupport_Socket.mat";
+
+        // 7c: 장비 조립 바닥 원 재질 (원을 없앰 — 명세 AR2)
+        yield return "Assets/0. Member/SuHan/MissionRedesign_Draft/Materials/Assembly_Zone.mat";
     }
 
     // ═════════════════════════════════════════════════════════════
@@ -549,7 +552,7 @@ public static class SoloMissionTestSetup
         CreateInfoLabel(layoutRoot.transform, "Info (생명 유지 장치)", LifeSupportFallback.Position + new Vector3(0f, 2.4f, 0f),
             "생명 유지 장치 · TG004\n산소통 들기(좌클릭) → 가까이서 압력계 확인 → 본체에 우클릭");
         CreateInfoLabel(layoutRoot.transform, "Info (장비 조립)", AssemblyFallback.Position + new Vector3(0f, 3f, 0f),
-            "고장난 장비 조립 · TG003\n부품 4개를 들고 바닥 원 안으로");
+            "고장난 장비 조립 · TG003\n부품을 들고 맞는 색 자리 조준 → 우클릭");
         CreateInfoLabel(layoutRoot.transform, "Info (방화문)", FireDoorFallback.Position + new Vector3(0f, 3.2f, 0f),
             "대형 방화문 열기 · TG005\n다른 단체 미션 완료 → 레버 2개 끼우기(우클릭) → 30초 안에 내리기(클릭)");
 
