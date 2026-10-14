@@ -1,0 +1,105 @@
+{
+  "date": "2026-10-14",
+  "unity": "2022.3.58f1",
+  "baseline": "5d4152c",
+  "passed": 20,
+  "failed": 0,
+  "checks": [
+    {
+      "check": "Host and Client joined StandBy",
+      "passed": true
+    },
+    {
+      "check": "Client leave button enabled and input blocked",
+      "passed": true
+    },
+    {
+      "check": "Confirmation visible while old MiniHud remains hidden",
+      "passed": true
+    },
+    {
+      "check": "Confirmation parent is active Canvas",
+      "passed": true
+    },
+    {
+      "check": "Settings hidden and input still blocked",
+      "passed": true
+    },
+    {
+      "check": "Raycast reaches leave button",
+      "passed": true
+    },
+    {
+      "check": "Cursor visible and unlocked",
+      "passed": true
+    },
+    {
+      "check": "Pointer cancel restores settings without leaving",
+      "passed": true
+    },
+    {
+      "check": "ESC cancellation handler restores settings",
+      "passed": true
+    },
+    {
+      "check": "Client confirm shuts down Runner and returns to Lobby",
+      "passed": true
+    },
+    {
+      "check": "Client leave closes settings and unblocks input",
+      "passed": true
+    },
+    {
+      "check": "Voluntary leave has no disconnect popup remaining",
+      "passed": true
+    },
+    {
+      "check": "Host remains in StandBy after client leaves",
+      "passed": true
+    },
+    {
+      "check": "Remaining host accepts a new participant",
+      "passed": true
+    },
+    {
+      "check": "Host confirmation visible with hidden MiniHud",
+      "passed": true
+    },
+    {
+      "check": "Host cancel preserves both players",
+      "passed": true
+    },
+    {
+      "check": "Host confirm returns to Lobby",
+      "passed": true
+    },
+    {
+      "check": "Remaining client becomes host under existing migration policy",
+      "passed": true
+    },
+    {
+      "check": "Leave confirmation works after host migration",
+      "passed": true
+    },
+    {
+      "check": "New host leave button returns to Lobby and unblocks input",
+      "passed": true
+    }
+  ],
+  "compile": {
+    "productOnly": true,
+    "exitCode": 0,
+    "cSharpErrors": 0,
+    "fusionCodeGenerationErrors": 0
+  },
+  "notes": [
+    "Runtime used independent Windows Host and Client in private Photon rooms.",
+    "UI buttons used EventSystem raycast and IPointerClickHandler, not direct onClick.Invoke.",
+    "ESC cancellation was checked by calling its existing closeAuxiliaryModal handler; physical Escape key was not simulated.",
+    "Host Migration policy is preserved. New host leave was verified.",
+    "Runtime working copy included prior uncommitted look work; final product compilation excluded that prior work.",
+    "Existing Laver_Shader_Graph shader parse error persists; test build succeeded.",
+    "InviteManager reports missing global invite transport in the isolated Lobby-start test; friend invite was not tested.",
+    "Head/body look changes are preserved and excluded from this bug-fix commit."
+  ]
+}
