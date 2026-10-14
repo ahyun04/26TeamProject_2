@@ -21,6 +21,7 @@ namespace TrustNoOne.Missions
     ///    행동 목표는 단체 미션과도 충돌 검사한다 (기획서엔 개인 미션만 언급되나, 단체 "발전기 수리" +
     ///    목표 "발전기 만지지 않기"는 원천 패배라 기획 의도로 보기 어렵다).
     ///  - 단체 미션: "매 판 항상 포함" 정의(예: 대형 방화문)를 먼저 넣고 나머지를 무작위로 채운다 (7a 명세 TC3 ~ TC5).
+    ///  - 단체 미션 참여자: 시민 전원 + (풀의 "살인마도 단체 미션 진행"이 켜져 있으면) 살인마 (7b-2). 살인마의 행동 목표 충돌 검사는 그대로 — 단체 미션은 살인마가 꼭 해야 하는 일이 아니다.
     ///  - 랜덤 소스를 주입받으므로 시드를 고정하면 같은 결과를 재현할 수 있다 (검증/디버깅용).
     /// </summary>
     public class MissionGenerator
@@ -49,13 +50,18 @@ namespace TrustNoOne.Missions
             foreach (PlayerRef killer in killers)
                 assigned[killer] = new List<MissionDefinition>();
 
-            // ① 단체 미션: 시민 전체가 공동 진행 (소유자 없음)
+            // ① 단체 미션: 시민 전체가 공동 진행 (소유자 없음). 풀 설정이 켜져 있으면 살인마도 참여 — 위장용, 진행도도 오른다 (7b-2)
+            List<PlayerRef> teamParticipants = new List<PlayerRef>(citizens);
+
+            if (pool.KillersJoinTeamMissions)
+                teamParticipants.AddRange(killers);
+
             List<MissionDefinition> teamDefinitions = Pick(
                 plan, MissionCategory.Team, pool.TeamMissionCount,
                 new HashSet<string>(), null, checkConflict: false, allowDuplicateFallback: false);
 
             foreach (MissionDefinition definition in teamDefinitions)
-                AddObjective(plan, definition, PlayerRef.None, citizens);
+                AddObjective(plan, definition, PlayerRef.None, teamParticipants);
 
             // 단체 미션은 시민 전원이 "받은 것"으로 기록 → 행동 목표 충돌 검사 대상 (정책 참고)
             foreach (PlayerRef citizen in citizens)

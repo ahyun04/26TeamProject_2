@@ -214,6 +214,15 @@ namespace TrustNoOne.Missions
             foreach (PlayerRef citizen in citizens)
                 teamParticipants.Add(citizen);
 
+            // 7b-2: 풀 설정이 켜져 있으면 살인마도 단체 미션 참여 (장치 조작 · 진행도 — 생성기의 참여자 목록과 같은 규칙)
+            bool killersJoin = pool != null && pool.KillersJoinTeamMissions;
+
+            if (killersJoin)
+            {
+                foreach (PlayerRef killer in killers)
+                    teamParticipants.Add(killer);
+            }
+
             for (int slot = 0; slot < plan.Objectives.Count; slot++)
             {
                 IMissionObjective objective = plan.Objectives[slot];
@@ -241,7 +250,7 @@ namespace TrustNoOne.Missions
                 SendParticipation(citizen, true);
 
             foreach (PlayerRef killer in killers)
-                SendParticipation(killer, false);
+                SendParticipation(killer, killersJoin);
 
             foreach (IMissionObjective objective in plan.Objectives)
             {

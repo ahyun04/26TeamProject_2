@@ -316,6 +316,7 @@ public static class SoloMissionTestSetup
         so.FindProperty("personalMissionsPerCitizen").intValue = PersonalCount;
         so.FindProperty("killerMissionsPerKiller").intValue = 0;   // 기획서에 살인마 미션 본문이 없음
         so.FindProperty("actionGoalsPerPlayer").intValue = ActionGoalCount;
+        so.FindProperty("killersJoinTeamMissions").boolValue = true;   // 7b-2: 살인마도 단체 미션 진행 (사용자 결정 A)
         so.ApplyModifiedPropertiesWithoutUndo();
 
         if (isNew)

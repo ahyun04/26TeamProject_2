@@ -30,10 +30,15 @@ namespace TrustNoOne.Missions
         [Tooltip("행동 목표는 기본적으로 플레이어당 1개.")]
         [Min(0)] [SerializeField] private int actionGoalsPerPlayer = 1;
 
+        [Header("참여 (7b-2)")]
+        [Tooltip("켜면 살인마도 단체 미션 장치를 조작하고 진행도를 올릴 수 있다 (시민인 척하는 위장 — 사용자 결정 A, 일단 진행도도 올린다). 끄면 시민만 (6b 까지의 동작).")]
+        [SerializeField] private bool killersJoinTeamMissions = true;
+
         public int TeamMissionCount => teamMissionCount;
         public int PersonalMissionsPerCitizen => personalMissionsPerCitizen;
         public int KillerMissionsPerKiller => killerMissionsPerKiller;
         public int ActionGoalsPerPlayer => actionGoalsPerPlayer;
+        public bool KillersJoinTeamMissions => killersJoinTeamMissions;
         public int Count => definitions.Count;
 
         private Dictionary<MissionDefinition, int> indexLookup;
