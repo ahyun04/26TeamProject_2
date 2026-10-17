@@ -13,7 +13,9 @@ namespace TrustNoOne.Missions
     /// [기획서 (3)] "본체에 하나씩 넣고 넣은후 5초후에 터져 실패이거나 성공여부가 결정 / 본체는 총 3개이고 본체 하나씩 성공 /
     ///  본체 하나 성공 후 그 다음 본체가 실패한다해도 성공한 본체는 그대로 유지 / 실패하면 다른 산소통으로 교체후 재시도".
     /// [개수 · 시간은 미션 데이터가 센다 — LS10 · L3B5] TG004 = 개수 3(성공한 본체 수) · 첫 진행부터 120초. 시간 초과면 공통 알림
-    ///  (OnMissionReset → ResetStation → OnResetHost)으로 3대 모두 처음부터 — 잠긴 본체도 풀리고 각자 산소통을 새로 놓는다.
+    ///  (OnMissionReset → ResetStation → OnResetHost)으로 3대 모두 처음부터 — 잠긴 본체도 풀린다.
+    /// [시간 초과 때 산소통 — 7e RT1 ~ RT3] 치우지 않는다 (옮겨 둔 통 · 손에 든 통 그대로). 본체마다 자기가 놓은 통 중 넣어서 사라진 만큼만
+    ///  원래 구성(정상 1 · 위험 1)이 되도록 새로 놓는다. 피드백 "옮겨 놓고 오래 두면 제자리로 리스폰" — 전부 치우고 새로 놓던 것이 원인이었다.
     /// [판정 중 화면 — L3B3 · L3B9] 정상 · 위험 구분 없이 CHECK 5 → 1. 결과는 폭발 또는 SUCCESS 로만 드러난다 (피드백).
     /// [산소통 — L3B6 · L3B7] 본체마다 2개(정상 1 · 위험 1)를 놓고, 넣기는 어느 본체가 놓은 통이든 받는다.
     /// [넣은 사람 — LS12] 넣는 순간 공통 자격 검사(TryBeginOperation: 이번 판 미션 · 행동 가능 · 범위 · 다른 행동 중 아님)만 하고 바로 해제한다.
@@ -22,7 +24,7 @@ namespace TrustNoOne.Missions
     ///  각 PC 가 Object.RenderTime 으로 계산한다. 산소통 목록 · 넣은 사람은 호스트만 안다 (만들고 지우는 것도 호스트뿐).
     /// [팀원 코드 — LS5 · LS13] PlayerItemController.DropCurrentItem(손에서 내려놓기 — 공용 도우미 MissionItems) · PlayerHealth.ApplyDamage 를 부르기만 한다.
     /// [IItemUseTarget] 아이템 우클릭 대상이라는 표시 — 변환기의 조준 검증이 이 장치를 "입력을 받는 대상"으로 본다 (2c F10).
-    /// [근거] 3b 명세 LS5 · LS12 · LS14, 7d 명세 L3B1 ~ L3B11
+    /// [근거] 3b 명세 LS5 · LS12 · LS14, 7d 명세 L3B1 ~ L3B11, 7e (7d 명세 7장) RT1 ~ RT4
     /// </summary>
     public class LifeSupportStation : MissionStation, IItemUseTarget
     {
@@ -125,7 +127,11 @@ namespace TrustNoOne.Missions
             ClearTanks();
 
             if (usedThisRound)
-                PlaceTanks();
+            {
+                // 판 시작: 원래 구성 전부 (정상 safeTanks · 위험 나머지 — 7d L3B6)
+                LifeSupportRules.MissingTanks(tankCount, safeTanks, 0, 0, out int safe, out int dangerous);
+                PlaceTanks(safe, dangerous);
+            }
             else
                 Debug.Log($"[LifeSupportStation] {name}: 이번 판에 뽑히지 않아 산소통을 놓지 않습니다.");
         }
@@ -177,7 +183,10 @@ namespace TrustNoOne.Missions
             CompleteBy(actor);
         }
 
-        /// <summary>호스트: 시간 초과 초기화 (7d L3B5 — 3대 모두 처음부터; 폭발은 더 이상 여기로 오지 않는다). 폭발 시각은 남긴다 — 초기화 뒤에도 섬광 · DAMAGED 가 보이게.</summary>
+        /// <summary>
+        /// 호스트: 시간 초과 초기화 (7d L3B5 — 3대 모두 처음부터; 폭발은 더 이상 여기로 오지 않는다). 폭발 시각은 남긴다 — 초기화 뒤에도 섬광 · DAMAGED 가 보이게.
+        /// 산소통은 치우지 않고 모자란 만큼만 채운다 (7e RT1 ~ RT3). 판정 중이던 통은 넣을 때 이미 사라졌으므로 채우는 쪽에 들어간다.
+        /// </summary>
         protected override void OnResetHost()
         {
             base.OnResetHost();
@@ -188,8 +197,7 @@ namespace TrustNoOne.Missions
             if (!validSetup)
                 return;
 
-            ClearTanks();
-            PlaceTanks();
+            RefillTanks();
         }
 
         protected override void OnStationRender()
@@ -240,9 +248,46 @@ namespace TrustNoOne.Missions
             return hit;
         }
 
-        /// <summary>호스트: 1층 NavMesh 위 무작위 지점에 산소통 tankCount 개를 만든다 (정상 = safeTanks 개 — 7d L3B6 · 6b 보강 NS6. 간격은 이 본체 통끼리만 — L3B11).</summary>
-        private void PlaceTanks()
+        /// <summary>
+        /// 호스트: 시간 초과 (7e RT1 ~ RT3) — 남은 산소통(옮겨 둔 통 · 손에 든 통 포함)은 그대로 두고,
+        /// 이 본체가 놓은 통 중 넣어서 사라진 만큼만 원래 구성(정상 safeTanks · 위험 나머지)이 되도록 새로 놓는다.
+        /// </summary>
+        private void RefillTanks()
         {
+            RemoveGoneTanks();
+
+            int aliveSafe = 0;
+            int aliveDangerous = 0;
+
+            foreach (OxygenTank tank in tanks)
+            {
+                if (tank.Dangerous)
+                    aliveDangerous++;
+                else
+                    aliveSafe++;
+            }
+
+            LifeSupportRules.MissingTanks(tankCount, safeTanks, aliveSafe, aliveDangerous, out int safe, out int dangerous);
+            Debug.Log($"[LifeSupportStation] {name}: 시간 초과 — 남은 산소통 {tanks.Count}개 그대로, 새로 {safe + dangerous}개(정상 {safe} · 위험 {dangerous})");
+
+            if (safe + dangerous > 0)
+                PlaceTanks(safe, dangerous);
+        }
+
+        /// <summary>호스트: 넣어서(다른 본체에 넣은 것 포함 — 7d L3B7) 사라진 산소통을 목록에서 뺀다 (7e RT4).</summary>
+        private void RemoveGoneTanks()
+        {
+            tanks.RemoveAll(tank => tank == null || tank.Object == null || !tank.Object.IsValid);
+        }
+
+        /// <summary>
+        /// 호스트: 1층 NavMesh 위 무작위 지점에 정상 safeCount 개 · 위험 dangerousCount 개를 새로 만든다 (6b 보강 NS6).
+        /// 판 시작엔 원래 구성 전부(7d L3B6), 시간 초과엔 모자란 만큼(7e RT3). 간격은 이 본체 통끼리만 — 남아 있는 통도 포함 (L3B11 · 7e RT3).
+        /// </summary>
+        private void PlaceTanks(int safeCount, int dangerousCount)
+        {
+            int wanted = safeCount + dangerousCount;
+
             if (!NavMeshSpawnArea.TryCreate(name, out NavMeshSpawnArea area))
                 return;
 
@@ -255,25 +300,37 @@ namespace TrustNoOne.Missions
             Vector3[] stationOnly = { transform.position };
             List<Vector3> points = new List<Vector3>();
 
-            for (int i = 0; i < tankCount; i++)
+            // 간격 기준: 이 본체의 남은 산소통 + 이번에 고른 자리 (7e — 채운 통이 남은 통 옆에 붙지 않게)
+            List<Vector3> occupied = new List<Vector3>();
+
+            foreach (OxygenTank tank in tanks)
+            {
+                if (tank != null)
+                    occupied.Add(tank.transform.position);
+            }
+
+            for (int i = 0; i < wanted; i++)
             {
                 // 본체에서 3m · 다른 산소통에서 4m 이상, 본체에서 걸어갈 수 있는 곳 (NS5 · NS6)
                 if (area.TryPickAnywhere(origin,
-                        p => SpawnPointRules.IsFarFromAll(p, stationOnly, tankMinFromStation) && SpawnPointRules.IsFarFromAll(p, points, tankSpacing),
+                        p => SpawnPointRules.IsFarFromAll(p, stationOnly, tankMinFromStation) && SpawnPointRules.IsFarFromAll(p, occupied, tankSpacing),
                         out Vector3 point))
+                {
                     points.Add(point);
+                    occupied.Add(point);
+                }
             }
 
             int count = points.Count;
 
-            if (count < tankCount)
-                Debug.LogWarning($"[LifeSupportStation] {name}: 산소통 자리를 {count}/{tankCount}개만 찾았습니다 (NavMesh 가 좁거나 간격이 큼).");
+            if (count < wanted)
+                Debug.LogWarning($"[LifeSupportStation] {name}: 산소통 자리를 {count}/{wanted}개만 찾았습니다 (NavMesh 가 좁거나 간격이 큼).");
 
-            if (count < safeTanks)
-                Debug.LogWarning($"[LifeSupportStation] {name}: 정상 산소통이 {safeTanks}개가 안 됩니다.");
+            if (count < safeCount)
+                Debug.LogWarning($"[LifeSupportStation] {name}: 정상 산소통이 {safeCount}개가 안 됩니다.");
 
             bool[] dangerous = new bool[count];
-            LifeSupportRules.DrawDangers(dangerous, safeTanks, n => Random.Range(0, n));
+            LifeSupportRules.DrawDangers(dangerous, safeCount, n => Random.Range(0, n));
 
             StringBuilder log = new StringBuilder();
 

@@ -17,6 +17,7 @@ namespace TrustNoOne.Missions
     ///  - 시각 공식: 넣은 시각 · 폭발 시각만 동기화하고, 카운트다운 숫자 · 폭발 섬광은 각 PC 가 그 시각으로 계산한다 (LS14, 3a C3 와 같은 방식)
     ///  - 폭발: 반경 안 여부와 피해량 (LS5)
     ///  - 7d: 본체 한 대 = 산소통 1개. 화면 상태 ScreenFor · 넣기 조건 CanInsert (L3B8 · L3B9). WARNING 깜빡임(IsBlinkOn)은 없앰 (L3B3)
+    ///  - 7e: 시간 초과 때 남은 산소통은 그대로 두고 모자란 만큼만 채운다 — MissingTanks (7e 명세 RT3)
     /// [이유] 판정 규칙을 엔진 · 네트워크와 떼어 두면 숫자를 바꿔도 테스트로 바로 확인할 수 있다.
     /// </summary>
     public static class LifeSupportRules
@@ -40,6 +41,19 @@ namespace TrustNoOne.Missions
                 int j = randomBelow(i + 1);
                 (dangerous[i], dangerous[j]) = (dangerous[j], dangerous[i]);
             }
+        }
+
+        /// <summary>
+        /// 시간 초과 때 새로 놓을 산소통 수 (7e 명세 RT3): 본체 한 대가 놓은 통 중 남은 것을 빼고, 원래 구성(정상 safeTanks · 위험 tankCount − safeTanks)이 되도록.
+        /// 넣어서 사라진 통만 그 종류로 채운다 — 정상을 썼으면 정상, 위험이 터졌으면 위험. 남은 게 더 많아도 0 아래로 내려가지 않는다.
+        /// </summary>
+        public static void MissingTanks(int tankCount, int safeTanks, int aliveSafe, int aliveDangerous, out int safe, out int dangerous)
+        {
+            int wantSafe = Math.Max(0, Math.Min(safeTanks, tankCount));
+            int wantDangerous = Math.Max(0, tankCount - wantSafe);
+
+            safe = Math.Max(0, wantSafe - aliveSafe);
+            dangerous = Math.Max(0, wantDangerous - aliveDangerous);
         }
 
         /// <summary>넣은 뒤 판정 전(duration 초 동안)인가.</summary>
