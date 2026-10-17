@@ -90,15 +90,20 @@ namespace LockdownProtocol.Lobby
 
             _isBusy = true;
             SetInteractable(false);
+            LoadingOverlayUI.Show("방 생성 중");
 
             try
             {
                 var result = await bootstrap.CreateRoom(roomName, maxPlayers, isPrivateToggle != null && isPrivateToggle.isOn);
                 if (this != null && !result.Ok)
+                {
+                    LoadingOverlayUI.Hide();
                     ShowFeedback($"방 생성 실패: {result.ShutdownReason}");
+                }
             }
             catch (System.Exception exception)
             {
+                LoadingOverlayUI.Hide();
                 if (this != null) ShowFeedback(exception.Message);
                 Debug.LogException(exception);
             }

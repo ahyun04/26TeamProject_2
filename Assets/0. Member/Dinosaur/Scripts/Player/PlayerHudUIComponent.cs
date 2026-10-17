@@ -6,6 +6,10 @@ using UnityEngine.UI;
 
 public class PlayerHudUIComponent : MonoBehaviour
 {
+    [SerializeField] private TMP_Text roleBadgeText; //체력 위에 계속 보이는 역할 표시
+    [SerializeField] private Color killerBadgeColor = new Color32(0xE5, 0x39, 0x35, 0xFF); //살인마 표시 색
+    [SerializeField] private Color citizenBadgeColor = Color.white; //시민 표시 색
+
     [SerializeField] private Image healthFill; //체력 게이지
     [SerializeField] private TMP_Text healthText; //현재 체력과 최대 체력
     [SerializeField] private Image staminaFill; //스태미나 게이지
@@ -134,10 +138,20 @@ public class PlayerHudUIComponent : MonoBehaviour
         if (rolePanel == null || roleText == null || !isActiveAndEnabled) return;
         hideRole();
         roleText.text = role == PlayerRole.Killer ? "당신은 살인마입니다" : "당신은 시민입니다";
+        showRoleBadge(role);
         rolePanel.gameObject.SetActive(true);
         setCrosshairVisible(false);
         rolePanel.alpha = 1f;
         roleRoutine = StartCoroutine(fadeRole());
+    }
+
+    private void showRoleBadge(PlayerRole role) //체력 위 역할 표시 켜기
+    {
+        if (roleBadgeText == null) return;
+        bool killer = role == PlayerRole.Killer;
+        roleBadgeText.text = killer ? "살인마" : "시민";
+        roleBadgeText.color = killer ? killerBadgeColor : citizenBadgeColor;
+        roleBadgeText.gameObject.SetActive(true);
     }
 
     private IEnumerator fadeRole() //역할 안내를 잠시 유지한 뒤 서서히 제거
@@ -164,6 +178,7 @@ public class PlayerHudUIComponent : MonoBehaviour
     {
         if (roleRoutine != null) StopCoroutine(roleRoutine);
         roleRoutine = null;
+        if (roleBadgeText != null) roleBadgeText.gameObject.SetActive(false);
         if (rolePanel == null) return;
         rolePanel.alpha = 0f;
         rolePanel.gameObject.SetActive(false);
