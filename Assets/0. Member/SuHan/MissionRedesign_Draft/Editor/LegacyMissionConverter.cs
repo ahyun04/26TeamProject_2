@@ -77,7 +77,7 @@ public static class LegacyMissionConverter
     private static readonly Vector3 LifeSupportScreenStandSize = new Vector3(0.08f, 0.06f, 0.06f);
     private const float LifeSupportScreenTilt = 15f;
 
-    // 산소통 압력계 (보강 명세 LM10 — 기획서 그림처럼 밸브 옆 둥근 압력계 1개):
+    // 산소통 압력계 (보강 명세 LM10 — 기획서 그림처럼 밸브 옆 둥근 압력계 1개, 7d L3B14 부터 색이 바뀌지 않는 장식):
     // 높이 = 모델 높이의 90% (FBX 분석상 밸브 머리의 목, 약 0.69m), 그 높이 ±3cm 정점으로 붙일 면을 찾는다 (m)
     private const float OxygenTankGaugeHeightRatio = 0.9f;
     private const float OxygenTankGaugeBand = 0.03f;
@@ -89,7 +89,7 @@ public static class LegacyMissionConverter
     private const float OxygenTankFirstPersonScale = 0.5f;
     private static readonly Vector3 OxygenTankFirstPersonPosition = new Vector3(0.25f, -0.44f, 0.55f);
 
-    // 덧붙인 부품 색: 압력계 꺼짐(회색 — 멀리서 보이는 색) · 화면 상자 · 받침 · 압력계 테두리(짙은 회색)
+    // 덧붙인 부품 색: 압력계 눈금판(회색 — 정상 · 위험 모두 같은 색, 7d L3B14) · 화면 상자 · 받침 · 압력계 테두리(짙은 회색)
     private static readonly Color GaugeOffColor = new Color(0.35f, 0.35f, 0.35f);
     private static readonly Color LifeSupportFrameColor = new Color(0.16f, 0.17f, 0.19f);
 
@@ -1441,19 +1441,10 @@ public static class LegacyMissionConverter
     /// <summary>
     /// 산소통 (3b 명세 4장 · 보강 명세 LM9 · LM10): 원본 산소통 모델 복사(루트 = 메시, 바닥이 원점) + 밸브 옆 둥근 압력계.
     /// 루트에 NetworkObject · 메시 크기 콜라이더(조준 레이어 — 줍기 · 조준) · ItemWorldView · OxygenTank.
-    /// 압력계 눈금판만 가까이 가면 Neon_green / Neon_red 로 바뀌고 (LS1), 멀면 회색이다.
+    /// 압력계는 늘 회색 장식이다 — 정상 · 위험이 겉모습으로 구분되지 않게 (7d L3B14, 3b LS1 의 가까이 가면 초록 · 빨강은 없앰).
     /// </summary>
     private static bool BuildOxygenTank(GameObject copy, ItemData data)
     {
-        Material safe = AssetDatabase.LoadAssetAtPath<Material>($"{SourceMaterialFolder}/Neon_green.mat");
-        Material danger = AssetDatabase.LoadAssetAtPath<Material>($"{SourceMaterialFolder}/Neon_red.mat");
-
-        if (safe == null || danger == null)
-        {
-            Debug.LogError("[LegacyMissionConverter] 산소통: Neon_green / Neon_red 재질이 없어 압력계로 정상 · 위험을 구분할 수 없습니다.");
-            return false;
-        }
-
         MeshFilter meshFilter = copy.GetComponent<MeshFilter>();
         Renderer bodyRenderer = copy.GetComponent<Renderer>();
 
@@ -1467,10 +1458,10 @@ public static class LegacyMissionConverter
         copy.AddComponent<NetworkObject>();
         BoxCollider box = AddMeshBoxCollider(copy);
 
-        // 조준하면 외곽선 (미션 아이템 공통 — 3c EA16). 루트의 모델 메시로만 — 압력계는 빼서 외곽선이 압력계 색을 가리지 않게
+        // 조준하면 외곽선 (미션 아이템 공통 — 3c EA16). 루트의 모델 메시로만 — 압력계 같은 작은 덧붙임은 빼서 테두리가 지저분하지 않게
         MissionOutlineBuilder.Attach(copy, copy);
 
-        if (!BuildOxygenTankGauge(copy.transform, meshFilter.sharedMesh, out Renderer face, out Renderer[] gaugeParts))
+        if (!BuildOxygenTankGauge(copy.transform, meshFilter.sharedMesh, out Renderer[] gaugeParts))
             return false;
 
         ItemWorldView view = copy.AddComponent<ItemWorldView>();
@@ -1482,9 +1473,6 @@ public static class LegacyMissionConverter
         OxygenTank tank = copy.AddComponent<OxygenTank>();
         SerializedObject so = new SerializedObject(tank);
         so.FindProperty("data").objectReferenceValue = data;
-        so.FindProperty("gaugeRenderer").objectReferenceValue = face;
-        so.FindProperty("safeMaterial").objectReferenceValue = safe;
-        so.FindProperty("dangerMaterial").objectReferenceValue = danger;
         so.ApplyModifiedPropertiesWithoutUndo();
 
         Debug.Log($"[LegacyMissionConverter] 산소통: 아이템 번호 {OxygenTankItemId}, 모델 크기 {meshFilter.sharedMesh.bounds.size}");
@@ -1496,11 +1484,9 @@ public static class LegacyMissionConverter
     /// 자리: 모델 높이의 90%(밸브 머리의 목) ± 3cm 정점 중 덜 튀어나온 옆면(손잡이 반대쪽)에 바깥을 보게 붙인다.
     /// 옆면은 조립 때 메시에서 고른다 — FBX 분석상 손잡이는 +X · 빈 쪽은 −X 인데, Unity 가져오기 때 좌우가 뒤집힐 수 있어 숫자로 정하지 않는다.
     /// </summary>
-    /// <param name="face">색이 바뀌는 눈금판 (OxygenTank.gaugeRenderer)</param>
     /// <param name="parts">테두리 · 눈금판 · 바늘 렌더러 (ItemWorldView 가 들었을 때 함께 숨긴다)</param>
-    private static bool BuildOxygenTankGauge(Transform root, Mesh mesh, out Renderer face, out Renderer[] parts)
+    private static bool BuildOxygenTankGauge(Transform root, Mesh mesh, out Renderer[] parts)
     {
-        face = null;
         parts = null;
 
         Bounds bounds = mesh.bounds;
@@ -1540,7 +1526,7 @@ public static class LegacyMissionConverter
             new Vector3(OxygenTankGaugeRimDiameter, OxygenTankGaugeRimThickness * 0.5f, OxygenTankGaugeRimDiameter), frame, false);
         rim.transform.localRotation = discRotation;
 
-        // 눈금판: 테두리 바깥면에서 1mm 더 나온 얇은 원판 — 이것만 색이 바뀐다
+        // 눈금판: 테두리 바깥면에서 1mm 더 나온 얇은 원판 — 늘 회색 (7d L3B14 — 정상 · 위험을 색으로 드러내지 않는다)
         GameObject gaugeFace = CreateShape(PrimitiveType.Cylinder, "Gauge (압력계 눈금판)", root,
             surfacePoint + outward * (OxygenTankGaugeRimThickness + 0.001f),
             new Vector3(OxygenTankGaugeFaceDiameter, 0.001f, OxygenTankGaugeFaceDiameter), off, false);
@@ -1554,8 +1540,7 @@ public static class LegacyMissionConverter
             new Vector3(0.004f, OxygenTankGaugeFaceDiameter * 0.36f, 0.002f), black, false);
         needle.transform.localRotation = needleRotation;
 
-        face = gaugeFace.GetComponent<Renderer>();
-        parts = new[] { rim.GetComponent<Renderer>(), face, needle.GetComponent<Renderer>() };
+        parts = new[] { rim.GetComponent<Renderer>(), gaugeFace.GetComponent<Renderer>(), needle.GetComponent<Renderer>() };
 
         Debug.Log($"[LegacyMissionConverter] 산소통 압력계: 높이 {height:0.00}m, {(negativeSide ? "−X" : "+X")} 옆면 " +
                   $"(목 표면 x {surfacePoint.x:0.000}m, 반대쪽 {(negativeSide ? maxX : minX):0.000}m)");
@@ -1636,6 +1621,9 @@ public static class LegacyMissionConverter
         so.FindProperty("tankPrefab").objectReferenceValue = tankPrefab;
         so.FindProperty("visual").objectReferenceValue = visual;
         so.FindProperty("display").objectReferenceValue = display;
+        // 본체 한 대 = 산소통 2개 · 정상 1 (7d L3B6 — 옛 프리팹 값이 남지 않게 직접 넣는다)
+        so.FindProperty("tankCount").intValue = 2;
+        so.FindProperty("safeTanks").intValue = 1;
         AddCollider(so, aimCollider);
         so.ApplyModifiedPropertiesWithoutUndo();
 
@@ -1675,7 +1663,7 @@ public static class LegacyMissionConverter
 
         // 글자: 판 바로 앞, 글자 앞면(−Z)이 +Z 를 보게. 크기는 가장 긴 문구에 맞춘다
         return CreateLcdText(screen.transform, new Vector3(0f, 0f, front + 0.006f), Quaternion.LookRotation(Vector3.back, Vector3.up),
-            LifeSupportScreenSize * 0.9f, LifeSupportStation.LongestScreenText, LifeSupportStation.IdleText(0, 3));
+            LifeSupportScreenSize * 0.9f, LifeSupportStation.LongestScreenText, LifeSupportStation.EmptyText);
     }
 
     /// <summary>이름으로 자손(자신 포함)을 찾는다. 없으면 null.</summary>
