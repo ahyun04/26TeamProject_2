@@ -103,16 +103,43 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
     {
         if (_leaving) return;
         _leaving = true;
-        clearGameResult();
+        Debug.Log("[NetworkBootstrap] LeaveRoom 시작");
+
+        try { GetSceneRefByName(lobbySceneName); } // 로비 씬이 없으면 세션을 끊기 전에 중단
+        catch (Exception exception)
+        {
+            _leaving = false;
+            Debug.LogException(exception);
+            return;
+        }
+
+        // 이후 단계 중 하나가 실패해도 로비 이동까지는 반드시 진행한다
+        // (예전에는 중간 예외 하나로 로비 이동이 통째로 취소되어 StandBy에 남을 수 있었음)
+        try { clearGameResult(); }
+        catch (Exception exception) { Debug.LogException(exception); }
+
         try
         {
-            GetSceneRefByName(lobbySceneName);
             if (_runner != null)
-                await _runner.Shutdown();
+            {
+                Task shutdown = _runner.Shutdown();
+                // Shutdown이 끝나지 않아도 5초 뒤에는 로비로 이동
+                if (await Task.WhenAny(shutdown, Task.Delay(5000)) != shutdown)
+                    Debug.LogWarning("[NetworkBootstrap] LeaveRoom: Shutdown이 5초 안에 끝나지 않아 로비로 이동합니다.");
+                else
+                    Debug.Log("[NetworkBootstrap] LeaveRoom: Shutdown 완료");
+            }
+        }
+        catch (Exception exception) { Debug.LogException(exception); }
 
-            LockdownProtocol.Lobby.Invite.GlobalLobbyInviteTransport.Instance?.UpdateLocalRoomStatus(false, null, false);
+        try { LockdownProtocol.Lobby.Invite.GlobalLobbyInviteTransport.Instance?.UpdateLocalRoomStatus(false, null, false); }
+        catch (Exception exception) { Debug.LogException(exception); }
+
+        try
+        {
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
+            Debug.Log("[NetworkBootstrap] LeaveRoom: 로비 씬 로드");
             SceneManager.LoadScene(lobbySceneName);
             Destroy(gameObject);
         }
