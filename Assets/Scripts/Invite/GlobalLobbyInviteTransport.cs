@@ -77,10 +77,8 @@ namespace LockdownProtocol.Lobby.Invite
 
         public void UpdateLocalRoomStatus(bool isInRoom, string roomId, bool isInGame)
         {
-            _isInRoom = isInRoom;
-            _roomId = roomId;
-            _isInGame = isInGame;
-            _localPresence?.SetRoomStatus(isInRoom, roomId, isInGame);
+            if (_localPresence == null || _localPresence.Object == null || !_localPresence.Object.IsValid) return;
+            _localPresence.SetRoomStatus(isInRoom, roomId, isInGame);
         }
 
         private void HandleResponse(string inviteId, bool accepted)

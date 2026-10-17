@@ -37,7 +37,7 @@ namespace LockdownProtocol.Lobby.Invite
         /// 방 상태 바뀔 때마다 호출해서 자기 재실 상태를 갱신
         public void SetRoomStatus(bool isInRoom, string roomId, bool isInGame)
         {
-            if (!Object.HasStateAuthority) return;
+            if (Object == null || !Object.IsValid || !Object.HasStateAuthority) return;
             IsInRoom = isInRoom;
             CurrentRoomId = roomId ?? string.Empty;
             IsInGame = isInGame;
