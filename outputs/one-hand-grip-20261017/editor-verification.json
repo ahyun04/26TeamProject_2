@@ -1,0 +1,577 @@
+{
+    "environment": "Unity 2022.3.58f1 Editor, isolated working-tree copy",
+    "checks": [
+        {
+            "tool": "scissors",
+            "test": "serialized renderer and collider references",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "scissors",
+            "test": "handle aligned at body yaw 0",
+            "pass": true,
+            "error": 1.4901161193847657e-8
+        },
+        {
+            "tool": "scissors",
+            "test": "tip/bar/nozzle orientation at body yaw 0",
+            "pass": true,
+            "error": -1.1920928955078126e-7
+        },
+        {
+            "tool": "scissors",
+            "test": "held renderers visible and colliders disabled 0",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "scissors",
+            "test": "LateUpdate follows moved hand 0",
+            "pass": true,
+            "error": 1.4901161193847657e-8
+        },
+        {
+            "tool": "scissors",
+            "test": "handle aligned at body yaw 90",
+            "pass": true,
+            "error": 5.960464477539063e-8
+        },
+        {
+            "tool": "scissors",
+            "test": "tip/bar/nozzle orientation at body yaw 90",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "scissors",
+            "test": "held renderers visible and colliders disabled 90",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "scissors",
+            "test": "LateUpdate follows moved hand 90",
+            "pass": true,
+            "error": 5.960464477539063e-8
+        },
+        {
+            "tool": "scissors",
+            "test": "handle aligned at body yaw 180",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "scissors",
+            "test": "tip/bar/nozzle orientation at body yaw 180",
+            "pass": true,
+            "error": -1.1920928955078126e-7
+        },
+        {
+            "tool": "scissors",
+            "test": "held renderers visible and colliders disabled 180",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "scissors",
+            "test": "LateUpdate follows moved hand 180",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "scissors",
+            "test": "handle aligned at body yaw -90",
+            "pass": true,
+            "error": 5.960464477539063e-8
+        },
+        {
+            "tool": "scissors",
+            "test": "tip/bar/nozzle orientation at body yaw -90",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "scissors",
+            "test": "held renderers visible and colliders disabled -90",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "scissors",
+            "test": "LateUpdate follows moved hand -90",
+            "pass": true,
+            "error": 5.960464477539063e-8
+        },
+        {
+            "tool": "scissors",
+            "test": "local owner world model remains hidden",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "scissors",
+            "test": "release clears hand tracking and restores world colliders",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "screwdriver",
+            "test": "serialized renderer and collider references",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "screwdriver",
+            "test": "handle aligned at body yaw 0",
+            "pass": true,
+            "error": 5.960464477539063e-8
+        },
+        {
+            "tool": "screwdriver",
+            "test": "tip/bar/nozzle orientation at body yaw 0",
+            "pass": true,
+            "error": -1.1920928955078126e-7
+        },
+        {
+            "tool": "screwdriver",
+            "test": "held renderers visible and colliders disabled 0",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "screwdriver",
+            "test": "LateUpdate follows moved hand 0",
+            "pass": true,
+            "error": 5.960464477539063e-8
+        },
+        {
+            "tool": "screwdriver",
+            "test": "handle aligned at body yaw 90",
+            "pass": true,
+            "error": 5.960464477539063e-8
+        },
+        {
+            "tool": "screwdriver",
+            "test": "tip/bar/nozzle orientation at body yaw 90",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "screwdriver",
+            "test": "held renderers visible and colliders disabled 90",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "screwdriver",
+            "test": "LateUpdate follows moved hand 90",
+            "pass": true,
+            "error": 5.960464477539063e-8
+        },
+        {
+            "tool": "screwdriver",
+            "test": "handle aligned at body yaw 180",
+            "pass": true,
+            "error": 5.960464477539063e-8
+        },
+        {
+            "tool": "screwdriver",
+            "test": "tip/bar/nozzle orientation at body yaw 180",
+            "pass": true,
+            "error": -1.1920928955078126e-7
+        },
+        {
+            "tool": "screwdriver",
+            "test": "held renderers visible and colliders disabled 180",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "screwdriver",
+            "test": "LateUpdate follows moved hand 180",
+            "pass": true,
+            "error": 5.960464477539063e-8
+        },
+        {
+            "tool": "screwdriver",
+            "test": "handle aligned at body yaw -90",
+            "pass": true,
+            "error": 5.960464477539063e-8
+        },
+        {
+            "tool": "screwdriver",
+            "test": "tip/bar/nozzle orientation at body yaw -90",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "screwdriver",
+            "test": "held renderers visible and colliders disabled -90",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "screwdriver",
+            "test": "LateUpdate follows moved hand -90",
+            "pass": true,
+            "error": 5.960464477539063e-8
+        },
+        {
+            "tool": "screwdriver",
+            "test": "local owner world model remains hidden",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "screwdriver",
+            "test": "release clears hand tracking and restores world colliders",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "lever",
+            "test": "serialized renderer and collider references",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "lever",
+            "test": "handle aligned at body yaw 0",
+            "pass": true,
+            "error": 2.767767739442206e-7
+        },
+        {
+            "tool": "lever",
+            "test": "tip/bar/nozzle orientation at body yaw 0",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "lever",
+            "test": "held renderers visible and colliders disabled 0",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "lever",
+            "test": "LateUpdate follows moved hand 0",
+            "pass": true,
+            "error": 1.4057727071303817e-7
+        },
+        {
+            "tool": "lever",
+            "test": "handle aligned at body yaw 90",
+            "pass": true,
+            "error": 1.3328003944934609e-7
+        },
+        {
+            "tool": "lever",
+            "test": "tip/bar/nozzle orientation at body yaw 90",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "lever",
+            "test": "held renderers visible and colliders disabled 90",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "lever",
+            "test": "LateUpdate follows moved hand 90",
+            "pass": true,
+            "error": 1.3328003944934609e-7
+        },
+        {
+            "tool": "lever",
+            "test": "handle aligned at body yaw 180",
+            "pass": true,
+            "error": 1.6858739115832578e-7
+        },
+        {
+            "tool": "lever",
+            "test": "tip/bar/nozzle orientation at body yaw 180",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "lever",
+            "test": "held renderers visible and colliders disabled 180",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "lever",
+            "test": "LateUpdate follows moved hand 180",
+            "pass": true,
+            "error": 2.0647654253025395e-7
+        },
+        {
+            "tool": "lever",
+            "test": "handle aligned at body yaw -90",
+            "pass": true,
+            "error": 2.4575624024691935e-7
+        },
+        {
+            "tool": "lever",
+            "test": "tip/bar/nozzle orientation at body yaw -90",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "lever",
+            "test": "held renderers visible and colliders disabled -90",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "lever",
+            "test": "LateUpdate follows moved hand -90",
+            "pass": true,
+            "error": 5.960464477539063e-8
+        },
+        {
+            "tool": "lever",
+            "test": "local owner world model remains hidden",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "lever",
+            "test": "release clears hand tracking and restores world colliders",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "vacuum-old",
+            "test": "serialized renderer and collider references",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "vacuum-old",
+            "test": "handle aligned at body yaw 0",
+            "pass": true,
+            "error": 1.4901161193847657e-8
+        },
+        {
+            "tool": "vacuum-old",
+            "test": "tip/bar/nozzle orientation at body yaw 0",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "vacuum-old",
+            "test": "held renderers visible and colliders disabled 0",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "vacuum-old",
+            "test": "LateUpdate follows moved hand 0",
+            "pass": true,
+            "error": 1.4901161193847657e-8
+        },
+        {
+            "tool": "vacuum-old",
+            "test": "handle aligned at body yaw 90",
+            "pass": true,
+            "error": 1.3328003944934609e-7
+        },
+        {
+            "tool": "vacuum-old",
+            "test": "tip/bar/nozzle orientation at body yaw 90",
+            "pass": true,
+            "error": -1.1920928955078126e-7
+        },
+        {
+            "tool": "vacuum-old",
+            "test": "held renderers visible and colliders disabled 90",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "vacuum-old",
+            "test": "LateUpdate follows moved hand 90",
+            "pass": true,
+            "error": 1.3328003944934609e-7
+        },
+        {
+            "tool": "vacuum-old",
+            "test": "handle aligned at body yaw 180",
+            "pass": true,
+            "error": 1.1920928955078126e-7
+        },
+        {
+            "tool": "vacuum-old",
+            "test": "tip/bar/nozzle orientation at body yaw 180",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "vacuum-old",
+            "test": "held renderers visible and colliders disabled 180",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "vacuum-old",
+            "test": "LateUpdate follows moved hand 180",
+            "pass": true,
+            "error": 1.1920928955078126e-7
+        },
+        {
+            "tool": "vacuum-old",
+            "test": "handle aligned at body yaw -90",
+            "pass": true,
+            "error": 1.3328003944934609e-7
+        },
+        {
+            "tool": "vacuum-old",
+            "test": "tip/bar/nozzle orientation at body yaw -90",
+            "pass": true,
+            "error": -1.1920928955078126e-7
+        },
+        {
+            "tool": "vacuum-old",
+            "test": "held renderers visible and colliders disabled -90",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "vacuum-old",
+            "test": "LateUpdate follows moved hand -90",
+            "pass": true,
+            "error": 5.960464477539063e-8
+        },
+        {
+            "tool": "vacuum-old",
+            "test": "local owner world model remains hidden",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "vacuum-old",
+            "test": "release clears hand tracking and restores world colliders",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "vacuum-mission",
+            "test": "serialized renderer and collider references",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "vacuum-mission",
+            "test": "handle aligned at body yaw 0",
+            "pass": true,
+            "error": 1.4901161193847657e-8
+        },
+        {
+            "tool": "vacuum-mission",
+            "test": "tip/bar/nozzle orientation at body yaw 0",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "vacuum-mission",
+            "test": "held renderers visible and colliders disabled 0",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "vacuum-mission",
+            "test": "LateUpdate follows moved hand 0",
+            "pass": true,
+            "error": 1.4901161193847657e-8
+        },
+        {
+            "tool": "vacuum-mission",
+            "test": "handle aligned at body yaw 90",
+            "pass": true,
+            "error": 1.3328003944934609e-7
+        },
+        {
+            "tool": "vacuum-mission",
+            "test": "tip/bar/nozzle orientation at body yaw 90",
+            "pass": true,
+            "error": -1.1920928955078126e-7
+        },
+        {
+            "tool": "vacuum-mission",
+            "test": "held renderers visible and colliders disabled 90",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "vacuum-mission",
+            "test": "LateUpdate follows moved hand 90",
+            "pass": true,
+            "error": 1.7881393432617188e-7
+        },
+        {
+            "tool": "vacuum-mission",
+            "test": "handle aligned at body yaw 180",
+            "pass": true,
+            "error": 1.1920928955078126e-7
+        },
+        {
+            "tool": "vacuum-mission",
+            "test": "tip/bar/nozzle orientation at body yaw 180",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "vacuum-mission",
+            "test": "held renderers visible and colliders disabled 180",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "vacuum-mission",
+            "test": "LateUpdate follows moved hand 180",
+            "pass": true,
+            "error": 1.1920928955078126e-7
+        },
+        {
+            "tool": "vacuum-mission",
+            "test": "handle aligned at body yaw -90",
+            "pass": true,
+            "error": 1.3328003944934609e-7
+        },
+        {
+            "tool": "vacuum-mission",
+            "test": "tip/bar/nozzle orientation at body yaw -90",
+            "pass": true,
+            "error": -1.1920928955078126e-7
+        },
+        {
+            "tool": "vacuum-mission",
+            "test": "held renderers visible and colliders disabled -90",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "vacuum-mission",
+            "test": "LateUpdate follows moved hand -90",
+            "pass": true,
+            "error": 5.960464477539063e-8
+        },
+        {
+            "tool": "vacuum-mission",
+            "test": "local owner world model remains hidden",
+            "pass": true,
+            "error": 0.0
+        },
+        {
+            "tool": "vacuum-mission",
+            "test": "release clears hand tracking and restores world colliders",
+            "pass": true,
+            "error": 0.0
+        }
+    ],
+    "total": 95,
+    "allPassed": true
+}

@@ -1,0 +1,334 @@
+{
+  "checks": [
+    {
+      "check": "Three independent peers joined the same private room",
+      "passed": true
+    },
+    {
+      "check": "Round 1: missions exist and all unfinished",
+      "passed": true
+    },
+    {
+      "check": "Round 1: timer still running and no result decided",
+      "passed": true
+    },
+    {
+      "check": "Round 1: expected citizen and killer counts",
+      "passed": true
+    },
+    {
+      "check": "Round 1 host: one survivor keeps game running",
+      "passed": true
+    },
+    {
+      "check": "Round 1 client: one survivor keeps game running",
+      "passed": true
+    },
+    {
+      "check": "Round 1 client2: one survivor keeps game running",
+      "passed": true
+    },
+    {
+      "check": "Round 1: all citizens dead; killer alive",
+      "passed": true
+    },
+    {
+      "check": "Round 1: ended without mission progress or timeout",
+      "passed": true
+    },
+    {
+      "check": "Round 1: citizen Lose and killer Win",
+      "passed": true
+    },
+    {
+      "check": "Round 1: host ended once",
+      "passed": true
+    },
+    {
+      "check": "Round 1 host: own result in StandBy",
+      "passed": true
+    },
+    {
+      "check": "Round 1 host: fade and input restore",
+      "passed": true
+    },
+    {
+      "check": "Round 1 client: own result in StandBy",
+      "passed": true
+    },
+    {
+      "check": "Round 1 client: fade and input restore",
+      "passed": true
+    },
+    {
+      "check": "Round 1 client2: own result in StandBy",
+      "passed": true
+    },
+    {
+      "check": "Round 1 client2: fade and input restore",
+      "passed": true
+    },
+    {
+      "check": "Round 2: missions exist and all unfinished",
+      "passed": true
+    },
+    {
+      "check": "Round 2: timer still running and no result decided",
+      "passed": true
+    },
+    {
+      "check": "Round 2: expected citizen and killer counts",
+      "passed": true
+    },
+    {
+      "check": "Round 2 host: one survivor keeps game running",
+      "passed": true
+    },
+    {
+      "check": "Round 2 client: one survivor keeps game running",
+      "passed": true
+    },
+    {
+      "check": "Round 2 client2: one survivor keeps game running",
+      "passed": true
+    },
+    {
+      "check": "Round 2: all citizens dead; killer alive",
+      "passed": true
+    },
+    {
+      "check": "Round 2: ended without mission progress or timeout",
+      "passed": true
+    },
+    {
+      "check": "Round 2: citizen Lose and killer Win",
+      "passed": true
+    },
+    {
+      "check": "Round 2: host ended once",
+      "passed": true
+    },
+    {
+      "check": "Round 2 host: own result in StandBy",
+      "passed": true
+    },
+    {
+      "check": "Round 2 host: fade and input restore",
+      "passed": true
+    },
+    {
+      "check": "Round 2 client: own result in StandBy",
+      "passed": true
+    },
+    {
+      "check": "Round 2 client: fade and input restore",
+      "passed": true
+    },
+    {
+      "check": "Round 2 client2: own result in StandBy",
+      "passed": true
+    },
+    {
+      "check": "Round 2 client2: fade and input restore",
+      "passed": true
+    },
+    {
+      "check": "Round 3: missions exist and all unfinished",
+      "passed": true
+    },
+    {
+      "check": "Round 3: timer still running and no result decided",
+      "passed": true
+    },
+    {
+      "check": "Round 3: expected citizen and killer counts",
+      "passed": true
+    },
+    {
+      "check": "Round 3: all citizens dead; killer alive",
+      "passed": true
+    },
+    {
+      "check": "Round 3: ended without mission progress or timeout",
+      "passed": true
+    },
+    {
+      "check": "Round 3: citizen Lose and killer Win",
+      "passed": true
+    },
+    {
+      "check": "Round 3: host ended once",
+      "passed": true
+    },
+    {
+      "check": "Round 3 host: own result in StandBy",
+      "passed": true
+    },
+    {
+      "check": "Round 3 host: fade and input restore",
+      "passed": true
+    },
+    {
+      "check": "Round 3 client: own result in StandBy",
+      "passed": true
+    },
+    {
+      "check": "Round 3 client: fade and input restore",
+      "passed": true
+    },
+    {
+      "check": "Round 3 client2: own result in StandBy",
+      "passed": true
+    },
+    {
+      "check": "Round 3 client2: fade and input restore",
+      "passed": true
+    },
+    {
+      "check": "Host citizen death path covered",
+      "passed": true
+    },
+    {
+      "check": "Round 4: missions exist and all unfinished",
+      "passed": true
+    },
+    {
+      "check": "Round 4: timer still running and no result decided",
+      "passed": true
+    },
+    {
+      "check": "Round 4: expected citizen and killer counts",
+      "passed": true
+    },
+    {
+      "check": "Round 4: all citizens dead; killer alive",
+      "passed": true
+    },
+    {
+      "check": "Round 4: ended without mission progress or timeout",
+      "passed": true
+    },
+    {
+      "check": "Round 4: citizen Lose and killer Win",
+      "passed": true
+    },
+    {
+      "check": "Round 4: host ended once",
+      "passed": true
+    },
+    {
+      "check": "Round 4 host: own result in StandBy",
+      "passed": true
+    },
+    {
+      "check": "Round 4 host: fade and input restore",
+      "passed": true
+    },
+    {
+      "check": "Round 4 client: own result in StandBy",
+      "passed": true
+    },
+    {
+      "check": "Round 4 client: fade and input restore",
+      "passed": true
+    },
+    {
+      "check": "Two-player citizen death through sprint health loss covered",
+      "passed": true
+    }
+  ],
+  "cases": [
+    {
+      "round": 1,
+      "players": 3,
+      "method": "damage",
+      "lastVictims": [
+        3
+      ],
+      "hostWasCitizen": false,
+      "returnSeconds": 2.938
+    },
+    {
+      "round": 2,
+      "players": 3,
+      "method": "kill",
+      "lastVictims": [
+        1
+      ],
+      "hostWasCitizen": true,
+      "returnSeconds": 3.062
+    },
+    {
+      "round": 3,
+      "players": 3,
+      "method": "damage",
+      "lastVictims": [
+        2,
+        3
+      ],
+      "hostWasCitizen": false,
+      "returnSeconds": 3.016
+    },
+    {
+      "round": 4,
+      "players": 2,
+      "method": "sprinthealth",
+      "lastVictims": [
+        2
+      ],
+      "hostWasCitizen": false,
+      "returnSeconds": 2.984
+    }
+  ],
+  "date": "2026-10-15",
+  "outcome": "Existing game-end behavior works; no product changes required.",
+  "passed": 59,
+  "failed": 0,
+  "baseline": {
+    "local": "08057238478e162aff98e381d5d7e918a6ede281",
+    "remote": "7752db9032e562c3b9785a100cd28fbe4d638088",
+    "unchangedEndPath": {
+      "Assets/Scripts/GamePlay/GameEndSystem.cs": {
+        "workspace": "6b24bf6bc466d6f9cb841a9517feeae99115d781a0385eb0b6f00e37abb7d669",
+        "testedCopy": "6b24bf6bc466d6f9cb841a9517feeae99115d781a0385eb0b6f00e37abb7d669"
+      },
+      "Assets/0. Member/Dinosaur/Scripts/Player/Playerhealth.cs": {
+        "workspace": "dfe287791830065278aa4e4fa5b573aed0ec52a53c78a001568e23b2d5012f0a",
+        "testedCopy": "dfe287791830065278aa4e4fa5b573aed0ec52a53c78a001568e23b2d5012f0a"
+      },
+      "Assets/Scripts/GamePlay/GameResultUI.cs": {
+        "workspace": "8f4575adeb62ba344d63f6bb8dbf504c7deccf37636e625e7d8abea977d46459",
+        "testedCopy": "8f4575adeb62ba344d63f6bb8dbf504c7deccf37636e625e7d8abea977d46459"
+      },
+      "Assets/0. Member/Dinosaur/Scripts/Networking/NetworkBootstrap.cs": {
+        "workspace": "2f8b5c21d7c29c1844d03c978fe1f37288d7fc3134ce4e0ca4fcc9aaa95235eb",
+        "testedCopy": "2f8b5c21d7c29c1844d03c978fe1f37288d7fc3134ce4e0ca4fcc9aaa95235eb"
+      },
+      "Assets/Scripts/Mission/System/RoleAssignment.cs": {
+        "workspace": "fe1c098f8530aecf8a202c80bbf8bca8320f9c6b596f27bbfca7539c9e078b8a",
+        "testedCopy": "fe1c098f8530aecf8a202c80bbf8bca8320f9c6b596f27bbfca7539c9e078b8a"
+      }
+    }
+  },
+  "scope": {
+    "testedOriginMain": "7752db9",
+    "localHead": "0805723",
+    "productFilesModified": false,
+    "priorUncommittedWorkPreserved": true
+  },
+  "limitations": [
+    "Damage and death were triggered on StateAuthority through the existing ApplyDamage, Kill and consumeSprintHealth methods.",
+    "No mission-completion or timeout handler was invoked by the test. Players sent no movement/mission input.",
+    "The sprint-health case called the existing health-consumption method; physical sprint-key and weapon-hit input were not simulated.",
+    "Result text, overlay alpha and input restoration were checked at runtime; no manual pixel or audio listening test.",
+    "Existing Laver_Shader_Graph shader parse error persists; test Windows build succeeded.",
+    "Isolated Lobby-start test omitted the Main global friend-invite transport; friend invites were not tested."
+  ],
+  "compile": {
+    "productOnly": true,
+    "unity": "2022.3.58f1",
+    "exitCode": 0,
+    "cSharpErrors": 0,
+    "fusionCodeGenerationErrors": 0
+  }
+}

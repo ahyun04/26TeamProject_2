@@ -17,6 +17,7 @@ public class PlayerAnimation : NetworkBehaviour
 
     private PlayerHealth health; //플레이어 생존 상태
     private PlayerItemController items; //기존 네트워크 아이템 장착 상태
+    private PlayerLookVisualComponent lookVisual; //시선과 분리된 모델 방향의 이동 애니메이션
     private int holdLayerIndex = -1; //팔 전용 아이템 들기 레이어
     private float holdResumeTime; //공격과 제스처 진입 중 Hold 덮어쓰기 방지
     private static readonly int isHoldingHash = Animator.StringToHash("IsHolding"); //아이템을 들고 있는 상태
@@ -51,6 +52,7 @@ public class PlayerAnimation : NetworkBehaviour
 
         health = GetComponent<PlayerHealth>();
         items = GetComponent<PlayerItemController>();
+        lookVisual = GetComponent<PlayerLookVisualComponent>();
         if (animator != null) holdLayerIndex = animator.GetLayerIndex("Item Hold");
     }
 
@@ -112,7 +114,7 @@ public class PlayerAnimation : NetworkBehaviour
         if (health != null && health.IsDead)
             return;
 
-        Vector2 localVelocity = playerMovement.LocalMoveVelocity;
+        Vector2 localVelocity = lookVisual != null ? lookVisual.getBodyLocalVelocity() : playerMovement.LocalMoveVelocity;
 
         animator.SetFloat(MoveXHash, localVelocity.x, speedDampTime, Time.deltaTime);
         animator.SetFloat(MoveYHash, localVelocity.y, speedDampTime, Time.deltaTime);

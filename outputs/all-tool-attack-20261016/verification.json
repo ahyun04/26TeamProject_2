@@ -1,0 +1,2733 @@
+{
+  "checks": [
+    {
+      "check": "StandBy: tool is weapon but role gate blocks attack input",
+      "passed": true
+    },
+    {
+      "check": "StandBy: no damage and no stamina cost",
+      "passed": true
+    },
+    {
+      "check": "host KnifeData: valid ownership and weapon settings",
+      "passed": true
+    },
+    {
+      "check": "host KnifeData: right-click handler preserved",
+      "passed": true
+    },
+    {
+      "check": "host KnifeData: expected damage on host and client",
+      "passed": true
+    },
+    {
+      "check": "host KnifeData: attack costs 25 stamina",
+      "passed": true
+    },
+    {
+      "check": "host KnifeData: one replicated attack sequence",
+      "passed": true
+    },
+    {
+      "check": "host ScissorsData: valid ownership and weapon settings",
+      "passed": true
+    },
+    {
+      "check": "host ScissorsData: right-click handler preserved",
+      "passed": true
+    },
+    {
+      "check": "host ScissorsData: expected damage on host and client",
+      "passed": true
+    },
+    {
+      "check": "host ScissorsData: attack costs 25 stamina",
+      "passed": true
+    },
+    {
+      "check": "host ScissorsData: one replicated attack sequence",
+      "passed": true
+    },
+    {
+      "check": "host ScrewdriverData: valid ownership and weapon settings",
+      "passed": true
+    },
+    {
+      "check": "host ScrewdriverData: right-click handler preserved",
+      "passed": true
+    },
+    {
+      "check": "host ScrewdriverData: expected damage on host and client",
+      "passed": true
+    },
+    {
+      "check": "host ScrewdriverData: attack costs 25 stamina",
+      "passed": true
+    },
+    {
+      "check": "host ScrewdriverData: one replicated attack sequence",
+      "passed": true
+    },
+    {
+      "check": "host VacuumData: valid ownership and weapon settings",
+      "passed": true
+    },
+    {
+      "check": "host VacuumData: right-click handler preserved",
+      "passed": true
+    },
+    {
+      "check": "host VacuumData: expected damage on host and client",
+      "passed": true
+    },
+    {
+      "check": "host VacuumData: attack costs 25 stamina",
+      "passed": true
+    },
+    {
+      "check": "host VacuumData: one replicated attack sequence",
+      "passed": true
+    },
+    {
+      "check": "host VacuumToolData: valid ownership and weapon settings",
+      "passed": true
+    },
+    {
+      "check": "host VacuumToolData: right-click handler preserved",
+      "passed": true
+    },
+    {
+      "check": "host VacuumToolData: expected damage on host and client",
+      "passed": true
+    },
+    {
+      "check": "host VacuumToolData: attack costs 25 stamina",
+      "passed": true
+    },
+    {
+      "check": "host VacuumToolData: one replicated attack sequence",
+      "passed": true
+    },
+    {
+      "check": "host OxygenTankData: valid ownership and weapon settings",
+      "passed": true
+    },
+    {
+      "check": "host OxygenTankData: right-click handler preserved",
+      "passed": true
+    },
+    {
+      "check": "host OxygenTankData: expected damage on host and client",
+      "passed": true
+    },
+    {
+      "check": "host OxygenTankData: attack costs 25 stamina",
+      "passed": true
+    },
+    {
+      "check": "host OxygenTankData: one replicated attack sequence",
+      "passed": true
+    },
+    {
+      "check": "host FireDoorLeverData: valid ownership and weapon settings",
+      "passed": true
+    },
+    {
+      "check": "host FireDoorLeverData: right-click handler preserved",
+      "passed": true
+    },
+    {
+      "check": "host FireDoorLeverData: expected damage on host and client",
+      "passed": true
+    },
+    {
+      "check": "host FireDoorLeverData: attack costs 25 stamina",
+      "passed": true
+    },
+    {
+      "check": "host FireDoorLeverData: one replicated attack sequence",
+      "passed": true
+    },
+    {
+      "check": "host EquipmentPart_BlueData: valid ownership and weapon settings",
+      "passed": true
+    },
+    {
+      "check": "host EquipmentPart_BlueData: right-click handler preserved",
+      "passed": true
+    },
+    {
+      "check": "host EquipmentPart_BlueData: expected damage on host and client",
+      "passed": true
+    },
+    {
+      "check": "host EquipmentPart_BlueData: attack costs 25 stamina",
+      "passed": true
+    },
+    {
+      "check": "host EquipmentPart_BlueData: one replicated attack sequence",
+      "passed": true
+    },
+    {
+      "check": "host EquipmentPart_GrayData: valid ownership and weapon settings",
+      "passed": true
+    },
+    {
+      "check": "host EquipmentPart_GrayData: right-click handler preserved",
+      "passed": true
+    },
+    {
+      "check": "host EquipmentPart_GrayData: expected damage on host and client",
+      "passed": true
+    },
+    {
+      "check": "host EquipmentPart_GrayData: attack costs 25 stamina",
+      "passed": true
+    },
+    {
+      "check": "host EquipmentPart_GrayData: one replicated attack sequence",
+      "passed": true
+    },
+    {
+      "check": "host EquipmentPart_RedData: valid ownership and weapon settings",
+      "passed": true
+    },
+    {
+      "check": "host EquipmentPart_RedData: right-click handler preserved",
+      "passed": true
+    },
+    {
+      "check": "host EquipmentPart_RedData: expected damage on host and client",
+      "passed": true
+    },
+    {
+      "check": "host EquipmentPart_RedData: attack costs 25 stamina",
+      "passed": true
+    },
+    {
+      "check": "host EquipmentPart_RedData: one replicated attack sequence",
+      "passed": true
+    },
+    {
+      "check": "host EquipmentPart_YellowData: valid ownership and weapon settings",
+      "passed": true
+    },
+    {
+      "check": "host EquipmentPart_YellowData: right-click handler preserved",
+      "passed": true
+    },
+    {
+      "check": "host EquipmentPart_YellowData: expected damage on host and client",
+      "passed": true
+    },
+    {
+      "check": "host EquipmentPart_YellowData: attack costs 25 stamina",
+      "passed": true
+    },
+    {
+      "check": "host EquipmentPart_YellowData: one replicated attack sequence",
+      "passed": true
+    },
+    {
+      "check": "client KnifeData: valid ownership and weapon settings",
+      "passed": true
+    },
+    {
+      "check": "client KnifeData: right-click handler preserved",
+      "passed": true
+    },
+    {
+      "check": "client KnifeData: expected damage on host and client",
+      "passed": true
+    },
+    {
+      "check": "client KnifeData: attack costs 25 stamina",
+      "passed": true
+    },
+    {
+      "check": "client KnifeData: one replicated attack sequence",
+      "passed": true
+    },
+    {
+      "check": "client ScissorsData: valid ownership and weapon settings",
+      "passed": true
+    },
+    {
+      "check": "client ScissorsData: right-click handler preserved",
+      "passed": true
+    },
+    {
+      "check": "client ScissorsData: expected damage on host and client",
+      "passed": true
+    },
+    {
+      "check": "client ScissorsData: attack costs 25 stamina",
+      "passed": true
+    },
+    {
+      "check": "client ScissorsData: one replicated attack sequence",
+      "passed": true
+    },
+    {
+      "check": "client ScrewdriverData: valid ownership and weapon settings",
+      "passed": true
+    },
+    {
+      "check": "client ScrewdriverData: right-click handler preserved",
+      "passed": true
+    },
+    {
+      "check": "client ScrewdriverData: expected damage on host and client",
+      "passed": true
+    },
+    {
+      "check": "client ScrewdriverData: attack costs 25 stamina",
+      "passed": true
+    },
+    {
+      "check": "client ScrewdriverData: one replicated attack sequence",
+      "passed": true
+    },
+    {
+      "check": "client VacuumData: valid ownership and weapon settings",
+      "passed": true
+    },
+    {
+      "check": "client VacuumData: right-click handler preserved",
+      "passed": true
+    },
+    {
+      "check": "client VacuumData: expected damage on host and client",
+      "passed": true
+    },
+    {
+      "check": "client VacuumData: attack costs 25 stamina",
+      "passed": true
+    },
+    {
+      "check": "client VacuumData: one replicated attack sequence",
+      "passed": true
+    },
+    {
+      "check": "client VacuumToolData: valid ownership and weapon settings",
+      "passed": true
+    },
+    {
+      "check": "client VacuumToolData: right-click handler preserved",
+      "passed": true
+    },
+    {
+      "check": "client VacuumToolData: expected damage on host and client",
+      "passed": true
+    },
+    {
+      "check": "client VacuumToolData: attack costs 25 stamina",
+      "passed": true
+    },
+    {
+      "check": "client VacuumToolData: one replicated attack sequence",
+      "passed": true
+    },
+    {
+      "check": "client OxygenTankData: valid ownership and weapon settings",
+      "passed": true
+    },
+    {
+      "check": "client OxygenTankData: right-click handler preserved",
+      "passed": true
+    },
+    {
+      "check": "client OxygenTankData: expected damage on host and client",
+      "passed": true
+    },
+    {
+      "check": "client OxygenTankData: attack costs 25 stamina",
+      "passed": true
+    },
+    {
+      "check": "client OxygenTankData: one replicated attack sequence",
+      "passed": true
+    },
+    {
+      "check": "client FireDoorLeverData: valid ownership and weapon settings",
+      "passed": true
+    },
+    {
+      "check": "client FireDoorLeverData: right-click handler preserved",
+      "passed": true
+    },
+    {
+      "check": "client FireDoorLeverData: expected damage on host and client",
+      "passed": true
+    },
+    {
+      "check": "client FireDoorLeverData: attack costs 25 stamina",
+      "passed": true
+    },
+    {
+      "check": "client FireDoorLeverData: one replicated attack sequence",
+      "passed": true
+    },
+    {
+      "check": "client EquipmentPart_BlueData: valid ownership and weapon settings",
+      "passed": true
+    },
+    {
+      "check": "client EquipmentPart_BlueData: right-click handler preserved",
+      "passed": true
+    },
+    {
+      "check": "client EquipmentPart_BlueData: expected damage on host and client",
+      "passed": true
+    },
+    {
+      "check": "client EquipmentPart_BlueData: attack costs 25 stamina",
+      "passed": true
+    },
+    {
+      "check": "client EquipmentPart_BlueData: one replicated attack sequence",
+      "passed": true
+    },
+    {
+      "check": "client EquipmentPart_GrayData: valid ownership and weapon settings",
+      "passed": true
+    },
+    {
+      "check": "client EquipmentPart_GrayData: right-click handler preserved",
+      "passed": true
+    },
+    {
+      "check": "client EquipmentPart_GrayData: expected damage on host and client",
+      "passed": true
+    },
+    {
+      "check": "client EquipmentPart_GrayData: attack costs 25 stamina",
+      "passed": true
+    },
+    {
+      "check": "client EquipmentPart_GrayData: one replicated attack sequence",
+      "passed": true
+    },
+    {
+      "check": "client EquipmentPart_RedData: valid ownership and weapon settings",
+      "passed": true
+    },
+    {
+      "check": "client EquipmentPart_RedData: right-click handler preserved",
+      "passed": true
+    },
+    {
+      "check": "client EquipmentPart_RedData: expected damage on host and client",
+      "passed": true
+    },
+    {
+      "check": "client EquipmentPart_RedData: attack costs 25 stamina",
+      "passed": true
+    },
+    {
+      "check": "client EquipmentPart_RedData: one replicated attack sequence",
+      "passed": true
+    },
+    {
+      "check": "client EquipmentPart_YellowData: valid ownership and weapon settings",
+      "passed": true
+    },
+    {
+      "check": "client EquipmentPart_YellowData: right-click handler preserved",
+      "passed": true
+    },
+    {
+      "check": "client EquipmentPart_YellowData: expected damage on host and client",
+      "passed": true
+    },
+    {
+      "check": "client EquipmentPart_YellowData: attack costs 25 stamina",
+      "passed": true
+    },
+    {
+      "check": "client EquipmentPart_YellowData: one replicated attack sequence",
+      "passed": true
+    },
+    {
+      "check": "Burst requests: only one attack accepted within 0.5 seconds",
+      "passed": true
+    },
+    {
+      "check": "Attack allowed again after 0.5-second interval",
+      "passed": true
+    },
+    {
+      "check": "Host wall blocks client tool damage",
+      "passed": true
+    },
+    {
+      "check": "Tool damage works after wall removed",
+      "passed": true
+    },
+    {
+      "check": "Unarmed client cannot send weapon damage",
+      "passed": true
+    },
+    {
+      "check": "New tool retains stamina-to-health shortfall: 10 stamina plus 15 HP",
+      "passed": true
+    },
+    {
+      "check": "Filter mission available for real right-click use check",
+      "passed": true
+    },
+    {
+      "check": "Weapon-enabled vacuum still cleans dust through right-click RPC",
+      "passed": true
+    },
+    {
+      "check": "Right-click suction does not consume attack stamina or trigger attack",
+      "passed": true
+    }
+  ],
+  "cases": [
+    {
+      "ownerProcess": "host",
+      "ownerRole": "Killer",
+      "tool": "KnifeData",
+      "expectedDamage": 40,
+      "host": [
+        {
+          "owner": 1,
+          "id": 11,
+          "sequence": 1,
+          "target": 2,
+          "data": "KnifeData",
+          "local": true,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 40.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.4375,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 1.0195652482003492e-11,
+          "z": 999.9999389648438
+        },
+        {
+          "owner": 2,
+          "id": -1,
+          "sequence": 0,
+          "target": 1,
+          "data": "",
+          "local": false,
+          "weapon": false,
+          "owns": false,
+          "usesAttack": false,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 0.0,
+          "interval": 0.0,
+          "stamina": 100.0,
+          "health": 60.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 1.0195652482003492e-11,
+          "z": 1001.3999633789062
+        }
+      ],
+      "client": [
+        {
+          "owner": 2,
+          "id": -1,
+          "sequence": 0,
+          "target": 1,
+          "data": "",
+          "local": true,
+          "weapon": false,
+          "owns": false,
+          "usesAttack": false,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 0.0,
+          "interval": 0.0,
+          "stamina": 100.0,
+          "health": 60.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 1000.0,
+          "y": 0.0,
+          "z": 1001.4000244140625
+        },
+        {
+          "owner": 1,
+          "id": 11,
+          "sequence": 1,
+          "target": 2,
+          "data": "KnifeData",
+          "local": false,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 40.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.328125,
+          "cost": 25.0,
+          "x": 1000.0,
+          "y": 0.0,
+          "z": 1000.0
+        }
+      ]
+    },
+    {
+      "ownerProcess": "host",
+      "ownerRole": "Killer",
+      "tool": "ScissorsData",
+      "expectedDamage": 20,
+      "host": [
+        {
+          "owner": 1,
+          "id": 12,
+          "sequence": 2,
+          "target": 2,
+          "data": "ScissorsData",
+          "local": true,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 20.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.40625,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 4.2181598881108816e-17,
+          "z": 999.9999389648438
+        },
+        {
+          "owner": 2,
+          "id": -1,
+          "sequence": 0,
+          "target": 1,
+          "data": "",
+          "local": false,
+          "weapon": false,
+          "owns": false,
+          "usesAttack": false,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 0.0,
+          "interval": 0.0,
+          "stamina": 100.0,
+          "health": 80.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 4.2181598881108816e-17,
+          "z": 1001.3999633789062
+        }
+      ],
+      "client": [
+        {
+          "owner": 2,
+          "id": -1,
+          "sequence": 0,
+          "target": 1,
+          "data": "",
+          "local": true,
+          "weapon": false,
+          "owns": false,
+          "usesAttack": false,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 0.0,
+          "interval": 0.0,
+          "stamina": 100.0,
+          "health": 80.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 1000.0,
+          "y": 0.0,
+          "z": 1001.4000244140625
+        },
+        {
+          "owner": 1,
+          "id": 12,
+          "sequence": 2,
+          "target": 2,
+          "data": "ScissorsData",
+          "local": false,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 20.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.34375,
+          "cost": 25.0,
+          "x": 1000.0,
+          "y": 0.0,
+          "z": 1000.0
+        }
+      ]
+    },
+    {
+      "ownerProcess": "host",
+      "ownerRole": "Killer",
+      "tool": "ScrewdriverData",
+      "expectedDamage": 5,
+      "host": [
+        {
+          "owner": 1,
+          "id": 13,
+          "sequence": 3,
+          "target": 2,
+          "data": "ScrewdriverData",
+          "local": true,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.421875,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 8.3801781958588565e-22,
+          "z": 999.9999389648438
+        },
+        {
+          "owner": 2,
+          "id": -1,
+          "sequence": 0,
+          "target": 1,
+          "data": "",
+          "local": false,
+          "weapon": false,
+          "owns": false,
+          "usesAttack": false,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 0.0,
+          "interval": 0.0,
+          "stamina": 100.0,
+          "health": 95.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 8.3801781958588565e-22,
+          "z": 1001.3999633789062
+        }
+      ],
+      "client": [
+        {
+          "owner": 2,
+          "id": -1,
+          "sequence": 0,
+          "target": 1,
+          "data": "",
+          "local": true,
+          "weapon": false,
+          "owns": false,
+          "usesAttack": false,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 0.0,
+          "interval": 0.0,
+          "stamina": 100.0,
+          "health": 95.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 1000.0,
+          "y": 0.0,
+          "z": 1001.4000244140625
+        },
+        {
+          "owner": 1,
+          "id": 13,
+          "sequence": 3,
+          "target": 2,
+          "data": "ScrewdriverData",
+          "local": false,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.3125,
+          "cost": 25.0,
+          "x": 1000.0,
+          "y": 0.0,
+          "z": 1000.0
+        }
+      ]
+    },
+    {
+      "ownerProcess": "host",
+      "ownerRole": "Killer",
+      "tool": "VacuumData",
+      "expectedDamage": 5,
+      "host": [
+        {
+          "owner": 1,
+          "id": 10,
+          "sequence": 4,
+          "target": 2,
+          "data": "VacuumData",
+          "local": true,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": true,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.4375,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 1.613239810476413e-26,
+          "z": 999.9999389648438
+        },
+        {
+          "owner": 2,
+          "id": -1,
+          "sequence": 0,
+          "target": 1,
+          "data": "",
+          "local": false,
+          "weapon": false,
+          "owns": false,
+          "usesAttack": false,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 0.0,
+          "interval": 0.0,
+          "stamina": 100.0,
+          "health": 95.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 1.613239810476413e-26,
+          "z": 1001.3999633789062
+        }
+      ],
+      "client": [
+        {
+          "owner": 2,
+          "id": -1,
+          "sequence": 0,
+          "target": 1,
+          "data": "",
+          "local": true,
+          "weapon": false,
+          "owns": false,
+          "usesAttack": false,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 0.0,
+          "interval": 0.0,
+          "stamina": 100.0,
+          "health": 95.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 1000.0,
+          "y": 0.0,
+          "z": 1001.4000244140625
+        },
+        {
+          "owner": 1,
+          "id": 10,
+          "sequence": 4,
+          "target": 2,
+          "data": "VacuumData",
+          "local": false,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": true,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.328125,
+          "cost": 25.0,
+          "x": 1000.0,
+          "y": 0.0,
+          "z": 1000.0
+        }
+      ]
+    },
+    {
+      "ownerProcess": "host",
+      "ownerRole": "Killer",
+      "tool": "VacuumToolData",
+      "expectedDamage": 5,
+      "host": [
+        {
+          "owner": 1,
+          "id": 10,
+          "sequence": 5,
+          "target": 2,
+          "data": "VacuumToolData",
+          "local": true,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": true,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.453125,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 3.2300877942799067e-31,
+          "z": 999.9999389648438
+        },
+        {
+          "owner": 2,
+          "id": -1,
+          "sequence": 0,
+          "target": 1,
+          "data": "",
+          "local": false,
+          "weapon": false,
+          "owns": false,
+          "usesAttack": false,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 0.0,
+          "interval": 0.0,
+          "stamina": 100.0,
+          "health": 95.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 3.2300877942799067e-31,
+          "z": 1001.3999633789062
+        }
+      ],
+      "client": [
+        {
+          "owner": 2,
+          "id": -1,
+          "sequence": 0,
+          "target": 1,
+          "data": "",
+          "local": true,
+          "weapon": false,
+          "owns": false,
+          "usesAttack": false,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 0.0,
+          "interval": 0.0,
+          "stamina": 100.0,
+          "health": 95.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 1000.0,
+          "y": 0.0,
+          "z": 1001.4000244140625
+        },
+        {
+          "owner": 1,
+          "id": 10,
+          "sequence": 5,
+          "target": 2,
+          "data": "VacuumToolData",
+          "local": false,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": true,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.34375,
+          "cost": 25.0,
+          "x": 1000.0,
+          "y": 0.0,
+          "z": 1000.0
+        }
+      ]
+    },
+    {
+      "ownerProcess": "host",
+      "ownerRole": "Killer",
+      "tool": "OxygenTankData",
+      "expectedDamage": 5,
+      "host": [
+        {
+          "owner": 1,
+          "id": 20,
+          "sequence": 6,
+          "target": 2,
+          "data": "OxygenTankData",
+          "local": true,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": true,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.390625,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 1.2102632337944623e-36,
+          "z": 999.9999389648438
+        },
+        {
+          "owner": 2,
+          "id": -1,
+          "sequence": 0,
+          "target": 1,
+          "data": "",
+          "local": false,
+          "weapon": false,
+          "owns": false,
+          "usesAttack": false,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 0.0,
+          "interval": 0.0,
+          "stamina": 100.0,
+          "health": 95.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 1.2102632337944623e-36,
+          "z": 1001.3999633789062
+        }
+      ],
+      "client": [
+        {
+          "owner": 2,
+          "id": -1,
+          "sequence": 0,
+          "target": 1,
+          "data": "",
+          "local": true,
+          "weapon": false,
+          "owns": false,
+          "usesAttack": false,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 0.0,
+          "interval": 0.0,
+          "stamina": 100.0,
+          "health": 95.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 1000.0,
+          "y": 0.0,
+          "z": 1001.4000244140625
+        },
+        {
+          "owner": 1,
+          "id": 20,
+          "sequence": 6,
+          "target": 2,
+          "data": "OxygenTankData",
+          "local": false,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": true,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.34375,
+          "cost": 25.0,
+          "x": 1000.0,
+          "y": 0.0,
+          "z": 1000.0
+        }
+      ]
+    },
+    {
+      "ownerProcess": "host",
+      "ownerRole": "Killer",
+      "tool": "FireDoorLeverData",
+      "expectedDamage": 5,
+      "host": [
+        {
+          "owner": 1,
+          "id": 25,
+          "sequence": 7,
+          "target": 2,
+          "data": "FireDoorLeverData",
+          "local": true,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": true,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.421875,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 2.2813138999208022e-41,
+          "z": 999.9999389648438
+        },
+        {
+          "owner": 2,
+          "id": -1,
+          "sequence": 0,
+          "target": 1,
+          "data": "",
+          "local": false,
+          "weapon": false,
+          "owns": false,
+          "usesAttack": false,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 0.0,
+          "interval": 0.0,
+          "stamina": 100.0,
+          "health": 95.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 2.2813138999208022e-41,
+          "z": 1001.3999633789062
+        }
+      ],
+      "client": [
+        {
+          "owner": 2,
+          "id": -1,
+          "sequence": 0,
+          "target": 1,
+          "data": "",
+          "local": true,
+          "weapon": false,
+          "owns": false,
+          "usesAttack": false,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 0.0,
+          "interval": 0.0,
+          "stamina": 100.0,
+          "health": 95.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 1000.0,
+          "y": 0.0,
+          "z": 1001.4000244140625
+        },
+        {
+          "owner": 1,
+          "id": 25,
+          "sequence": 7,
+          "target": 2,
+          "data": "FireDoorLeverData",
+          "local": false,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": true,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.375,
+          "cost": 25.0,
+          "x": 1000.0,
+          "y": 0.0,
+          "z": 1000.0
+        }
+      ]
+    },
+    {
+      "ownerProcess": "host",
+      "ownerRole": "Killer",
+      "tool": "EquipmentPart_BlueData",
+      "expectedDamage": 5,
+      "host": [
+        {
+          "owner": 1,
+          "id": 21,
+          "sequence": 8,
+          "target": 2,
+          "data": "EquipmentPart_BlueData",
+          "local": true,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.421875,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 1.1210387714598537e-44,
+          "z": 999.9999389648438
+        },
+        {
+          "owner": 2,
+          "id": -1,
+          "sequence": 0,
+          "target": 1,
+          "data": "",
+          "local": false,
+          "weapon": false,
+          "owns": false,
+          "usesAttack": false,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 0.0,
+          "interval": 0.0,
+          "stamina": 100.0,
+          "health": 95.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 1.1210387714598537e-44,
+          "z": 1001.3999633789062
+        }
+      ],
+      "client": [
+        {
+          "owner": 2,
+          "id": -1,
+          "sequence": 0,
+          "target": 1,
+          "data": "",
+          "local": true,
+          "weapon": false,
+          "owns": false,
+          "usesAttack": false,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 0.0,
+          "interval": 0.0,
+          "stamina": 100.0,
+          "health": 95.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 1000.0,
+          "y": 0.0,
+          "z": 1001.4000244140625
+        },
+        {
+          "owner": 1,
+          "id": 21,
+          "sequence": 8,
+          "target": 2,
+          "data": "EquipmentPart_BlueData",
+          "local": false,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.328125,
+          "cost": 25.0,
+          "x": 1000.0,
+          "y": 0.0,
+          "z": 1000.0
+        }
+      ]
+    },
+    {
+      "ownerProcess": "host",
+      "ownerRole": "Killer",
+      "tool": "EquipmentPart_GrayData",
+      "expectedDamage": 5,
+      "host": [
+        {
+          "owner": 1,
+          "id": 22,
+          "sequence": 9,
+          "target": 2,
+          "data": "EquipmentPart_GrayData",
+          "local": true,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.4375,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 5.605193857299268e-45,
+          "z": 999.9999389648438
+        },
+        {
+          "owner": 2,
+          "id": -1,
+          "sequence": 0,
+          "target": 1,
+          "data": "",
+          "local": false,
+          "weapon": false,
+          "owns": false,
+          "usesAttack": false,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 0.0,
+          "interval": 0.0,
+          "stamina": 100.0,
+          "health": 95.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 5.605193857299268e-45,
+          "z": 1001.3999633789062
+        }
+      ],
+      "client": [
+        {
+          "owner": 2,
+          "id": -1,
+          "sequence": 0,
+          "target": 1,
+          "data": "",
+          "local": true,
+          "weapon": false,
+          "owns": false,
+          "usesAttack": false,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 0.0,
+          "interval": 0.0,
+          "stamina": 100.0,
+          "health": 95.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 1000.0,
+          "y": 0.0,
+          "z": 1001.4000244140625
+        },
+        {
+          "owner": 1,
+          "id": 22,
+          "sequence": 9,
+          "target": 2,
+          "data": "EquipmentPart_GrayData",
+          "local": false,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.359375,
+          "cost": 25.0,
+          "x": 1000.0,
+          "y": 0.0,
+          "z": 1000.0
+        }
+      ]
+    },
+    {
+      "ownerProcess": "host",
+      "ownerRole": "Killer",
+      "tool": "EquipmentPart_RedData",
+      "expectedDamage": 5,
+      "host": [
+        {
+          "owner": 1,
+          "id": 23,
+          "sequence": 10,
+          "target": 2,
+          "data": "EquipmentPart_RedData",
+          "local": true,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.390625,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 2.802596928649634e-45,
+          "z": 999.9999389648438
+        },
+        {
+          "owner": 2,
+          "id": -1,
+          "sequence": 0,
+          "target": 1,
+          "data": "",
+          "local": false,
+          "weapon": false,
+          "owns": false,
+          "usesAttack": false,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 0.0,
+          "interval": 0.0,
+          "stamina": 100.0,
+          "health": 95.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 2.802596928649634e-45,
+          "z": 1001.3999633789062
+        }
+      ],
+      "client": [
+        {
+          "owner": 2,
+          "id": -1,
+          "sequence": 0,
+          "target": 1,
+          "data": "",
+          "local": true,
+          "weapon": false,
+          "owns": false,
+          "usesAttack": false,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 0.0,
+          "interval": 0.0,
+          "stamina": 100.0,
+          "health": 95.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 1000.0,
+          "y": 0.0,
+          "z": 1001.4000244140625
+        },
+        {
+          "owner": 1,
+          "id": 23,
+          "sequence": 10,
+          "target": 2,
+          "data": "EquipmentPart_RedData",
+          "local": false,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.359375,
+          "cost": 25.0,
+          "x": 1000.0,
+          "y": 0.0,
+          "z": 1000.0
+        }
+      ]
+    },
+    {
+      "ownerProcess": "host",
+      "ownerRole": "Killer",
+      "tool": "EquipmentPart_YellowData",
+      "expectedDamage": 5,
+      "host": [
+        {
+          "owner": 1,
+          "id": 24,
+          "sequence": 11,
+          "target": 2,
+          "data": "EquipmentPart_YellowData",
+          "local": true,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.421875,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 2.802596928649634e-45,
+          "z": 999.9999389648438
+        },
+        {
+          "owner": 2,
+          "id": -1,
+          "sequence": 0,
+          "target": 1,
+          "data": "",
+          "local": false,
+          "weapon": false,
+          "owns": false,
+          "usesAttack": false,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 0.0,
+          "interval": 0.0,
+          "stamina": 100.0,
+          "health": 95.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 2.802596928649634e-45,
+          "z": 1001.3999633789062
+        }
+      ],
+      "client": [
+        {
+          "owner": 2,
+          "id": -1,
+          "sequence": 0,
+          "target": 1,
+          "data": "",
+          "local": true,
+          "weapon": false,
+          "owns": false,
+          "usesAttack": false,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 0.0,
+          "interval": 0.0,
+          "stamina": 100.0,
+          "health": 95.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 1000.0,
+          "y": 0.0,
+          "z": 1001.4000244140625
+        },
+        {
+          "owner": 1,
+          "id": 24,
+          "sequence": 11,
+          "target": 2,
+          "data": "EquipmentPart_YellowData",
+          "local": false,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.328125,
+          "cost": 25.0,
+          "x": 1000.0,
+          "y": 0.0,
+          "z": 1000.0
+        }
+      ]
+    },
+    {
+      "ownerProcess": "client",
+      "ownerRole": "Citizen",
+      "tool": "KnifeData",
+      "expectedDamage": 40,
+      "host": [
+        {
+          "owner": 1,
+          "id": 24,
+          "sequence": 11,
+          "target": 2,
+          "data": "EquipmentPart_YellowData",
+          "local": true,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 100.0,
+          "health": 60.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 2.802596928649634e-45,
+          "z": 1001.4000244140625
+        },
+        {
+          "owner": 2,
+          "id": 11,
+          "sequence": 1,
+          "target": 1,
+          "data": "KnifeData",
+          "local": false,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 40.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.453125,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 2.802596928649634e-45,
+          "z": 999.9999389648438
+        }
+      ],
+      "client": [
+        {
+          "owner": 2,
+          "id": 11,
+          "sequence": 1,
+          "target": 1,
+          "data": "KnifeData",
+          "local": true,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 40.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.421875,
+          "cost": 25.0,
+          "x": 1000.0000610351562,
+          "y": 0.0,
+          "z": 999.9999389648438
+        },
+        {
+          "owner": 1,
+          "id": 24,
+          "sequence": 11,
+          "target": 2,
+          "data": "EquipmentPart_YellowData",
+          "local": false,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 100.0,
+          "health": 60.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 1000.0,
+          "y": 0.0,
+          "z": 1001.4000244140625
+        }
+      ]
+    },
+    {
+      "ownerProcess": "client",
+      "ownerRole": "Citizen",
+      "tool": "ScissorsData",
+      "expectedDamage": 20,
+      "host": [
+        {
+          "owner": 1,
+          "id": 24,
+          "sequence": 11,
+          "target": 2,
+          "data": "EquipmentPart_YellowData",
+          "local": true,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 100.0,
+          "health": 80.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 2.802596928649634e-45,
+          "z": 1001.4000244140625
+        },
+        {
+          "owner": 2,
+          "id": 12,
+          "sequence": 2,
+          "target": 1,
+          "data": "ScissorsData",
+          "local": false,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 20.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.484375,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 2.802596928649634e-45,
+          "z": 999.9999389648438
+        }
+      ],
+      "client": [
+        {
+          "owner": 2,
+          "id": 12,
+          "sequence": 2,
+          "target": 1,
+          "data": "ScissorsData",
+          "local": true,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 20.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.390625,
+          "cost": 25.0,
+          "x": 1000.0000610351562,
+          "y": 0.0,
+          "z": 999.9999389648438
+        },
+        {
+          "owner": 1,
+          "id": 24,
+          "sequence": 11,
+          "target": 2,
+          "data": "EquipmentPart_YellowData",
+          "local": false,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 100.0,
+          "health": 80.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 1000.0,
+          "y": 0.0,
+          "z": 1001.4000244140625
+        }
+      ]
+    },
+    {
+      "ownerProcess": "client",
+      "ownerRole": "Citizen",
+      "tool": "ScrewdriverData",
+      "expectedDamage": 5,
+      "host": [
+        {
+          "owner": 1,
+          "id": 24,
+          "sequence": 11,
+          "target": 2,
+          "data": "EquipmentPart_YellowData",
+          "local": true,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 100.0,
+          "health": 95.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 2.802596928649634e-45,
+          "z": 1001.4000244140625
+        },
+        {
+          "owner": 2,
+          "id": 13,
+          "sequence": 3,
+          "target": 1,
+          "data": "ScrewdriverData",
+          "local": false,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.453125,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 2.802596928649634e-45,
+          "z": 999.9999389648438
+        }
+      ],
+      "client": [
+        {
+          "owner": 2,
+          "id": 13,
+          "sequence": 3,
+          "target": 1,
+          "data": "ScrewdriverData",
+          "local": true,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.421875,
+          "cost": 25.0,
+          "x": 1000.0000610351562,
+          "y": 0.0,
+          "z": 999.9999389648438
+        },
+        {
+          "owner": 1,
+          "id": 24,
+          "sequence": 11,
+          "target": 2,
+          "data": "EquipmentPart_YellowData",
+          "local": false,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 100.0,
+          "health": 95.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 1000.0,
+          "y": 0.0,
+          "z": 1001.4000244140625
+        }
+      ]
+    },
+    {
+      "ownerProcess": "client",
+      "ownerRole": "Citizen",
+      "tool": "VacuumData",
+      "expectedDamage": 5,
+      "host": [
+        {
+          "owner": 1,
+          "id": 24,
+          "sequence": 11,
+          "target": 2,
+          "data": "EquipmentPart_YellowData",
+          "local": true,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 100.0,
+          "health": 95.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 2.802596928649634e-45,
+          "z": 1001.4000244140625
+        },
+        {
+          "owner": 2,
+          "id": 10,
+          "sequence": 4,
+          "target": 1,
+          "data": "VacuumData",
+          "local": false,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": true,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.46875,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 2.802596928649634e-45,
+          "z": 999.9999389648438
+        }
+      ],
+      "client": [
+        {
+          "owner": 2,
+          "id": 10,
+          "sequence": 4,
+          "target": 1,
+          "data": "VacuumData",
+          "local": true,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": true,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.390625,
+          "cost": 25.0,
+          "x": 1000.0000610351562,
+          "y": 0.0,
+          "z": 999.9999389648438
+        },
+        {
+          "owner": 1,
+          "id": 24,
+          "sequence": 11,
+          "target": 2,
+          "data": "EquipmentPart_YellowData",
+          "local": false,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 100.0,
+          "health": 95.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 1000.0,
+          "y": 0.0,
+          "z": 1001.4000244140625
+        }
+      ]
+    },
+    {
+      "ownerProcess": "client",
+      "ownerRole": "Citizen",
+      "tool": "VacuumToolData",
+      "expectedDamage": 5,
+      "host": [
+        {
+          "owner": 1,
+          "id": 24,
+          "sequence": 11,
+          "target": 2,
+          "data": "EquipmentPart_YellowData",
+          "local": true,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 100.0,
+          "health": 95.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 1.401298464324817e-45,
+          "z": 1001.4000244140625
+        },
+        {
+          "owner": 2,
+          "id": 10,
+          "sequence": 5,
+          "target": 1,
+          "data": "VacuumToolData",
+          "local": false,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": true,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.5,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 1.401298464324817e-45,
+          "z": 999.9999389648438
+        }
+      ],
+      "client": [
+        {
+          "owner": 2,
+          "id": 10,
+          "sequence": 5,
+          "target": 1,
+          "data": "VacuumToolData",
+          "local": true,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": true,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.421875,
+          "cost": 25.0,
+          "x": 1000.0000610351562,
+          "y": 0.0,
+          "z": 999.9999389648438
+        },
+        {
+          "owner": 1,
+          "id": 24,
+          "sequence": 11,
+          "target": 2,
+          "data": "EquipmentPart_YellowData",
+          "local": false,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 100.0,
+          "health": 95.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 1000.0,
+          "y": 0.0,
+          "z": 1001.4000244140625
+        }
+      ]
+    },
+    {
+      "ownerProcess": "client",
+      "ownerRole": "Citizen",
+      "tool": "OxygenTankData",
+      "expectedDamage": 5,
+      "host": [
+        {
+          "owner": 1,
+          "id": 24,
+          "sequence": 11,
+          "target": 2,
+          "data": "EquipmentPart_YellowData",
+          "local": true,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 100.0,
+          "health": 95.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 1.401298464324817e-45,
+          "z": 1001.4000244140625
+        },
+        {
+          "owner": 2,
+          "id": 20,
+          "sequence": 6,
+          "target": 1,
+          "data": "OxygenTankData",
+          "local": false,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": true,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.46875,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 1.401298464324817e-45,
+          "z": 999.9999389648438
+        }
+      ],
+      "client": [
+        {
+          "owner": 2,
+          "id": 20,
+          "sequence": 6,
+          "target": 1,
+          "data": "OxygenTankData",
+          "local": true,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": true,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.4375,
+          "cost": 25.0,
+          "x": 1000.0000610351562,
+          "y": 0.0,
+          "z": 999.9999389648438
+        },
+        {
+          "owner": 1,
+          "id": 24,
+          "sequence": 11,
+          "target": 2,
+          "data": "EquipmentPart_YellowData",
+          "local": false,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 100.0,
+          "health": 95.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 1000.0,
+          "y": 0.0,
+          "z": 1001.4000244140625
+        }
+      ]
+    },
+    {
+      "ownerProcess": "client",
+      "ownerRole": "Citizen",
+      "tool": "FireDoorLeverData",
+      "expectedDamage": 5,
+      "host": [
+        {
+          "owner": 1,
+          "id": 24,
+          "sequence": 11,
+          "target": 2,
+          "data": "EquipmentPart_YellowData",
+          "local": true,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 100.0,
+          "health": 95.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 1.401298464324817e-45,
+          "z": 1001.4000244140625
+        },
+        {
+          "owner": 2,
+          "id": 25,
+          "sequence": 7,
+          "target": 1,
+          "data": "FireDoorLeverData",
+          "local": false,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": true,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.484375,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 1.401298464324817e-45,
+          "z": 999.9999389648438
+        }
+      ],
+      "client": [
+        {
+          "owner": 2,
+          "id": 25,
+          "sequence": 7,
+          "target": 1,
+          "data": "FireDoorLeverData",
+          "local": true,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": true,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.40625,
+          "cost": 25.0,
+          "x": 1000.0000610351562,
+          "y": 0.0,
+          "z": 999.9999389648438
+        },
+        {
+          "owner": 1,
+          "id": 24,
+          "sequence": 11,
+          "target": 2,
+          "data": "EquipmentPart_YellowData",
+          "local": false,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 100.0,
+          "health": 95.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 1000.0,
+          "y": 0.0,
+          "z": 1001.4000244140625
+        }
+      ]
+    },
+    {
+      "ownerProcess": "client",
+      "ownerRole": "Citizen",
+      "tool": "EquipmentPart_BlueData",
+      "expectedDamage": 5,
+      "host": [
+        {
+          "owner": 1,
+          "id": 24,
+          "sequence": 11,
+          "target": 2,
+          "data": "EquipmentPart_YellowData",
+          "local": true,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 100.0,
+          "health": 95.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 1.401298464324817e-45,
+          "z": 1001.4000244140625
+        },
+        {
+          "owner": 2,
+          "id": 21,
+          "sequence": 8,
+          "target": 1,
+          "data": "EquipmentPart_BlueData",
+          "local": false,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.453125,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 1.401298464324817e-45,
+          "z": 999.9999389648438
+        }
+      ],
+      "client": [
+        {
+          "owner": 2,
+          "id": 21,
+          "sequence": 8,
+          "target": 1,
+          "data": "EquipmentPart_BlueData",
+          "local": true,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.421875,
+          "cost": 25.0,
+          "x": 1000.0000610351562,
+          "y": 0.0,
+          "z": 999.9999389648438
+        },
+        {
+          "owner": 1,
+          "id": 24,
+          "sequence": 11,
+          "target": 2,
+          "data": "EquipmentPart_YellowData",
+          "local": false,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 100.0,
+          "health": 95.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 1000.0,
+          "y": 0.0,
+          "z": 1001.4000244140625
+        }
+      ]
+    },
+    {
+      "ownerProcess": "client",
+      "ownerRole": "Citizen",
+      "tool": "EquipmentPart_GrayData",
+      "expectedDamage": 5,
+      "host": [
+        {
+          "owner": 1,
+          "id": 24,
+          "sequence": 11,
+          "target": 2,
+          "data": "EquipmentPart_YellowData",
+          "local": true,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 100.0,
+          "health": 95.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 1.401298464324817e-45,
+          "z": 1001.4000244140625
+        },
+        {
+          "owner": 2,
+          "id": 22,
+          "sequence": 9,
+          "target": 1,
+          "data": "EquipmentPart_GrayData",
+          "local": false,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.46875,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 1.401298464324817e-45,
+          "z": 999.9999389648438
+        }
+      ],
+      "client": [
+        {
+          "owner": 2,
+          "id": 22,
+          "sequence": 9,
+          "target": 1,
+          "data": "EquipmentPart_GrayData",
+          "local": true,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.40625,
+          "cost": 25.0,
+          "x": 1000.0000610351562,
+          "y": 0.0,
+          "z": 999.9999389648438
+        },
+        {
+          "owner": 1,
+          "id": 24,
+          "sequence": 11,
+          "target": 2,
+          "data": "EquipmentPart_YellowData",
+          "local": false,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 100.0,
+          "health": 95.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 1000.0,
+          "y": 0.0,
+          "z": 1001.4000244140625
+        }
+      ]
+    },
+    {
+      "ownerProcess": "client",
+      "ownerRole": "Citizen",
+      "tool": "EquipmentPart_RedData",
+      "expectedDamage": 5,
+      "host": [
+        {
+          "owner": 1,
+          "id": 24,
+          "sequence": 11,
+          "target": 2,
+          "data": "EquipmentPart_YellowData",
+          "local": true,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 100.0,
+          "health": 95.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 1.401298464324817e-45,
+          "z": 1001.4000244140625
+        },
+        {
+          "owner": 2,
+          "id": 23,
+          "sequence": 10,
+          "target": 1,
+          "data": "EquipmentPart_RedData",
+          "local": false,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.5,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 1.401298464324817e-45,
+          "z": 999.9999389648438
+        }
+      ],
+      "client": [
+        {
+          "owner": 2,
+          "id": 23,
+          "sequence": 10,
+          "target": 1,
+          "data": "EquipmentPart_RedData",
+          "local": true,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.421875,
+          "cost": 25.0,
+          "x": 1000.0000610351562,
+          "y": 0.0,
+          "z": 999.9999389648438
+        },
+        {
+          "owner": 1,
+          "id": 24,
+          "sequence": 11,
+          "target": 2,
+          "data": "EquipmentPart_YellowData",
+          "local": false,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 100.0,
+          "health": 95.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 1000.0,
+          "y": 0.0,
+          "z": 1001.4000244140625
+        }
+      ]
+    },
+    {
+      "ownerProcess": "client",
+      "ownerRole": "Citizen",
+      "tool": "EquipmentPart_YellowData",
+      "expectedDamage": 5,
+      "host": [
+        {
+          "owner": 1,
+          "id": 24,
+          "sequence": 11,
+          "target": 2,
+          "data": "EquipmentPart_YellowData",
+          "local": true,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 100.0,
+          "health": 95.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 1.401298464324817e-45,
+          "z": 1001.4000244140625
+        },
+        {
+          "owner": 2,
+          "id": 24,
+          "sequence": 11,
+          "target": 1,
+          "data": "EquipmentPart_YellowData",
+          "local": false,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.46875,
+          "cost": 25.0,
+          "x": 999.9999389648438,
+          "y": 1.401298464324817e-45,
+          "z": 999.9999389648438
+        }
+      ],
+      "client": [
+        {
+          "owner": 2,
+          "id": 24,
+          "sequence": 11,
+          "target": 1,
+          "data": "EquipmentPart_YellowData",
+          "local": true,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 75.0,
+          "health": 100.0,
+          "cooldown": 0.390625,
+          "cost": 25.0,
+          "x": 1000.0000610351562,
+          "y": 0.0,
+          "z": 999.9999389648438
+        },
+        {
+          "owner": 1,
+          "id": 24,
+          "sequence": 11,
+          "target": 2,
+          "data": "EquipmentPart_YellowData",
+          "local": false,
+          "weapon": true,
+          "owns": true,
+          "usesAttack": true,
+          "hasUseHandler": false,
+          "canHit": true,
+          "damage": 5.0,
+          "interval": 0.5,
+          "stamina": 100.0,
+          "health": 95.0,
+          "cooldown": 0.0,
+          "cost": 25.0,
+          "x": 1000.0,
+          "y": 0.0,
+          "z": 1001.4000244140625
+        }
+      ]
+    }
+  ],
+  "date": "2026-10-16",
+  "passed": 121,
+  "failed": 0,
+  "baseline": "0805723 with preserved uncommitted look work",
+  "changes": [
+    {
+      "path": "Assets/ScriptableObjects/Data/Item/ScrewdriverData.asset",
+      "metaSha256": "acb0325d4ce6752d9c2a29da579c61797832f1ae972d4fb741174ec645b47b5a",
+      "isWeapon": true,
+      "attackDamage": 5,
+      "attackInterval": 0.5
+    },
+    {
+      "path": "Assets/ScriptableObjects/Data/Item/VacuumData.asset",
+      "metaSha256": "ba1530ceb78faf921a5320a58ec28fdd964cef7d2bd3f861848733693f4bdec6",
+      "isWeapon": true,
+      "attackDamage": 5,
+      "attackInterval": 0.5
+    },
+    {
+      "path": "Assets/0. Member/SuHan/MissionRedesign_Draft/Items/EquipmentPart_BlueData.asset",
+      "metaSha256": "91293fe42a97b0a4a731bf68cb6aa9b8f97295f0da5650cc04efd4723915ca44",
+      "isWeapon": true,
+      "attackDamage": 5,
+      "attackInterval": 0.5
+    },
+    {
+      "path": "Assets/0. Member/SuHan/MissionRedesign_Draft/Items/EquipmentPart_GrayData.asset",
+      "metaSha256": "a31bb5674cb13360babc64fe38fe00d832c35ed9005a99d9fc427321c7dc3444",
+      "isWeapon": true,
+      "attackDamage": 5,
+      "attackInterval": 0.5
+    },
+    {
+      "path": "Assets/0. Member/SuHan/MissionRedesign_Draft/Items/EquipmentPart_RedData.asset",
+      "metaSha256": "e9048dfb813ee52471c8e4e679280abae1e5b7dd773dbddb3d79cfa48123b6a7",
+      "isWeapon": true,
+      "attackDamage": 5,
+      "attackInterval": 0.5
+    },
+    {
+      "path": "Assets/0. Member/SuHan/MissionRedesign_Draft/Items/EquipmentPart_YellowData.asset",
+      "metaSha256": "15385a480a1fff87cc0ca0377caba4d3caca21a9a8f654c1137e941640ac83e8",
+      "isWeapon": true,
+      "attackDamage": 5,
+      "attackInterval": 0.5
+    },
+    {
+      "path": "Assets/0. Member/SuHan/MissionRedesign_Draft/Items/FireDoorLeverData.asset",
+      "metaSha256": "9c153a923a6534401b62082fa9cb1791686130d8538fe926c6b99647ca5d8b1f",
+      "isWeapon": true,
+      "attackDamage": 5,
+      "attackInterval": 0.5
+    },
+    {
+      "path": "Assets/0. Member/SuHan/MissionRedesign_Draft/Items/OxygenTankData.asset",
+      "metaSha256": "60412812e6cf47334cd29efcbe26f69d879901274e94796dd150daa825b226d9",
+      "isWeapon": true,
+      "attackDamage": 5,
+      "attackInterval": 0.5
+    },
+    {
+      "path": "Assets/0. Member/SuHan/MissionRedesign_Draft/Items/VacuumToolData.asset",
+      "metaSha256": "282ac885f0e0d4f3f5a0d866dd7b4381d830ea9cc4903ac70bfb64a604b52179",
+      "isWeapon": true,
+      "attackDamage": 5,
+      "attackInterval": 0.5
+    }
+  ],
+  "testSetup": [
+    "Two independent Windows Host and Client processes in a private Photon room.",
+    "Each peer attacked using all eleven real ItemData/prefab variants (including two vacuum variants and existing knife/scissors).",
+    "Fixture spawned/equipped actual items through ItemBase.TryEquip and the networked equipped-item property; physical pickup was not simulated.",
+    "Positions and starting health/stamina were prepared on StateAuthority; regeneration was disabled only in temporary test harness.",
+    "Attacks invoked the existing InputAuthority RPC used by left click; physical mouse clicks were not simulated.",
+    "Weapon-enabled mission vacuum used the existing right-click RPC against real FilterDust and completed suction.",
+    "Other mission items retained their use handlers; full oxygen insertion, lever mounting and assembly completion were not played through.",
+    "Existing Laver_Shader_Graph shader parse error remains; Windows test build succeeded.",
+    "Original .meta GUIDs, prefab references, C# scripts and previous look work were preserved."
+  ],
+  "compile": {
+    "productOnly": true,
+    "exitCode": 0,
+    "cSharpErrors": 0,
+    "fusionCodeGenerationErrors": 0,
+    "unity": "2022.3.58f1"
+  }
+}

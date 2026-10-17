@@ -1,0 +1,7 @@
+Unity 2022.3.58f1 product-only C# compilation and Fusion code generation: PASS (return code 0).
+Private standalone Host + Client + late Client2 runtime checks: 143/143 PASS.
+Default settings: head yaw limit 60 degrees, body turn speed 180 degrees/second.
+Custom 30-degree head limit and 90-degree/second body turn speed also validated.
+Prefab model/head references, network behaviour order and old GUID preserved. Validation copy expands existing default fields; no unrelated defaults copied into product.
+Camera/movement/aim authority, original animation/controller/model/knife assets preserved.
+No physical mouse/keyboard or real microphone listening test in this run. No commit/push.

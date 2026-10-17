@@ -1,0 +1,59 @@
+{
+  "scene": "GamePlay",
+  "running": true,
+  "localId": 1,
+  "tools": [
+    {
+      "owner": 1,
+      "id": 13,
+      "sequence": 13,
+      "target": -1,
+      "data": "ScrewdriverData",
+      "local": true,
+      "weapon": true,
+      "owns": true,
+      "usesAttack": true,
+      "hasUseHandler": false,
+      "canHit": false,
+      "damage": 5.0,
+      "interval": 0.5,
+      "stamina": 100.0,
+      "health": 95.0,
+      "cooldown": 0.0,
+      "cost": 25.0,
+      "x": 999.9999389648438,
+      "y": 1.401298464324817e-45,
+      "z": 1001.4000854492188
+    },
+    {
+      "owner": 2,
+      "id": 10,
+      "sequence": 14,
+      "target": -1,
+      "data": "VacuumToolData",
+      "local": false,
+      "weapon": true,
+      "owns": true,
+      "usesAttack": true,
+      "hasUseHandler": true,
+      "canHit": false,
+      "damage": 5.0,
+      "interval": 0.5,
+      "stamina": 0.0,
+      "health": 85.0,
+      "cooldown": 0.0,
+      "cost": 25.0,
+      "x": 15.911075592041016,
+      "y": 0.4300788640975952,
+      "z": 9.708000183105469
+    }
+  ],
+  "filter": {
+    "available": true,
+    "selected": true,
+    "target": 1037,
+    "cleaned": 1,
+    "sucking": -1,
+    "name": "Filter"
+  }
+}

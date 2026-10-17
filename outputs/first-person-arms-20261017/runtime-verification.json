@@ -1,0 +1,924 @@
+{
+  "checks": [
+    {
+      "check": "StandBy: own arms and knife visible, remote player has no local arm instance",
+      "passed": true
+    },
+    {
+      "check": "Legacy vacuum uses local-only prefab and valid suction mouth",
+      "passed": true
+    },
+    {
+      "check": "host: dropping restores body and hides arms",
+      "passed": true
+    },
+    {
+      "check": "client: dropping restores body and hides arms",
+      "passed": true
+    },
+    {
+      "check": "host KnifeData: one local arm rig, no network behaviour, body hidden",
+      "passed": true
+    },
+    {
+      "check": "host KnifeData: copies original pose and tool follows hand",
+      "passed": true
+    },
+    {
+      "check": "host KnifeData: remote owner display remains unchanged",
+      "passed": true
+    },
+    {
+      "check": "host KnifeData: attack animates original and mirrored arms, damage preserved",
+      "passed": true
+    },
+    {
+      "check": "host ScissorsData: one local arm rig, no network behaviour, body hidden",
+      "passed": true
+    },
+    {
+      "check": "host ScissorsData: copies original pose and tool follows hand",
+      "passed": true
+    },
+    {
+      "check": "host ScissorsData: remote owner display remains unchanged",
+      "passed": true
+    },
+    {
+      "check": "host ScissorsData: attack animates original and mirrored arms, damage preserved",
+      "passed": true
+    },
+    {
+      "check": "host ScrewdriverData: one local arm rig, no network behaviour, body hidden",
+      "passed": true
+    },
+    {
+      "check": "host ScrewdriverData: copies original pose and tool follows hand",
+      "passed": true
+    },
+    {
+      "check": "host ScrewdriverData: remote owner display remains unchanged",
+      "passed": true
+    },
+    {
+      "check": "host ScrewdriverData: attack animates original and mirrored arms, damage preserved",
+      "passed": true
+    },
+    {
+      "check": "host VacuumData: one local arm rig, no network behaviour, body hidden",
+      "passed": true
+    },
+    {
+      "check": "host VacuumData: copies original pose and tool follows hand",
+      "passed": true
+    },
+    {
+      "check": "host VacuumData: remote owner display remains unchanged",
+      "passed": true
+    },
+    {
+      "check": "host VacuumData: suction mouth retained",
+      "passed": true
+    },
+    {
+      "check": "host VacuumData: attack animates original and mirrored arms, damage preserved",
+      "passed": true
+    },
+    {
+      "check": "host VacuumToolData: one local arm rig, no network behaviour, body hidden",
+      "passed": true
+    },
+    {
+      "check": "host VacuumToolData: copies original pose and tool follows hand",
+      "passed": true
+    },
+    {
+      "check": "host VacuumToolData: remote owner display remains unchanged",
+      "passed": true
+    },
+    {
+      "check": "host VacuumToolData: suction mouth retained",
+      "passed": true
+    },
+    {
+      "check": "host VacuumToolData: attack animates original and mirrored arms, damage preserved",
+      "passed": true
+    },
+    {
+      "check": "host OxygenTankData: one local arm rig, no network behaviour, body hidden",
+      "passed": true
+    },
+    {
+      "check": "host OxygenTankData: copies original pose and tool follows hand",
+      "passed": true
+    },
+    {
+      "check": "host OxygenTankData: remote owner display remains unchanged",
+      "passed": true
+    },
+    {
+      "check": "host OxygenTankData: attack animates original and mirrored arms, damage preserved",
+      "passed": true
+    },
+    {
+      "check": "host FireDoorLeverData: one local arm rig, no network behaviour, body hidden",
+      "passed": true
+    },
+    {
+      "check": "host FireDoorLeverData: copies original pose and tool follows hand",
+      "passed": true
+    },
+    {
+      "check": "host FireDoorLeverData: remote owner display remains unchanged",
+      "passed": true
+    },
+    {
+      "check": "host FireDoorLeverData: attack animates original and mirrored arms, damage preserved",
+      "passed": true
+    },
+    {
+      "check": "host EquipmentPart_BlueData: one local arm rig, no network behaviour, body hidden",
+      "passed": true
+    },
+    {
+      "check": "host EquipmentPart_BlueData: copies original pose and tool follows hand",
+      "passed": true
+    },
+    {
+      "check": "host EquipmentPart_BlueData: remote owner display remains unchanged",
+      "passed": true
+    },
+    {
+      "check": "host EquipmentPart_BlueData: attack animates original and mirrored arms, damage preserved",
+      "passed": true
+    },
+    {
+      "check": "host EquipmentPart_GrayData: one local arm rig, no network behaviour, body hidden",
+      "passed": true
+    },
+    {
+      "check": "host EquipmentPart_GrayData: copies original pose and tool follows hand",
+      "passed": true
+    },
+    {
+      "check": "host EquipmentPart_GrayData: remote owner display remains unchanged",
+      "passed": true
+    },
+    {
+      "check": "host EquipmentPart_GrayData: attack animates original and mirrored arms, damage preserved",
+      "passed": true
+    },
+    {
+      "check": "host EquipmentPart_RedData: one local arm rig, no network behaviour, body hidden",
+      "passed": true
+    },
+    {
+      "check": "host EquipmentPart_RedData: copies original pose and tool follows hand",
+      "passed": true
+    },
+    {
+      "check": "host EquipmentPart_RedData: remote owner display remains unchanged",
+      "passed": true
+    },
+    {
+      "check": "host EquipmentPart_RedData: attack animates original and mirrored arms, damage preserved",
+      "passed": true
+    },
+    {
+      "check": "host EquipmentPart_YellowData: one local arm rig, no network behaviour, body hidden",
+      "passed": true
+    },
+    {
+      "check": "host EquipmentPart_YellowData: copies original pose and tool follows hand",
+      "passed": true
+    },
+    {
+      "check": "host EquipmentPart_YellowData: remote owner display remains unchanged",
+      "passed": true
+    },
+    {
+      "check": "host EquipmentPart_YellowData: attack animates original and mirrored arms, damage preserved",
+      "passed": true
+    },
+    {
+      "check": "client KnifeData: one local arm rig, no network behaviour, body hidden",
+      "passed": true
+    },
+    {
+      "check": "client KnifeData: copies original pose and tool follows hand",
+      "passed": true
+    },
+    {
+      "check": "client KnifeData: remote owner display remains unchanged",
+      "passed": true
+    },
+    {
+      "check": "client KnifeData: attack animates original and mirrored arms, damage preserved",
+      "passed": true
+    },
+    {
+      "check": "client ScissorsData: one local arm rig, no network behaviour, body hidden",
+      "passed": true
+    },
+    {
+      "check": "client ScissorsData: copies original pose and tool follows hand",
+      "passed": true
+    },
+    {
+      "check": "client ScissorsData: remote owner display remains unchanged",
+      "passed": true
+    },
+    {
+      "check": "client ScissorsData: attack animates original and mirrored arms, damage preserved",
+      "passed": true
+    },
+    {
+      "check": "client ScrewdriverData: one local arm rig, no network behaviour, body hidden",
+      "passed": true
+    },
+    {
+      "check": "client ScrewdriverData: copies original pose and tool follows hand",
+      "passed": true
+    },
+    {
+      "check": "client ScrewdriverData: remote owner display remains unchanged",
+      "passed": true
+    },
+    {
+      "check": "client ScrewdriverData: attack animates original and mirrored arms, damage preserved",
+      "passed": true
+    },
+    {
+      "check": "client VacuumData: one local arm rig, no network behaviour, body hidden",
+      "passed": true
+    },
+    {
+      "check": "client VacuumData: copies original pose and tool follows hand",
+      "passed": true
+    },
+    {
+      "check": "client VacuumData: remote owner display remains unchanged",
+      "passed": true
+    },
+    {
+      "check": "client VacuumData: suction mouth retained",
+      "passed": true
+    },
+    {
+      "check": "client VacuumData: attack animates original and mirrored arms, damage preserved",
+      "passed": true
+    },
+    {
+      "check": "client VacuumToolData: one local arm rig, no network behaviour, body hidden",
+      "passed": true
+    },
+    {
+      "check": "client VacuumToolData: copies original pose and tool follows hand",
+      "passed": true
+    },
+    {
+      "check": "client VacuumToolData: remote owner display remains unchanged",
+      "passed": true
+    },
+    {
+      "check": "client VacuumToolData: suction mouth retained",
+      "passed": true
+    },
+    {
+      "check": "client VacuumToolData: attack animates original and mirrored arms, damage preserved",
+      "passed": true
+    },
+    {
+      "check": "client OxygenTankData: one local arm rig, no network behaviour, body hidden",
+      "passed": true
+    },
+    {
+      "check": "client OxygenTankData: copies original pose and tool follows hand",
+      "passed": true
+    },
+    {
+      "check": "client OxygenTankData: remote owner display remains unchanged",
+      "passed": true
+    },
+    {
+      "check": "client OxygenTankData: attack animates original and mirrored arms, damage preserved",
+      "passed": true
+    },
+    {
+      "check": "client FireDoorLeverData: one local arm rig, no network behaviour, body hidden",
+      "passed": true
+    },
+    {
+      "check": "client FireDoorLeverData: copies original pose and tool follows hand",
+      "passed": true
+    },
+    {
+      "check": "client FireDoorLeverData: remote owner display remains unchanged",
+      "passed": true
+    },
+    {
+      "check": "client FireDoorLeverData: attack animates original and mirrored arms, damage preserved",
+      "passed": true
+    },
+    {
+      "check": "client EquipmentPart_BlueData: one local arm rig, no network behaviour, body hidden",
+      "passed": true
+    },
+    {
+      "check": "client EquipmentPart_BlueData: copies original pose and tool follows hand",
+      "passed": true
+    },
+    {
+      "check": "client EquipmentPart_BlueData: remote owner display remains unchanged",
+      "passed": true
+    },
+    {
+      "check": "client EquipmentPart_BlueData: attack animates original and mirrored arms, damage preserved",
+      "passed": true
+    },
+    {
+      "check": "client EquipmentPart_GrayData: one local arm rig, no network behaviour, body hidden",
+      "passed": true
+    },
+    {
+      "check": "client EquipmentPart_GrayData: copies original pose and tool follows hand",
+      "passed": true
+    },
+    {
+      "check": "client EquipmentPart_GrayData: remote owner display remains unchanged",
+      "passed": true
+    },
+    {
+      "check": "client EquipmentPart_GrayData: attack animates original and mirrored arms, damage preserved",
+      "passed": true
+    },
+    {
+      "check": "client EquipmentPart_RedData: one local arm rig, no network behaviour, body hidden",
+      "passed": true
+    },
+    {
+      "check": "client EquipmentPart_RedData: copies original pose and tool follows hand",
+      "passed": true
+    },
+    {
+      "check": "client EquipmentPart_RedData: remote owner display remains unchanged",
+      "passed": true
+    },
+    {
+      "check": "client EquipmentPart_RedData: attack animates original and mirrored arms, damage preserved",
+      "passed": true
+    },
+    {
+      "check": "client EquipmentPart_YellowData: one local arm rig, no network behaviour, body hidden",
+      "passed": true
+    },
+    {
+      "check": "client EquipmentPart_YellowData: copies original pose and tool follows hand",
+      "passed": true
+    },
+    {
+      "check": "client EquipmentPart_YellowData: remote owner display remains unchanged",
+      "passed": true
+    },
+    {
+      "check": "client EquipmentPart_YellowData: attack animates original and mirrored arms, damage preserved",
+      "passed": true
+    },
+    {
+      "check": "Client camera look 65/75: tool follows and hands remain in frame",
+      "passed": true
+    },
+    {
+      "check": "Client camera look -65/-75: tool follows and hands remain in frame",
+      "passed": true
+    },
+    {
+      "check": "Client camera look 0/180: tool follows and hands remain in frame",
+      "passed": true
+    },
+    {
+      "check": "Clear restores source body and releases first-person item",
+      "passed": true
+    },
+    {
+      "check": "Death and spectator transition hide local arm view",
+      "passed": true
+    },
+    {
+      "check": "host: after StandBy return no stale arm rig or item",
+      "passed": true
+    },
+    {
+      "check": "client: after StandBy return no stale arm rig or item",
+      "passed": true
+    }
+  ],
+  "cases": [
+    {
+      "process": "host",
+      "tool": "KnifeData",
+      "view": {
+        "owner": 1,
+        "armInstances": 1,
+        "networkBehaviours": 0,
+        "local": true,
+        "hasArms": true,
+        "armsActive": true,
+        "itemActive": true,
+        "bodyHidden": true,
+        "hasMouth": false,
+        "poseError": 0.0,
+        "alignmentError": 0.0,
+        "rotationError": 0.0,
+        "viewportX": 0.6996990442276001,
+        "viewportY": -0.11047172546386719,
+        "item": "Knife_FP_Prefab(Clone)",
+        "animation": "Other"
+      },
+      "damage": 40
+    },
+    {
+      "process": "host",
+      "tool": "ScissorsData",
+      "view": {
+        "owner": 1,
+        "armInstances": 1,
+        "networkBehaviours": 0,
+        "local": true,
+        "hasArms": true,
+        "armsActive": true,
+        "itemActive": true,
+        "bodyHidden": true,
+        "hasMouth": false,
+        "poseError": 0.0,
+        "alignmentError": 0.0,
+        "rotationError": 0.0,
+        "viewportX": 0.6436848640441895,
+        "viewportY": 0.07719922065734863,
+        "item": "Scissors_FP_Prefab(Clone)",
+        "animation": "Other"
+      },
+      "damage": 20
+    },
+    {
+      "process": "host",
+      "tool": "ScrewdriverData",
+      "view": {
+        "owner": 1,
+        "armInstances": 1,
+        "networkBehaviours": 0,
+        "local": true,
+        "hasArms": true,
+        "armsActive": true,
+        "itemActive": true,
+        "bodyHidden": true,
+        "hasMouth": false,
+        "poseError": 0.0,
+        "alignmentError": 0.0,
+        "rotationError": 0.0,
+        "viewportX": 0.6436848640441895,
+        "viewportY": 0.07719922065734863,
+        "item": "Screwdriver_FP_Prefab(Clone)",
+        "animation": "Other"
+      },
+      "damage": 5
+    },
+    {
+      "process": "host",
+      "tool": "VacuumData",
+      "view": {
+        "owner": 1,
+        "armInstances": 1,
+        "networkBehaviours": 0,
+        "local": true,
+        "hasArms": true,
+        "armsActive": true,
+        "itemActive": true,
+        "bodyHidden": true,
+        "hasMouth": true,
+        "poseError": 0.0,
+        "alignmentError": 0.0,
+        "rotationError": 0.0,
+        "viewportX": 0.6436848640441895,
+        "viewportY": 0.07719922065734863,
+        "item": "Vacuum_FP_Prefab(Clone)",
+        "animation": "Other"
+      },
+      "damage": 5
+    },
+    {
+      "process": "host",
+      "tool": "VacuumToolData",
+      "view": {
+        "owner": 1,
+        "armInstances": 1,
+        "networkBehaviours": 0,
+        "local": true,
+        "hasArms": true,
+        "armsActive": true,
+        "itemActive": true,
+        "bodyHidden": true,
+        "hasMouth": true,
+        "poseError": 0.0,
+        "alignmentError": 0.0,
+        "rotationError": 0.0,
+        "viewportX": 0.6436848640441895,
+        "viewportY": 0.07719922065734863,
+        "item": "Vacuum_Tool_FP(Clone)",
+        "animation": "Other"
+      },
+      "damage": 5
+    },
+    {
+      "process": "host",
+      "tool": "OxygenTankData",
+      "view": {
+        "owner": 1,
+        "armInstances": 1,
+        "networkBehaviours": 0,
+        "local": true,
+        "hasArms": true,
+        "armsActive": true,
+        "itemActive": true,
+        "bodyHidden": true,
+        "hasMouth": false,
+        "poseError": 0.0,
+        "alignmentError": 0.0,
+        "rotationError": 0.0,
+        "viewportX": 0.6436848640441895,
+        "viewportY": 0.07719922065734863,
+        "item": "OxygenTank_FP(Clone)",
+        "animation": "Other"
+      },
+      "damage": 5
+    },
+    {
+      "process": "host",
+      "tool": "FireDoorLeverData",
+      "view": {
+        "owner": 1,
+        "armInstances": 1,
+        "networkBehaviours": 0,
+        "local": true,
+        "hasArms": true,
+        "armsActive": true,
+        "itemActive": true,
+        "bodyHidden": true,
+        "hasMouth": false,
+        "poseError": 0.0,
+        "alignmentError": 0.0,
+        "rotationError": 0.0,
+        "viewportX": 0.6436848640441895,
+        "viewportY": 0.07719922065734863,
+        "item": "FireDoorLever_FP(Clone)",
+        "animation": "Other"
+      },
+      "damage": 5
+    },
+    {
+      "process": "host",
+      "tool": "EquipmentPart_BlueData",
+      "view": {
+        "owner": 1,
+        "armInstances": 1,
+        "networkBehaviours": 0,
+        "local": true,
+        "hasArms": true,
+        "armsActive": true,
+        "itemActive": true,
+        "bodyHidden": true,
+        "hasMouth": false,
+        "poseError": 0.0,
+        "alignmentError": 0.0,
+        "rotationError": 0.0,
+        "viewportX": 0.6436848640441895,
+        "viewportY": 0.07719922065734863,
+        "item": "EquipmentPart_Blue_FP(Clone)",
+        "animation": "Other"
+      },
+      "damage": 5
+    },
+    {
+      "process": "host",
+      "tool": "EquipmentPart_GrayData",
+      "view": {
+        "owner": 1,
+        "armInstances": 1,
+        "networkBehaviours": 0,
+        "local": true,
+        "hasArms": true,
+        "armsActive": true,
+        "itemActive": true,
+        "bodyHidden": true,
+        "hasMouth": false,
+        "poseError": 0.0,
+        "alignmentError": 0.0,
+        "rotationError": 0.0,
+        "viewportX": 0.6436848640441895,
+        "viewportY": 0.07719922065734863,
+        "item": "EquipmentPart_Gray_FP(Clone)",
+        "animation": "Other"
+      },
+      "damage": 5
+    },
+    {
+      "process": "host",
+      "tool": "EquipmentPart_RedData",
+      "view": {
+        "owner": 1,
+        "armInstances": 1,
+        "networkBehaviours": 0,
+        "local": true,
+        "hasArms": true,
+        "armsActive": true,
+        "itemActive": true,
+        "bodyHidden": true,
+        "hasMouth": false,
+        "poseError": 0.0,
+        "alignmentError": 0.0,
+        "rotationError": 0.0,
+        "viewportX": 0.6436848640441895,
+        "viewportY": 0.07719922065734863,
+        "item": "EquipmentPart_Red_FP(Clone)",
+        "animation": "Other"
+      },
+      "damage": 5
+    },
+    {
+      "process": "host",
+      "tool": "EquipmentPart_YellowData",
+      "view": {
+        "owner": 1,
+        "armInstances": 1,
+        "networkBehaviours": 0,
+        "local": true,
+        "hasArms": true,
+        "armsActive": true,
+        "itemActive": true,
+        "bodyHidden": true,
+        "hasMouth": false,
+        "poseError": 0.0,
+        "alignmentError": 0.0,
+        "rotationError": 0.0,
+        "viewportX": 0.6436848640441895,
+        "viewportY": 0.07719922065734863,
+        "item": "EquipmentPart_Yellow_FP(Clone)",
+        "animation": "Other"
+      },
+      "damage": 5
+    },
+    {
+      "process": "client",
+      "tool": "KnifeData",
+      "view": {
+        "owner": 2,
+        "armInstances": 1,
+        "networkBehaviours": 0,
+        "local": true,
+        "hasArms": true,
+        "armsActive": true,
+        "itemActive": true,
+        "bodyHidden": true,
+        "hasMouth": false,
+        "poseError": 0.0,
+        "alignmentError": 0.0,
+        "rotationError": 0.0,
+        "viewportX": 0.6435649991035461,
+        "viewportY": 0.06785270571708679,
+        "item": "Knife_FP_Prefab(Clone)",
+        "animation": "Other"
+      },
+      "damage": 40
+    },
+    {
+      "process": "client",
+      "tool": "ScissorsData",
+      "view": {
+        "owner": 2,
+        "armInstances": 1,
+        "networkBehaviours": 0,
+        "local": true,
+        "hasArms": true,
+        "armsActive": true,
+        "itemActive": true,
+        "bodyHidden": true,
+        "hasMouth": false,
+        "poseError": 0.0,
+        "alignmentError": 0.0,
+        "rotationError": 0.0,
+        "viewportX": 0.6436848640441895,
+        "viewportY": 0.07719883322715759,
+        "item": "Scissors_FP_Prefab(Clone)",
+        "animation": "Other"
+      },
+      "damage": 20
+    },
+    {
+      "process": "client",
+      "tool": "ScrewdriverData",
+      "view": {
+        "owner": 2,
+        "armInstances": 1,
+        "networkBehaviours": 0,
+        "local": true,
+        "hasArms": true,
+        "armsActive": true,
+        "itemActive": true,
+        "bodyHidden": true,
+        "hasMouth": false,
+        "poseError": 0.0,
+        "alignmentError": 0.0,
+        "rotationError": 0.0,
+        "viewportX": 0.6436848640441895,
+        "viewportY": 0.07719933986663818,
+        "item": "Screwdriver_FP_Prefab(Clone)",
+        "animation": "Other"
+      },
+      "damage": 5
+    },
+    {
+      "process": "client",
+      "tool": "VacuumData",
+      "view": {
+        "owner": 2,
+        "armInstances": 1,
+        "networkBehaviours": 0,
+        "local": true,
+        "hasArms": true,
+        "armsActive": true,
+        "itemActive": true,
+        "bodyHidden": true,
+        "hasMouth": true,
+        "poseError": 0.0,
+        "alignmentError": 0.0,
+        "rotationError": 0.0,
+        "viewportX": 0.6436848640441895,
+        "viewportY": 0.07719933986663818,
+        "item": "Vacuum_FP_Prefab(Clone)",
+        "animation": "Other"
+      },
+      "damage": 5
+    },
+    {
+      "process": "client",
+      "tool": "VacuumToolData",
+      "view": {
+        "owner": 2,
+        "armInstances": 1,
+        "networkBehaviours": 0,
+        "local": true,
+        "hasArms": true,
+        "armsActive": true,
+        "itemActive": true,
+        "bodyHidden": true,
+        "hasMouth": true,
+        "poseError": 0.0,
+        "alignmentError": 0.0,
+        "rotationError": 0.0,
+        "viewportX": 0.6436848640441895,
+        "viewportY": 0.07719933986663818,
+        "item": "Vacuum_Tool_FP(Clone)",
+        "animation": "Other"
+      },
+      "damage": 5
+    },
+    {
+      "process": "client",
+      "tool": "OxygenTankData",
+      "view": {
+        "owner": 2,
+        "armInstances": 1,
+        "networkBehaviours": 0,
+        "local": true,
+        "hasArms": true,
+        "armsActive": true,
+        "itemActive": true,
+        "bodyHidden": true,
+        "hasMouth": false,
+        "poseError": 0.0,
+        "alignmentError": 0.0,
+        "rotationError": 0.0,
+        "viewportX": 0.6436848640441895,
+        "viewportY": 0.07719933986663818,
+        "item": "OxygenTank_FP(Clone)",
+        "animation": "Other"
+      },
+      "damage": 5
+    },
+    {
+      "process": "client",
+      "tool": "FireDoorLeverData",
+      "view": {
+        "owner": 2,
+        "armInstances": 1,
+        "networkBehaviours": 0,
+        "local": true,
+        "hasArms": true,
+        "armsActive": true,
+        "itemActive": true,
+        "bodyHidden": true,
+        "hasMouth": false,
+        "poseError": 0.0,
+        "alignmentError": 0.0,
+        "rotationError": 0.0,
+        "viewportX": 0.6436848640441895,
+        "viewportY": 0.07719933986663818,
+        "item": "FireDoorLever_FP(Clone)",
+        "animation": "Other"
+      },
+      "damage": 5
+    },
+    {
+      "process": "client",
+      "tool": "EquipmentPart_BlueData",
+      "view": {
+        "owner": 2,
+        "armInstances": 1,
+        "networkBehaviours": 0,
+        "local": true,
+        "hasArms": true,
+        "armsActive": true,
+        "itemActive": true,
+        "bodyHidden": true,
+        "hasMouth": false,
+        "poseError": 0.0,
+        "alignmentError": 0.0,
+        "rotationError": 0.0,
+        "viewportX": 0.6436848640441895,
+        "viewportY": 0.07719933986663818,
+        "item": "EquipmentPart_Blue_FP(Clone)",
+        "animation": "Other"
+      },
+      "damage": 5
+    },
+    {
+      "process": "client",
+      "tool": "EquipmentPart_GrayData",
+      "view": {
+        "owner": 2,
+        "armInstances": 1,
+        "networkBehaviours": 0,
+        "local": true,
+        "hasArms": true,
+        "armsActive": true,
+        "itemActive": true,
+        "bodyHidden": true,
+        "hasMouth": false,
+        "poseError": 0.0,
+        "alignmentError": 0.0,
+        "rotationError": 0.0,
+        "viewportX": 0.6436848640441895,
+        "viewportY": 0.07719933986663818,
+        "item": "EquipmentPart_Gray_FP(Clone)",
+        "animation": "Other"
+      },
+      "damage": 5
+    },
+    {
+      "process": "client",
+      "tool": "EquipmentPart_RedData",
+      "view": {
+        "owner": 2,
+        "armInstances": 1,
+        "networkBehaviours": 0,
+        "local": true,
+        "hasArms": true,
+        "armsActive": true,
+        "itemActive": true,
+        "bodyHidden": true,
+        "hasMouth": false,
+        "poseError": 0.0,
+        "alignmentError": 0.0,
+        "rotationError": 0.0,
+        "viewportX": 0.6436848640441895,
+        "viewportY": 0.07719933986663818,
+        "item": "EquipmentPart_Red_FP(Clone)",
+        "animation": "Other"
+      },
+      "damage": 5
+    },
+    {
+      "process": "client",
+      "tool": "EquipmentPart_YellowData",
+      "view": {
+        "owner": 2,
+        "armInstances": 1,
+        "networkBehaviours": 0,
+        "local": true,
+        "hasArms": true,
+        "armsActive": true,
+        "itemActive": true,
+        "bodyHidden": true,
+        "hasMouth": false,
+        "poseError": 0.0,
+        "alignmentError": 0.0,
+        "rotationError": 0.0,
+        "viewportX": 0.6436848640441895,
+        "viewportY": 0.07719933986663818,
+        "item": "EquipmentPart_Yellow_FP(Clone)",
+        "animation": "Other"
+      },
+      "damage": 5
+    }
+  ]
+}

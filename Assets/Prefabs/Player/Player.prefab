@@ -35,6 +35,7 @@ GameObject:
   - component: {fileID: 8555011713194314463}
   - component: {fileID: 3416658521699928200}
   - component: {fileID: 950623174010261155}
+  - component: {fileID: 6805018386569482568}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -99,6 +100,7 @@ MonoBehaviour:
   - {fileID: 4763274131128045633}
   - {fileID: 8555011713194314463}
   - {fileID: 950623174010261155}
+  - {fileID: 6805018386569482568}
   - {fileID: 910000000000000014}
   ForceRemoteRenderTimeframe: 0
 --- !u!54 &5758612769849293622
@@ -273,6 +275,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   holdPoint: {fileID: 3367974328868241516}
+  armsPrefab: {fileID: 5226011664376836225, guid: 5fadc44c03ed4994985ec5d560c19525, type: 3}
+  playerAnimator: {fileID: 160436017558811486}
+  armsPosition: {x: -0.08, y: -1.05, z: 0.25}
 --- !u!114 &-1655049468124361119
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1275,5 +1280,26 @@ MonoBehaviour:
 --- !u!137 &3249339553338133998 stripped
 SkinnedMeshRenderer:
   m_CorrespondingSourceObject: {fileID: -2933139716659438605, guid: f54722e8212df164bb7dfe2ff99c8a8f, type: 3}
+  m_PrefabInstance: {fileID: 8817095809313281565}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &6805018386569482568
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1265554726670306911}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 16db9b0123a54c3e973bd81f22bcf7bb, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  bodyPivot: {fileID: 9067475105181430262}
+  headBone: {fileID: 374578036192706083}
+  headYawLimit: 60
+  bodyTurnSpeed: 180
+--- !u!4 &374578036192706083 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -40997141311002562, guid: f54722e8212df164bb7dfe2ff99c8a8f, type: 3}
   m_PrefabInstance: {fileID: 8817095809313281565}
   m_PrefabAsset: {fileID: 0}
