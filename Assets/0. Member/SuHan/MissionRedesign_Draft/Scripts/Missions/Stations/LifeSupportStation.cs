@@ -6,48 +6,45 @@ using UnityEngine;
 namespace TrustNoOne.Missions
 {
     /// <summary>
-    /// [역할] 생명 유지 장치 본체 (단체 미션 TG004 "생명 유지 장치 복구" · LifeSupportRestored). 신규. 3b 명세 3-3.
-    ///  산소통 6개(정상 3 · 위험 3)를 맵에 놓고, 플레이어가 든 산소통을 우클릭으로 받아 5초 뒤 판정한다.
-    ///  정상 → 공급 1개 (3번째면 완료 · 잠금), 위험 → 폭발(반경 피해) + 미션 실패(처음부터, 산소통을 새로 놓음).
+    /// [역할] 생명 유지 장치 본체 한 대 (단체 미션 TG004 "생명 유지 장치 복구" · LifeSupportRestored). 3b 명세 3-3 → 7d 명세.
+    ///  본체 3대가 각각 이 장치 하나다 (발전기처럼 — 7d L3B1). 산소통을 우클릭으로 받아 5초 뒤 판정한다.
+    ///  정상 → 이 본체 성공 · 잠김(진행 +1, 3대면 미션 완료), 위험 → 이 본체만 폭발(반경 피해) 후 바로 다시 넣을 수 있다 — 다른 본체 · 진행은 그대로 (L3B4).
     ///
-    /// [기획서] 전체 기획서 (2) 생명 유지 장치: "산소통마다 정상 또는 위험 상태가 무작위 / 본체에 하나씩 넣고 넣은후 5초후에 터져
-    ///  실패이거나 성공여부가 결정 / 제한 시간 내 안전한 산소통을 모두 정상화 / 실패하면 다른 산소통으로 교체후 재시도".
-    /// [개수 · 시간은 미션 데이터가 센다 — LS10] TG004 = 개수 3 · 첫 진행부터 120초. 이 장치는 공급마다 진행 이벤트(PublishProgress)를 보내고
-    ///  3번째에 완료(CompleteBy)한다. 제한 시간 초과와 폭발은 같은 알림(OnMissionReset → ResetStation → OnResetHost)으로 초기화된다 (LS4 · LS11).
-    /// [넣은 사람 — LS12] 넣는 순간 공통 자격 검사(TryBeginOperation: 시민 · TG004 · 행동 가능 · 범위 · 다른 행동 중 아님)만 하고 바로 해제한다.
-    ///  넣은 뒤 떠나도(위험하면 피해도) 판정은 진행된다.
-    /// [동기화 — LS14] 시각 공식. 공급 수 · 넣은 시각 · 넣은 통의 위험 여부 · 폭발 시각만 동기화하고, 카운트다운 · 깜빡임 · 섬광은
+    /// [기획서 (3)] "본체에 하나씩 넣고 넣은후 5초후에 터져 실패이거나 성공여부가 결정 / 본체는 총 3개이고 본체 하나씩 성공 /
+    ///  본체 하나 성공 후 그 다음 본체가 실패한다해도 성공한 본체는 그대로 유지 / 실패하면 다른 산소통으로 교체후 재시도".
+    /// [개수 · 시간은 미션 데이터가 센다 — LS10 · L3B5] TG004 = 개수 3(성공한 본체 수) · 첫 진행부터 120초. 시간 초과면 공통 알림
+    ///  (OnMissionReset → ResetStation → OnResetHost)으로 3대 모두 처음부터 — 잠긴 본체도 풀리고 각자 산소통을 새로 놓는다.
+    /// [판정 중 화면 — L3B3 · L3B9] 정상 · 위험 구분 없이 CHECK 5 → 1. 결과는 폭발 또는 SUCCESS 로만 드러난다 (피드백).
+    /// [산소통 — L3B6 · L3B7] 본체마다 2개(정상 1 · 위험 1)를 놓고, 넣기는 어느 본체가 놓은 통이든 받는다.
+    /// [넣은 사람 — LS12] 넣는 순간 공통 자격 검사(TryBeginOperation: 이번 판 미션 · 행동 가능 · 범위 · 다른 행동 중 아님)만 하고 바로 해제한다.
+    ///  7b-2 부터 살인마도 넣는다. 넣은 뒤 떠나도(위험하면 피해도) 판정은 진행된다.
+    /// [동기화 — LS14] 시각 공식. 넣은 시각 · 넣은 통의 위험 여부 · 폭발 시각만 동기화하고, 카운트다운 · 섬광은
     ///  각 PC 가 Object.RenderTime 으로 계산한다. 산소통 목록 · 넣은 사람은 호스트만 안다 (만들고 지우는 것도 호스트뿐).
     /// [팀원 코드 — LS5 · LS13] PlayerItemController.DropCurrentItem(손에서 내려놓기 — 공용 도우미 MissionItems) · PlayerHealth.ApplyDamage 를 부르기만 한다.
     /// [IItemUseTarget] 아이템 우클릭 대상이라는 표시 — 변환기의 조준 검증이 이 장치를 "입력을 받는 대상"으로 본다 (2c F10).
+    /// [근거] 3b 명세 LS5 · LS12 · LS14, 7d 명세 L3B1 ~ L3B11
     /// </summary>
     public class LifeSupportStation : MissionStation, IItemUseTarget
     {
         public const string CheckText = "CHECK";
-        public const string WarningText = "WARNING";
+        public const string EmptyText = "EMPTY";
         public const string DamagedText = "DAMAGED";
         public const string SuccessText = "SUCCESS";
 
         /// <summary>화면에 뜨는 가장 긴 문구 — 변환기가 글자 크기를 이 문구에 맞춘다.</summary>
-        public const string LongestScreenText = WarningText + " 5";
-
-        private const int ScreenIdle = 0;
-        private const int ScreenCheck = 1;
-        private const int ScreenWarning = 2;
-        private const int ScreenDamaged = 3;
-        private const int ScreenSuccess = 4;
+        public const string LongestScreenText = SuccessText;
 
         [Header("산소통")]
         [Tooltip("산소통 아이템 프리팹 (OxygenTank 가 붙은 NetworkObject)")]
         [SerializeField] private NetworkObject tankPrefab;
 
-        [Tooltip("맵에 놓을 산소통 수 (LS2)")]
+        [Tooltip("이 본체가 맵에 놓을 산소통 수 (7d L3B6 — 본체 3대면 6개)")]
         [Min(1)]
-        [SerializeField] private int tankCount = 6;
+        [SerializeField] private int tankCount = 2;
 
-        [Tooltip("필요한 공급 수 = 정상 산소통 수. TG004 미션 데이터의 개수와 같아야 한다 (LS2 · LS10)")]
+        [Tooltip("그중 정상 산소통 수 (7d L3B6). 본체 한 대는 정상 통 1개로 성공한다")]
         [Min(1)]
-        [SerializeField] private int requiredSupplies = 3;
+        [SerializeField] private int safeTanks = 1;
 
         [Header("판정 · 폭발")]
         [Tooltip("넣은 뒤 판정까지 (초) — 기획서 \"넣은후 5초후\"")]
@@ -74,9 +71,6 @@ namespace TrustNoOne.Missions
         [Tooltip("폭발 뒤 화면에 DAMAGED 를 띄우는 시간 (초)")]
         [SerializeField] private float damagedScreenTime = 2f;
 
-        [Tooltip("위험한 통 판정 중 화면 WARNING 글자가 깜빡이는 간격 (초) — 경고 램프 대신 (3b 보강 명세 LM8)")]
-        [SerializeField] private float blinkPeriod = 0.25f;
-
         [Header("산소통 배치 (1층 NavMesh 위 무작위 — 6b 보강 NS6)")]
         [Tooltip("산소통끼리 최소 거리 (m)")]
         [Min(0f)]
@@ -86,7 +80,6 @@ namespace TrustNoOne.Missions
         [Min(0f)]
         [SerializeField] private float tankMinFromStation = 3f;
 
-        [Networked] private int SuppliedCount { get; set; }
         [Networked] private float InsertStart { get; set; }
         [Networked] private NetworkBool InsertedDangerous { get; set; }
         [Networked] private float ExplodeStart { get; set; }
@@ -100,12 +93,6 @@ namespace TrustNoOne.Missions
         // 화면 문구는 바뀔 때만 만든다 (매 Render 문자열 생성 방지)
         private int shownKey = int.MinValue;
         private string shownText = string.Empty;
-
-        /// <summary>대기 화면 문구 "O2 1/3".</summary>
-        public static string IdleText(int supplied, int required)
-        {
-            return $"O2 {supplied}/{required}";
-        }
 
         protected override void OnStationSpawned()
         {
@@ -123,7 +110,6 @@ namespace TrustNoOne.Missions
                 return;
 
             // Networked 기본값 0 이면 "0초에 넣은 통 · 0초에 폭발"로 보인다 → 없음(−1)으로 시작
-            SuppliedCount = 0;
             InsertStart = LifeSupportRules.NotStarted;
             ExplodeStart = LifeSupportRules.NotStarted;
         }
@@ -144,17 +130,17 @@ namespace TrustNoOne.Missions
                 Debug.Log($"[LifeSupportStation] {name}: 이번 판에 뽑히지 않아 산소통을 놓지 않습니다.");
         }
 
-        /// <summary>호스트: 산소통이 우클릭으로 넣기를 요청한다 (OxygenTank.UseAsStateAuthority). 받아들이면 true.</summary>
+        /// <summary>호스트: 산소통이 우클릭으로 넣기를 요청한다 (OxygenTank.UseAsStateAuthority). 받아들이면 true. 어느 본체가 놓은 통이든 받는다 (7d L3B7).</summary>
         public bool RequestInsert(PlayerRef actor, OxygenTank tank)
         {
             if (!HasStateAuthority || !validSetup || Completed || tank == null || actor.IsNone)
                 return false;
 
-            // 한 번에 하나 (LS2 — 꽂는 자리 1개). 이 장치가 놓은 통을 그 사람이 들고 있어야 한다
-            if (InsertStart >= 0f || !tanks.Contains(tank) || !IsHeldBy(tank, actor))
+            // 한 번에 하나 · 성공한 본체는 받지 않음 (L3B8). 어느 본체가 놓은 통이든 그 사람이 들고 있으면 된다 (L3B7)
+            if (!LifeSupportRules.CanInsert(Completed, InsertStart >= 0f) || !IsHeldBy(tank, actor))
                 return false;
 
-            // 공통 자격 검사만 하고 바로 해제 (LS12): 범인 · TG004 없음 · 행동 불가 · 범위 밖 · 다른 행동 중이면 거부
+            // 공통 자격 검사만 하고 바로 해제 (LS12): TG004 없음 · 행동 불가 · 범위 밖 · 다른 행동 중이면 거부
             if (!TryBeginOperation(actor))
                 return false;
 
@@ -187,22 +173,17 @@ namespace TrustNoOne.Missions
                 return;
             }
 
-            SuppliedCount++;
-
-            if (SuppliedCount >= requiredSupplies)
-                CompleteBy(actor);
-            else
-                PublishProgress(actor);
+            // 정상 → 이 본체 성공 · 잠김 (진행 +1 — 3대면 TG004 완료, L3B1)
+            CompleteBy(actor);
         }
 
-        /// <summary>호스트: 시간 초과 · 폭발 공통 초기화 (LS4). 폭발 시각은 남긴다 — 초기화 뒤에도 섬광 · DAMAGED 가 보이게.</summary>
+        /// <summary>호스트: 시간 초과 초기화 (7d L3B5 — 3대 모두 처음부터; 폭발은 더 이상 여기로 오지 않는다). 폭발 시각은 남긴다 — 초기화 뒤에도 섬광 · DAMAGED 가 보이게.</summary>
         protected override void OnResetHost()
         {
             base.OnResetHost();
 
             InsertStart = LifeSupportRules.NotStarted;
             insertedBy = PlayerRef.None;
-            SuppliedCount = 0;
 
             if (!validSetup)
                 return;
@@ -223,52 +204,23 @@ namespace TrustNoOne.Missions
             float flash = LifeSupportRules.FlashProgress(t, ExplodeStart, flashDuration);
             visual.ShowFlash(flash >= 0f ? flash * blastRadius * 2f : 0f);
 
-            if (Completed)
-            {
-                visual.ShowInserted(false);
-                ShowOnScreen(ScreenSuccess, 0, false);
-                return;
-            }
-
             bool counting = LifeSupportRules.IsCounting(t, InsertStart, countdown);
-            visual.ShowInserted(counting);
+            bool damaged = LifeSupportRules.IsShowing(t, ExplodeStart, damagedScreenTime);
 
-            if (counting)
-            {
-                bool danger = InsertedDangerous;
-                int seconds = LifeSupportRules.CountdownSeconds(t, InsertStart, countdown);
+            // 꽂힌 산소통: 판정 중 + 성공한 본체 (L3B10 — "성공한 본체는 그대로"가 보이게). 압력계 색이 없는 모델이라 결과가 드러나지 않는다
+            visual.ShowInserted(counting || Completed);
 
-                // 위험한 통 판정 중에는 WARNING 글자가 켜졌다 꺼졌다 한다 — 경고 램프 대신 (3b 보강 명세 LM8).
-                // 넣은 시각 기준이라 손님 화면도 같은 박자로 깜빡인다 (시각 공식)
-                if (danger && !LifeSupportRules.IsBlinkOn(t, InsertStart, blinkPeriod))
-                {
-                    if (display != null)
-                        display.Show(string.Empty, true);
-                }
-                else
-                {
-                    ShowOnScreen(danger ? ScreenWarning : ScreenCheck, seconds, danger);
-                }
-
-                return;
-            }
-
-            if (LifeSupportRules.IsShowing(t, ExplodeStart, damagedScreenTime))
-                ShowOnScreen(ScreenDamaged, 0, true);
-            else
-                ShowOnScreen(ScreenIdle, SuppliedCount, false);
+            // 판정 중에는 정상 · 위험 구분 없이 CHECK n (L3B3 · L3B9)
+            LifeSupportScreen screen = LifeSupportRules.ScreenFor(Completed, counting, damaged);
+            ShowOnScreen(screen, screen == LifeSupportScreen.Check ? LifeSupportRules.CountdownSeconds(t, InsertStart, countdown) : 0);
         }
 
-        /// <summary>호스트: 위험한 통 폭발 — 반경 안 피해 → 미션 실패 요청 (LS4 · LS5).</summary>
+        /// <summary>호스트: 위험한 통 폭발 — 반경 안 피해. 이 본체만 처리하고 미션 실패는 요청하지 않는다 → 다른 본체 · 진행 수 유지, 바로 다시 넣을 수 있다 (7d L3B4 · LS5).</summary>
         private void Explode()
         {
             ExplodeStart = Runner.SimulationTime;
             int hit = DamagePlayersInBlast();
-            Debug.Log($"[LifeSupportStation] {name}: 위험한 산소통 폭발 — 반경 {blastRadius:0.#}m 안 {hit}명 피해 → 미션 실패 요청");
-
-            // 받아들여지면 알림으로 ResetStation 이 이미 불렸다. 이번 판에 미션이 없거나 끝났으면 직접 초기화해 산소통이라도 새로 놓는다
-            if (!RequestMissionFailure())
-                ResetStation();
+            Debug.Log($"[LifeSupportStation] {name}: 위험한 산소통 폭발 — 반경 {blastRadius:0.#}m 안 {hit}명 피해. 이 본체만 — 다른 본체 · 진행 수는 그대로");
         }
 
         private int DamagePlayersInBlast()
@@ -288,7 +240,7 @@ namespace TrustNoOne.Missions
             return hit;
         }
 
-        /// <summary>호스트: 1층 NavMesh 위 무작위 지점에 산소통 tankCount 개를 만든다 (정상 = requiredSupplies 개, LS2 · 6b 보강 NS6).</summary>
+        /// <summary>호스트: 1층 NavMesh 위 무작위 지점에 산소통 tankCount 개를 만든다 (정상 = safeTanks 개 — 7d L3B6 · 6b 보강 NS6. 간격은 이 본체 통끼리만 — L3B11).</summary>
         private void PlaceTanks()
         {
             if (!NavMeshSpawnArea.TryCreate(name, out NavMeshSpawnArea area))
@@ -317,11 +269,11 @@ namespace TrustNoOne.Missions
             if (count < tankCount)
                 Debug.LogWarning($"[LifeSupportStation] {name}: 산소통 자리를 {count}/{tankCount}개만 찾았습니다 (NavMesh 가 좁거나 간격이 큼).");
 
-            if (count < requiredSupplies)
-                Debug.LogWarning($"[LifeSupportStation] {name}: 정상 산소통이 {requiredSupplies}개가 안 됩니다.");
+            if (count < safeTanks)
+                Debug.LogWarning($"[LifeSupportStation] {name}: 정상 산소통이 {safeTanks}개가 안 됩니다.");
 
             bool[] dangerous = new bool[count];
-            LifeSupportRules.DrawDangers(dangerous, requiredSupplies, n => Random.Range(0, n));
+            LifeSupportRules.DrawDangers(dangerous, safeTanks, n => Random.Range(0, n));
 
             StringBuilder log = new StringBuilder();
 
@@ -359,27 +311,27 @@ namespace TrustNoOne.Missions
                 && tank.HolderObject == playerObject;
         }
 
-        private void ShowOnScreen(int screen, int number, bool error)
+        private void ShowOnScreen(LifeSupportScreen screen, int number)
         {
             if (display == null)
                 return;
 
-            int key = screen * 1000 + number;
+            int key = (int)screen * 1000 + number;
 
             if (key != shownKey)
             {
                 shownKey = key;
                 shownText = screen switch
                 {
-                    ScreenCheck => $"{CheckText} {number}",
-                    ScreenWarning => $"{WarningText} {number}",
-                    ScreenDamaged => DamagedText,
-                    ScreenSuccess => SuccessText,
-                    _ => IdleText(number, requiredSupplies),
+                    LifeSupportScreen.Check => $"{CheckText} {number}",
+                    LifeSupportScreen.Damaged => DamagedText,
+                    LifeSupportScreen.Success => SuccessText,
+                    _ => EmptyText,
                 };
             }
 
-            display.Show(shownText, error);
+            // 빨간 글자는 폭발 뒤에만 (판정 중에는 결과를 드러내지 않게 — L3B3)
+            display.Show(shownText, screen == LifeSupportScreen.Damaged);
         }
     }
 }

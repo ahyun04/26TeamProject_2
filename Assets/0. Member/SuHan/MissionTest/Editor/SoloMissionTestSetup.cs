@@ -14,7 +14,7 @@ using Object = UnityEngine.Object;
 ///  - 단체 TG001 발전기 작동시키기: 진짜 GeneratorStation 3대 (LegacyMissionConverter 로 옛 발전기 프리팹을 변환)
 ///  - 단체 TG006 밸브 / TG007 차단기 / TG008 전선 / TG009 안테나 / TG010 압력 / TG011 필터(+ 청소기 아이템) — 7a 전에는 개인 PS001 ~ PS006: 진짜 스테이션 (2a~2d, 옛 프리팹 변환 · 압력은 원본 패널 · 피스톤 모델에서 조립, 실패 시 자리 표시)
 ///  - 단체 TG002 코드 순서 맞추기: 진짜 CodeStation (3a, 원본 자판 모델에서 조립, 실패 시 자리 표시)
-///  - 단체 TG004 생명 유지 장치 복구: 진짜 LifeSupportStation (3b, 원본 모델에서 조립 — 화면 상자 · 밸브 옆 압력계 덧붙임) — 실행 중 본체가 1층 NavMesh 위 무작위로 산소통 6개를 놓는다 (6b 보강). 실패 시 자리 표시
+///  - 단체 TG004 생명 유지 장치 복구: 진짜 LifeSupportStation (3b, 원본 모델에서 조립 — 화면 상자 · 밸브 옆 압력계 덧붙임) — 본체 3대(7d), 실행 중 본체마다 1층 NavMesh 위 무작위로 산소통 2개(정상 1 · 위험 1)를 놓는다. 실패 시 자리 표시
 ///  - 단체 TG003 고장난 장비 조립: 진짜 AssemblyStation (3c, 원본 본체 · 부품 모델에서 조립) — 실행 중 장비가 1층 NavMesh 위에 부품 4개(근처 1 · 멀리 3)를 놓는다 (6b 보강). 실패 시 자리 표시
 ///  - 단체 TG005 대형 방화문 열기: 진짜 FireDoorStation (3d, 원본 문 · 패널 · 레버 모델에서 조립) — 실행 중 방화문이 앞쪽 1층 NavMesh 위에 레버 2개를 놓는다 (6b 보강). 실패 시 자리 표시
 ///  - (자리 표시 큐브 목록은 이제 비어 있다 — 단체 미션이 모두 진짜 장치가 됨)
@@ -146,6 +146,12 @@ public static class SoloMissionTestSetup
     private static readonly PlaceholderSpec LifeSupportFallback =
         Team("Placeholder_TG004_LifeSupport", "생명 유지 장치 복구", "TG004", MissionEventType.LifeSupportRestored, new Vector3(3f, 0f, 16f));
 
+    // 7d: 생명 유지 장치 본체 나머지 2대 (명세 L3B1) — 먼 앞줄 뒤 (z 24) 빈 바닥
+    private static readonly Vector3[] ExtraLifeSupportPositions =
+    {
+        new Vector3(-3f, 0f, 24f), new Vector3(3f, 0f, 24f),
+    };
+
     // 3c 장비 조립: TG003 자리 표시 자리 (먼 앞줄). 변환에 실패하면 이 자리 표시로 대체한다.
     private static readonly PlaceholderSpec AssemblyFallback =
         Team("Placeholder_TG003_Assembly", "고장난 장비 조립", "TG003", MissionEventType.EquipmentAssembled, new Vector3(-3f, 0f, 16f));
@@ -174,7 +180,7 @@ public static class SoloMissionTestSetup
         "먼 앞줄: 단체 미션 — 코드 · 장비 조립 · 생명 유지 장치 · 방화문 (모두 실제)  /  뒤: 단체 미션 6종(7a — 옛 개인) — 끝나면 잠김\n" +
         "방화문(먼 앞줄 오른쪽): 다른 단체 미션 완료 → 레버 2개 패널에 끼우기(우클릭) → 30초 안에 내리기(클릭)   F8 = 방화문 빼고 단체 미션 즉시 완료(테스트)\n" +
         "장비 조립(먼 앞줄 왼쪽): 부품 4개(1개는 장비 주변)를 찾아 들고 맞는 색 자리를 조준 → 우클릭(7c)\n" +
-        "생명 유지 장치(먼 앞줄): 산소통 6개 중 정상 3개만 본체에 — 가까이서 압력계 확인 → 들기(좌클릭) → 본체에 우클릭, 첫 공급부터 120초\n" +
+        "생명 유지 장치(먼 앞줄): 본체 3대(7d) · 산소통 6개(본체마다 정상 1 · 위험 1, 겉모습으로 구분 안 됨) — 들기 → 아무 본체에 우클릭 → 5초 뒤 SUCCESS 또는 폭발, 첫 성공부터 120초\n" +
         "Shift 달리기 = AG101 '뛰지 않는다' 위반   F9 내 행동 확정 / F10 전체 공개\n" +
         "멀티: 에디터 [호스트] + 빌드 [손님] → 호스트 F5 손님 = 시민 / F6 손님 1명 = 범인   F7 판 다시 시작";
 
@@ -218,7 +224,15 @@ public static class SoloMissionTestSetup
 
         AddConvertedOrPlaceholder(placements, LegacyMissionConverter.CreateCodeStation(), CodeFallback, "코드");
 
-        AddConvertedOrPlaceholder(placements, LegacyMissionConverter.CreateLifeSupportStation(), LifeSupportFallback, "생명 유지 장치");
+        NetworkObject lifeSupport = LegacyMissionConverter.CreateLifeSupportStation();
+        AddConvertedOrPlaceholder(placements, lifeSupport, LifeSupportFallback, "생명 유지 장치");
+
+        // 7d: 본체 3대 (L3B1) — 나머지 2대도 같은 프리팹 (변환에 실패하면 자리 표시 하나만)
+        if (lifeSupport != null)
+        {
+            foreach (Vector3 position in ExtraLifeSupportPositions)
+                placements.Add((lifeSupport, position));
+        }
         AddConvertedOrPlaceholder(placements, LegacyMissionConverter.CreateAssemblyStation(), AssemblyFallback, "장비 조립");
         AddConvertedOrPlaceholder(placements, LegacyMissionConverter.CreateFireDoorStation(), FireDoorFallback, "방화문");
 
@@ -550,7 +564,7 @@ public static class SoloMissionTestSetup
         CreateInfoLabel(layoutRoot.transform, "Info (코드)", CodeFallback.Position + new Vector3(0f, 2.4f, 0f),
             "코드 순서 맞추기 · TG002\n빨강 → 파란불 순서 기억 → 숫자 입력 → 파랑");
         CreateInfoLabel(layoutRoot.transform, "Info (생명 유지 장치)", LifeSupportFallback.Position + new Vector3(0f, 2.4f, 0f),
-            "생명 유지 장치 · TG004\n산소통 들기(좌클릭) → 가까이서 압력계 확인 → 본체에 우클릭");
+            "생명 유지 장치 · TG004\n본체 3대 · 1대당 산소통 1개 — 들기 → 우클릭 → 5초");
         CreateInfoLabel(layoutRoot.transform, "Info (장비 조립)", AssemblyFallback.Position + new Vector3(0f, 3f, 0f),
             "고장난 장비 조립 · TG003\n부품을 들고 맞는 색 자리 조준 → 우클릭");
         CreateInfoLabel(layoutRoot.transform, "Info (방화문)", FireDoorFallback.Position + new Vector3(0f, 3.2f, 0f),

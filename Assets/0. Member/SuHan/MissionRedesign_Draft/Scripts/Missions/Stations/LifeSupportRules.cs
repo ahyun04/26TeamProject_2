@@ -2,11 +2,21 @@ using System;
 
 namespace TrustNoOne.Missions
 {
+    /// <summary>생명 유지 장치 본체 화면 상태 (7d 명세 L3B9).</summary>
+    public enum LifeSupportScreen
+    {
+        Empty = 0,
+        Check = 1,
+        Success = 2,
+        Damaged = 3,
+    }
+
     /// <summary>
     /// [역할] 생명 유지 장치(TG004 · 산소통 선별)의 계산 규칙. 엔진 없이 테스트한다 (T19). 3b 명세 3-1.
     ///  - 배치: 정상 / 위험 섞기 — 정상 개수는 정확히 (LS2). 자리는 1층 NavMesh 위 무작위 (6b 보강 — SpawnPointRules · NavMeshSpawnArea)
-    ///  - 시각 공식: 넣은 시각 · 폭발 시각만 동기화하고, 카운트다운 숫자 · 램프 깜빡임 · 폭발 섬광은 각 PC 가 그 시각으로 계산한다 (LS14, 3a C3 와 같은 방식)
+    ///  - 시각 공식: 넣은 시각 · 폭발 시각만 동기화하고, 카운트다운 숫자 · 폭발 섬광은 각 PC 가 그 시각으로 계산한다 (LS14, 3a C3 와 같은 방식)
     ///  - 폭발: 반경 안 여부와 피해량 (LS5)
+    ///  - 7d: 본체 한 대 = 산소통 1개. 화면 상태 ScreenFor · 넣기 조건 CanInsert (L3B8 · L3B9). WARNING 깜빡임(IsBlinkOn)은 없앰 (L3B3)
     /// [이유] 판정 규칙을 엔진 · 네트워크와 떼어 두면 숫자를 바꿔도 테스트로 바로 확인할 수 있다.
     /// </summary>
     public static class LifeSupportRules
@@ -59,13 +69,25 @@ namespace TrustNoOne.Missions
             return start >= 0f && t >= start && t < start + duration;
         }
 
-        /// <summary>start 부터 period 초마다 켜짐 · 꺼짐을 반복한다. 첫 구간은 켜짐. start 가 없거나 그 이전이면 꺼짐.</summary>
-        public static bool IsBlinkOn(float t, float start, float period)
+        /// <summary>
+        /// 본체 화면 상태 (7d 명세 L3B9): 우선순위 성공 > 판정 중 > 폭발 뒤 > 대기.
+        /// 판정 중에는 정상 · 위험을 구분하지 않는다 (피드백 — 결과는 5초 뒤 폭발 또는 SUCCESS 로만 드러난다).
+        /// </summary>
+        public static LifeSupportScreen ScreenFor(bool completed, bool counting, bool damagedShowing)
         {
-            if (start < 0f || t < start || period <= 0f)
-                return false;
+            if (completed)
+                return LifeSupportScreen.Success;
 
-            return (int)Math.Floor((t - start) / period) % 2 == 0;
+            if (counting)
+                return LifeSupportScreen.Check;
+
+            return damagedShowing ? LifeSupportScreen.Damaged : LifeSupportScreen.Empty;
+        }
+
+        /// <summary>산소통을 넣을 수 있는가 (7d 명세 L3B8): 이 본체가 아직 성공하지 않았고 판정 중이 아닐 때.</summary>
+        public static bool CanInsert(bool completed, bool judging)
+        {
+            return !completed && !judging;
         }
 
         /// <summary>폭발 섬광 진행 0 ~ 1 (커지는 비율). 구간 밖이면 −1.</summary>

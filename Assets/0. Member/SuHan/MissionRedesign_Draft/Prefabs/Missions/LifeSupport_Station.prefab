@@ -468,7 +468,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: O2 0/3
+  m_text: EMPTY
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -495,7 +495,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 0.7
+  m_fontSize: 0.85
   m_fontSizeBase: 36
   m_fontWeight: 400
   m_enableAutoSizing: 0
@@ -812,8 +812,8 @@ MonoBehaviour:
   _Completed:
     _value: 0
   tankPrefab: {fileID: 3955573172874069431, guid: 91da9af7ef987db498cbb721cbe779f5, type: 3}
-  tankCount: 6
-  requiredSupplies: 3
+  tankCount: 2
+  safeTanks: 1
   countdown: 5
   blastRadius: 3
   blastDamageRatio: 0.3
@@ -821,7 +821,6 @@ MonoBehaviour:
   display: {fileID: 6603841660470275875}
   flashDuration: 0.5
   damagedScreenTime: 2
-  blinkPeriod: 0.25
   tankSpacing: 4
   tankMinFromStation: 3
 --- !u!114 &2189335432912964091

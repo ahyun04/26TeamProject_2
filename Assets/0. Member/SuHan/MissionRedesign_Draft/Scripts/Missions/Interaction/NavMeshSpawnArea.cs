@@ -113,7 +113,7 @@ namespace TrustNoOne.Missions
             return false;
         }
 
-        /// <summary>세로축 무작위 회전 (NS10 — 산소통 압력계가 여러 방향을 보게).</summary>
+        /// <summary>세로축 무작위 회전 (NS10 — 놓인 아이템이 여러 방향을 보게).</summary>
         public static Quaternion RandomYaw()
         {
             return Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);

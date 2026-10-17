@@ -116,6 +116,9 @@ public static class GamePlayMissionInstaller
         new Placement { Name = "Pressure", PrefabPath = LegacyMissionConverter.PressureStationPath, Position = new Vector3(-1f, 0f, -7f), FaceSpawn = true, CheckOverlap = true },
         new Placement { Name = "Code", PrefabPath = LegacyMissionConverter.CodeStationPath, Position = new Vector3(-7f, 0f, 17f), FaceSpawn = true, CheckOverlap = true },
         new Placement { Name = "LifeSupport", PrefabPath = LegacyMissionConverter.LifeSupportStationPath, Position = new Vector3(-1f, 0f, 18f), FaceSpawn = true, CheckOverlap = true },
+        // 7d: 생명 유지 장치 본체 3대 (명세 L3B1 · L3B12) — 지금 본체 근처 빈 바닥 (다른 장치에서 4m · 방화문 앞 피함, 씬 분석). 정확한 자리는 기획자
+        new Placement { Name = "LifeSupport_B", PrefabPath = LegacyMissionConverter.LifeSupportStationPath, Position = new Vector3(-2f, 0f, 11f), FaceSpawn = true, CheckOverlap = true },
+        new Placement { Name = "LifeSupport_C", PrefabPath = LegacyMissionConverter.LifeSupportStationPath, Position = new Vector3(4f, 0f, 12f), FaceSpawn = true, CheckOverlap = true },
         new Placement { Name = "Assembly", PrefabPath = LegacyMissionConverter.AssemblyStationPath, Position = new Vector3(5f, 0f, 18f), FaceSpawn = true, CheckOverlap = true },
         // 방화문: 북쪽 벽(z 26.5) 앞에서 남쪽(시작 홀)을 보게 — 벽과 나란히 180° 고정
         new Placement { Name = "FireDoor", PrefabPath = LegacyMissionConverter.FireDoorStationPath, Position = new Vector3(-1f, 0f, 24.5f), Yaw = 180f, CheckOverlap = true },
