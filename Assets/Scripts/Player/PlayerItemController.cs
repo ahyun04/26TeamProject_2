@@ -1,5 +1,6 @@
 using Fusion;
 using LockdownProtocol.Lobby;
+using LockdownProtocol.Networking;
 using UnityEngine;
 
 /// <summary>
@@ -21,6 +22,7 @@ public class PlayerItemController : NetworkBehaviour
     // 현재 아이템이 Target 변화에 반응하는 기능을 가지고 있을 경우 저장
     private IItemTargetHandler targetHandler;
     private PlayerHealth health;
+    private KillManager combat; //집기와 공격을 한 입력 경로에서 구분
     private NetworkObject displayedItem; //현재 1인칭 표시를 적용한 아이템
     private bool presentationInitialized; //장착 표시 초기화 여부
 
@@ -38,6 +40,7 @@ public class PlayerItemController : NetworkBehaviour
     public override void Spawned()
     {
         health = GetComponent<PlayerHealth>();
+        combat = GetComponent<KillManager>();
         if (HasStateAuthority && health != null)
         {
             health.Died += DropCurrentItem;
@@ -94,6 +97,7 @@ public class PlayerItemController : NetworkBehaviour
     private void Update()
     {
         if (Object == null || !Object.IsValid || !HasInputAuthority || (health != null && !health.CanAct) || GameAudio.blocksPlayerInput ||
+            Cursor.lockState != CursorLockMode.Locked || SessionDisconnectUIComponent.IsOpen ||
             (LobbyRoomUI.Instance != null && LobbyRoomUI.Instance.BlocksPlayerInput))
             return;
 
@@ -106,9 +110,12 @@ public class PlayerItemController : NetworkBehaviour
     /// </summary>
     private void HandleItemInput()
     {
-        bool leftDown = Input.GetMouseButtonDown(0);
-        bool rightDown = Input.GetMouseButtonDown(1);
-        if (Input.GetKeyDown(KeyCode.G) && CurrentItemObject != null)
+        handleItemInput(Input.GetMouseButtonDown(0), Input.GetMouseButtonDown(1), Input.GetKeyDown(KeyCode.G));
+    }
+
+    private void handleItemInput(bool leftDown, bool rightDown, bool dropDown) //클릭 시작 시 장착 상태로 한 동작만 선택
+    {
+        if (dropDown && CurrentItemObject != null)
         {
             RequestUnequipItem();
             return;
@@ -120,6 +127,8 @@ public class PlayerItemController : NetworkBehaviour
             TryEquipTargetItem();
             return;
         }
+
+        if (leftDown) combat?.requestWeaponAttack();
 
         // 아이템을 들고 있을 때 우클릭 = 즉시 사용
         if (rightDown && CurrentItemObject != null)

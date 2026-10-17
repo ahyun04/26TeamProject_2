@@ -58,6 +58,12 @@ public class PlayerLookVisualComponent : NetworkBehaviour, IAfterTick
         }
 
         float viewYaw = kcc.GetLookRotation().y; //이번 틱에 처리된 카메라의 수평 시선
+        if (headYawLimit <= 0f)
+        {
+            bodyYaw = viewYaw;
+            bodyTurning = false;
+            return;
+        }
         float difference = Mathf.DeltaAngle(bodyYaw, viewYaw); //180도 경계에서도 가장 짧은 회전 차이
         if (Mathf.Abs(difference) > Mathf.Clamp(headYawLimit, 0f, 179f)) bodyTurning = true;
         if (!bodyTurning) return;
@@ -72,6 +78,7 @@ public class PlayerLookVisualComponent : NetworkBehaviour, IAfterTick
 
     private float getRenderedBodyYaw() //몸 방향을 네트워크 스냅샷 사이에서 각도로 보간
     {
+        if (headYawLimit <= 0f && HasInputAuthority) return kcc.GetLookRotation().y;
         if (TryGetSnapshotsBuffers(out var from, out var to, out float alpha))
             return Mathf.LerpAngle(bodyYawReader.Read(from), bodyYawReader.Read(to), alpha);
         return bodyYaw;

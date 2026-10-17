@@ -1,0 +1,53 @@
+{
+  "method": "Synthetic 24 kHz mono: 440 Hz tone plus seeded uniform noise. Linear gain only; not an actual microphone, codec or WebRTC AGC test.",
+  "results": [
+    {
+      "input_voice_peak": 0.1,
+      "gain": 1,
+      "gain_db": 0.0,
+      "unlimited_output_peak": 0.11,
+      "samples_exceeding_full_scale_percent": 0.0,
+      "noise_rms": 0.005769
+    },
+    {
+      "input_voice_peak": 0.1,
+      "gain": 2,
+      "gain_db": 6.02,
+      "unlimited_output_peak": 0.2199,
+      "samples_exceeding_full_scale_percent": 0.0,
+      "noise_rms": 0.011537
+    },
+    {
+      "input_voice_peak": 0.1,
+      "gain": 4,
+      "gain_db": 12.04,
+      "unlimited_output_peak": 0.4399,
+      "samples_exceeding_full_scale_percent": 0.0,
+      "noise_rms": 0.023074
+    },
+    {
+      "input_voice_peak": 0.8,
+      "gain": 1,
+      "gain_db": 0.0,
+      "unlimited_output_peak": 0.8099,
+      "samples_exceeding_full_scale_percent": 0.0,
+      "noise_rms": 0.005769
+    },
+    {
+      "input_voice_peak": 0.8,
+      "gain": 2,
+      "gain_db": 6.02,
+      "unlimited_output_peak": 1.6199,
+      "samples_exceeding_full_scale_percent": 57.0,
+      "noise_rms": 0.011537
+    },
+    {
+      "input_voice_peak": 0.8,
+      "gain": 4,
+      "gain_db": 12.04,
+      "unlimited_output_peak": 3.2397,
+      "samples_exceeding_full_scale_percent": 79.77,
+      "noise_rms": 0.023074
+    }
+  ]
+}

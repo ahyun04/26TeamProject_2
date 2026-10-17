@@ -1,10 +1,11 @@
-using TMPro;
+﻿using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
 
 public class PlayerCustomizationUIComponent : MonoBehaviour
 {
+    [SerializeField] private GameObject[] selectionMarks; //현재 선택 색상의 체크 표시
     [SerializeField] private Button[] colorButtons; //공통 팔레트 선택 버튼
     [SerializeField] private TMP_Text statusText; //색상 중복과 변경 가능 상태 안내
     [SerializeField] private RawImage previewImage; //선택 색상의 캐릭터 미리보기
@@ -56,6 +57,7 @@ public class PlayerCustomizationUIComponent : MonoBehaviour
         {
             colorButtons[i].image.color = PlayerAppearance.getColor(i);
             colorButtons[i].interactable = lastCanEdit;
+            if (selectionMarks != null && i < selectionMarks.Length && selectionMarks[i] != null) selectionMarks[i].SetActive(i == displayedIndex);
             Outline outline = colorButtons[i].GetComponent<Outline>(); //선택 색상 표시
             if (outline != null) outline.enabled = i == displayedIndex;
         }

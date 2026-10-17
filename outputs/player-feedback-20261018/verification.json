@@ -1,0 +1,158 @@
+[
+  {
+    "check": "Initial rules replicated to four peers",
+    "passed": true
+  },
+  {
+    "check": "Host receives exactly one nickname notification per newcomer",
+    "passed": true
+  },
+  {
+    "check": "Host can edit waiting rules",
+    "passed": true
+  },
+  {
+    "check": "Draft does not change shared killer count",
+    "passed": true
+  },
+  {
+    "check": "Cancel preserves confirmed count",
+    "passed": true
+  },
+  {
+    "check": "Apply confirms two killers on every peer",
+    "passed": true
+  },
+  {
+    "check": "Participant rule inputs read only",
+    "passed": true
+  },
+  {
+    "check": "Host rejects participant rule RPC",
+    "passed": true
+  },
+  {
+    "check": "Count cannot remove every citizen",
+    "passed": true
+  },
+  {
+    "check": "Color palette shows one selected check",
+    "passed": true
+  },
+  {
+    "check": "Role assignment uses two killers and two citizens",
+    "passed": true
+  },
+  {
+    "check": "Scene player respawns do not generate join notifications",
+    "passed": true
+  },
+  {
+    "check": "Rules locked during GamePlay",
+    "passed": true
+  },
+  {
+    "check": "Playing rules show actual assigned count",
+    "passed": true
+  },
+  {
+    "check": "host: pickup click equips without attack, damage or stamina cost",
+    "passed": true
+  },
+  {
+    "check": "host: next click attacks once with tool damage and cost",
+    "passed": true
+  },
+  {
+    "check": "host: empty-hand Z displays own original pose",
+    "passed": true
+  },
+  {
+    "check": "host: empty-hand gesture restores body",
+    "passed": true
+  },
+  {
+    "check": "host: equipped Z restores held knife",
+    "passed": true
+  },
+  {
+    "check": "host: body immediately follows yaw on all peers, pitch retained",
+    "passed": true
+  },
+  {
+    "check": "host: all peers see red body flash then original color",
+    "passed": true
+  },
+  {
+    "check": "client: pickup click equips without attack, damage or stamina cost",
+    "passed": true
+  },
+  {
+    "check": "client: next click attacks once with tool damage and cost",
+    "passed": true
+  },
+  {
+    "check": "client: empty-hand Z displays own original pose",
+    "passed": true
+  },
+  {
+    "check": "client: empty-hand gesture restores body",
+    "passed": true
+  },
+  {
+    "check": "client: equipped Z restores held knife",
+    "passed": true
+  },
+  {
+    "check": "client: body immediately follows yaw on all peers, pitch retained",
+    "passed": true
+  },
+  {
+    "check": "client: all peers see red body flash then original color",
+    "passed": true
+  },
+  {
+    "check": "host: spectators preserve source colors and transparency",
+    "passed": true
+  },
+  {
+    "check": "host: spectator visibility and no health or stamina",
+    "passed": true
+  },
+  {
+    "check": "client: spectators preserve source colors and transparency",
+    "passed": true
+  },
+  {
+    "check": "client: spectator visibility and no health or stamina",
+    "passed": true
+  },
+  {
+    "check": "third: spectators preserve source colors and transparency",
+    "passed": true
+  },
+  {
+    "check": "third: spectator visibility and no health or stamina",
+    "passed": true
+  },
+  {
+    "check": "fourth: spectators preserve source colors and transparency",
+    "passed": true
+  },
+  {
+    "check": "fourth: spectator visibility and no health or stamina",
+    "passed": true
+  },
+  {
+    "check": "Confirmed killer setting survives return to StandBy",
+    "passed": true
+  },
+  {
+    "check": "Return to StandBy does not repeat join notices",
+    "passed": true
+  },
+  {
+    "check": "Waiting departures clamp killer count and replicate",
+    "passed": true
+  }
+]
