@@ -81,12 +81,14 @@ namespace LockdownProtocol.Lobby
 
             _isBusy = true;
             SetInteractable(false);
+            LoadingOverlayUI.Show("입장 중");
 
             try
             {
                 var result = await bootstrap.JoinRoom(inviteCode);
                 if (this == null) return;
                 var mapped = RoomManager.MapJoinResult(result);
+                if (mapped != RoomManager.JoinRoomResult.Success) LoadingOverlayUI.Hide();
 
                 switch (mapped)
                 {
@@ -109,6 +111,7 @@ namespace LockdownProtocol.Lobby
             }
             catch (System.Exception exception)
             {
+                LoadingOverlayUI.Hide();
                 if (this != null) ShowFeedback(exception.Message);
                 Debug.LogException(exception);
             }
