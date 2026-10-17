@@ -15,8 +15,8 @@ namespace TrustNoOne.Missions
     /// </summary>
     public class MissionListUI : MonoBehaviour
     {
-        // 끝난 미션 줄 끝에 붙이는 표시 (줄 프리팹 글자는 리치 텍스트를 쓴다)
-        private const string CompletedSuffix = "  <color=#7CFC7C>완료</color>";
+        [Tooltip("완료된 미션 글자색")]
+        [SerializeField] private Color completedColor = new Color32(0x7C, 0xFC, 0x7C, 0xFF);
 
         [Tooltip("비워 두면 씬에서 찾는다")]
         [SerializeField] private MissionManager manager;
@@ -75,10 +75,9 @@ namespace TrustNoOne.Missions
                 if (!line.Completed)
                     continue;
 
-                TMP_Text text = item.GetComponentInChildren<TMP_Text>();
-
-                if (text != null)
-                    text.text += CompletedSuffix;
+                // 줄 안의 모든 글자를 초록으로
+                foreach (TMP_Text text in item.GetComponentsInChildren<TMP_Text>(true))
+                    text.color = completedColor;
             }
         }
 
