@@ -18,6 +18,7 @@ namespace TrustNoOne.Missions
     /// [멈춤 판단 — PR6] 재개 이전 시각(t < resumedAt)도 "멈춰 있던 때"로 본다: 멈춘 동안 누른 요청이 재개 뒤에 도착하면
     ///  바뀐 공식 값으로 과거를 계산해 엉뚱한 판정이 나오므로 무시한다.
     /// [누른 시각 인정 범위 — PR4] 지금 기준 [−maxRewind, +maxAhead] 밖이면 지금 시각으로 판정한다 (시각 조작 방지).
+    /// [버튼 연결 — 8b PB1] 빨강 · 노랑 · 파랑 버튼 = 피스톤 A · B · C 로 고정 (PistonForButton). 2d PR7 의 판마다 무작위 연결(ShuffleMapping)은 없앴다.
     /// </summary>
     public static class PressureRules
     {
@@ -63,23 +64,14 @@ namespace TrustNoOne.Missions
             return pressTime;
         }
 
-        /// <param name="map">덮어쓸 연결 (버튼 → 피스톤). 0..n-1 순열이 된다</param>
-        /// <param name="randomRange">randomRange(n) → 0 이상 n 미만의 정수</param>
-        public static void ShuffleMapping(int[] map, System.Func<int, int> randomRange)
+        /// <summary>
+        /// 버튼이 멈추는 피스톤 (8b PB1 — 팀 피드백 "A는 빨간 버튼 B는 노란버튼 C는 파란버튼"). 범위 밖이면 −1.
+        /// 버튼 번호는 변환기가 모델 노드 Pressure_button_A / B / C 순서로 매긴다 (빨강 · 노랑 · 파랑) → 같은 글자의 피스톤.
+        /// 기획서 "어떤 색의 버튼이 어떤 압력통이랑 연결되어있는지는 모름"과 다르다 — 사용자 결정 A, 기획자 반영 요청.
+        /// </summary>
+        public static int PistonForButton(int button, int pistonCount)
         {
-            if (map == null || randomRange == null)
-                return;
-
-            for (int i = 0; i < map.Length; i++)
-                map[i] = i;
-
-            for (int i = map.Length - 1; i > 0; i--)
-            {
-                int j = randomRange(i + 1);
-                int temp = map[i];
-                map[i] = map[j];
-                map[j] = temp;
-            }
+            return button >= 0 && button < pistonCount ? button : -1;
         }
     }
 }

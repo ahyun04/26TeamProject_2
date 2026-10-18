@@ -5,7 +5,7 @@ namespace TrustNoOne.Missions
 {
     /// <summary>
     /// [역할] 압력 수치 맞추기 (단체 미션 TG010 · PressureStabilized — 7a 전에는 개인 PS005). 신규 미니게임. 2d 명세 3-3.
-    ///  피스톤 A/B/C 가 각자 속도로 오르내린다. 버튼(StationButton 0~2)은 판마다 무작위로 피스톤 하나에 몰래 연결된다(PR7).
+    ///  피스톤 A/B/C 가 각자 속도로 오르내린다. 버튼(StationButton 0~2 = 빨강 · 노랑 · 파랑)은 같은 글자의 피스톤을 멈춘다 — 늘 같다 (8b PB1, 2d PR7 무작위 연결 바뀜).
     ///  버튼을 눌러 연결된 피스톤이 초록 구간이면 고정(초록불), 아니면 1초 멈춤(빨간불) 후 재개(PR2). 셋 다 고정하면 완료 → 잠김, 고정된 모습 그대로(Lock — 7a 명세 TC9).
     ///
     /// [동기화 — PR3] 높이는 매 틱 보내지 않는다. 공식 값(속도 · 위상 · 누적 정지 시간 · 멈춤 구간 · 고정)만 동기화하고
@@ -13,7 +13,7 @@ namespace TrustNoOne.Missions
     /// [공정한 판정 — PR4] 버튼 요청에 누른 사람 화면의 시각이 실려 온다(MissionStation.PressPart). 호스트는 그 시각의 높이로 판정한다.
     ///  시각은 [지금 − 0.5초, 지금 + 0.1초] 로 제한한다 (조작 방지). 게스트도 보이는 그대로 판정된다.
     /// [재개 — PR12] 멈춤이 끝난 피스톤은 조작자가 없어도 다시 움직여야 해서 OnHostTickAlways 에서 처리한다.
-    /// [조작자] 첫 버튼에서 TryBeginOperation, 이후 조작자 본인만. 범위 이탈 · 행동 불가 · 제한 시간 초기화 → 전부 다시 뽑기 (PR8).
+    /// [조작자] 첫 버튼에서 TryBeginOperation, 이후 조작자 본인만. 범위 이탈 · 행동 불가 · 제한 시간 초기화 → 속도 · 위상 다시 뽑기 · 고정 해제 (PR8 — 연결은 고정이라 그대로, 8b PB2).
     /// </summary>
     public class PressureStation : MissionStation
     {
@@ -49,10 +49,8 @@ namespace TrustNoOne.Missions
         [Networked, Capacity(PistonCount)] private NetworkArray<float> ResumedAt => default;
         [Networked, Capacity(PistonCount)] private NetworkArray<NetworkBool> Locked => default;
         [Networked, Capacity(PistonCount)] private NetworkArray<float> LockedHeight => default;
-        [Networked, Capacity(PistonCount)] private NetworkArray<int> Mapping => default;
 
         private bool validSetup;
-        private readonly int[] mapBuffer = new int[PistonCount];
 
         protected override void OnStationSpawned()
         {
@@ -90,7 +88,8 @@ namespace TrustNoOne.Missions
 
             float now = Runner.SimulationTime;
             float t = PressureRules.ClampPressTime(pressTime, now, MaxRewind, MaxAhead);
-            int piston = Mapping[partIndex];
+            // 8b PB1: 버튼 색 = 피스톤 글자 (빨강 A · 노랑 B · 파랑 C)
+            int piston = PressureRules.PistonForButton(partIndex, PistonCount);
 
             if (piston < 0 || piston >= PistonCount || Locked[piston])
                 return;
@@ -157,18 +156,16 @@ namespace TrustNoOne.Missions
             ApplyVisuals();
         }
 
-        /// <summary>호스트: 연결 · 속도 · 위상을 새로 뽑고 멈춤 · 고정을 푼다 (PR7 · PR8).</summary>
+        /// <summary>호스트: 속도 · 위상을 새로 뽑고 멈춤 · 고정을 푼다 (PR8). 버튼 연결은 고정이라 뽑지 않는다 (8b PB1 · PB2).</summary>
         private void Reroll()
         {
             if (!validSetup)
                 return;
 
             float now = Runner.SimulationTime;
-            PressureRules.ShuffleMapping(mapBuffer, n => Random.Range(0, n));
 
             for (int i = 0; i < PistonCount; i++)
             {
-                Mapping.Set(i, mapBuffer[i]);
                 Speed.Set(i, Random.Range(Mathf.Min(minSpeed, maxSpeed), Mathf.Max(minSpeed, maxSpeed)));
                 Phase.Set(i, Random.Range(0f, 2f));
                 TimeOffset.Set(i, 0f);

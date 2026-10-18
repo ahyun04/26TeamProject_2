@@ -560,7 +560,7 @@ public static class SoloMissionTestSetup
         CreateInfoLabel(layoutRoot.transform, "Info (필터)", FilterFallback.Position + new Vector3(0f, 2.4f, 0f),
             "필터 청소하기 · TG011\n청소기 줍기(좌클릭) → 먼지 조준 → 우클릭 · G 내려놓기");
         CreateInfoLabel(layoutRoot.transform, "Info (압력)", PressureFallback.Position + new Vector3(0f, 2.4f, 0f),
-            "압력 수치 맞추기 · TG010\n버튼 클릭 → 초록 구간에서 멈추기 (연결은 무작위)");
+            "압력 수치 맞추기 · TG010\n버튼 클릭 → 초록 구간에서 멈추기 (빨강 A · 노랑 B · 파랑 C)");
         CreateInfoLabel(layoutRoot.transform, "Info (코드)", CodeFallback.Position + new Vector3(0f, 2.4f, 0f),
             "코드 순서 맞추기 · TG002\n빨강 → 파란불 순서 기억 → 숫자 입력 → 파랑");
         CreateInfoLabel(layoutRoot.transform, "Info (생명 유지 장치)", LifeSupportFallback.Position + new Vector3(0f, 2.4f, 0f),
