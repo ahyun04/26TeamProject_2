@@ -10,7 +10,8 @@ namespace TrustNoOne.Missions
     ///  - 모습: FilterStation 이 매 Render 에 ApplyVisual 로 상태를 넣어 준다.
     ///
     /// [치운 먼지 — F5] 렌더러만 끈다. 옛 코드는 오브젝트를 SetActive(false) 했는데, 그 오브젝트에 중첩 NetworkObject 가 있어 위험하다.
-    /// [흡입 연출 — F6] 본인 화면: 1인칭 흡입구로 날아가며 작아짐 / 다른 사람 화면: 제자리에서 작아짐 (1인칭 모델이 없으므로).
+    /// [흡입 연출 — F6 → 8a] 본인 화면: 1인칭 흡입구로 / 다른 사람 화면: 그 사람 손에 든 청소기 모델의 흡입구로 날아가며 작아짐.
+    ///  흡입구가 없으면(아무도 안 듦) 제자리에서 작아진다.
     /// [콜라이더 — F8] FilterStation 이 "내 미션 && 안 치움"으로 SetColliderEnabled 를 부른다. 여기서 따로 켜고 끄지 않는다.
     /// [외곽선 — F7] 청소기(VacuumTool)를 들고 조준했을 때만 SetHighlight(true). 치웠거나 흡입 중이면 여기서 끈다.
     /// </summary>
@@ -43,7 +44,7 @@ namespace TrustNoOne.Missions
         }
 
         /// <param name="t">흡입 진행도 (0~1, 부드럽게 보정된 값)</param>
-        /// <param name="mouth">본인이 든 청소기의 1인칭 흡입구. 다른 사람 화면이면 null</param>
+        /// <param name="mouth">먼지가 날아갈 흡입구 (본인 = 1인칭, 다른 사람 = 손에 든 청소기 모델 — 8a). 없으면 null → 제자리에서 작아짐</param>
         public void ApplyVisual(bool cleaned, bool sucking, float t, Transform mouth)
         {
             if (cleaned || sucking)

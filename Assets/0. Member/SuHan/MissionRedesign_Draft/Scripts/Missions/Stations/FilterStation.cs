@@ -13,6 +13,8 @@ namespace TrustNoOne.Missions
     ///  범위 이탈 · 행동 불가는 베이스가 조작을 취소 → 먼지 전부 원래대로 ("중단하면 처음부터", 차단기 · 전선과 같음).
     /// [조작자] 첫 흡입에서 TryBeginOperation (권한 · 범위 · 내 미션), 이후는 조작자 본인만. 조작 중인 사람은 busy (차단기와 같음).
     /// [먼지 콜라이더 — F8] "내 미션(LocalInteractionAllowed) && 안 치운 먼지"일 때만 켠다. 베이스 interactionColliders 는 쓰지 않는다.
+    /// [흡입 연출 — 8a] 모든 화면에서 먼지가 청소기 흡입구로 날아간다 (본인 = 1인칭, 다른 사람 = 손에 든 청소기 모델 — VacuumTool.GetViewMouth).
+    ///  흡입 진행도(SuctionProgress)는 원래 동기화되므로 보내는 값은 늘지 않는다.
     /// </summary>
     public class FilterStation : MissionStation
     {
@@ -167,8 +169,9 @@ namespace TrustNoOne.Missions
             {
                 VacuumTool tool = ResolveTool();
 
+                // 8a: 다른 사람 화면에도 그 사람 손의 청소기로 빨려 들어가게 (2c F6 의 "제자리에서 작아짐" 바뀜)
                 if (tool != null)
-                    mouth = tool.GetLocalMouth();
+                    mouth = tool.GetViewMouth();
             }
 
             float t = Mathf.SmoothStep(0f, 1f, SuctionProgress);

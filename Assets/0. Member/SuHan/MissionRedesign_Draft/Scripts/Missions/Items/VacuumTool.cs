@@ -8,7 +8,8 @@ namespace TrustNoOne.Missions
     ///  - 우클릭(호스트): 팀원의 PlayerItemController 가 행동 가능 · 거리를 검사한 뒤 UseAsStateAuthority(조준 대상) 를 부른다
     ///    → 대상이 필터 먼지면 FilterStation.RequestSuction. 판정은 모두 스테이션이 한다.
     ///  - 조준(내 화면): 빨아들일 수 있는 먼지를 조준하면 그 먼지 외곽선만 켠다 (옛 방식 — 결정 F7).
-    ///  - 흡입구: 들고 있는 본인 화면이면 1인칭 모델의 흡입구 (먼지가 날아갈 곳).
+    ///  - 흡입구 (먼지가 날아갈 곳 — 8a): 들고 있는 본인 화면이면 1인칭 모델의 흡입구,
+    ///    다른 사람 화면이면 그 사람 손에 들린 청소기 모델(팀원 ItemWorldView 가 손을 따라가게 함)의 흡입구.
     ///
     /// [팀원 코드] ItemBase(장착 · 해제 · 월드 표시)는 상속만 한다. 아이템 번호 · 1인칭 모델은 ItemData(VacuumToolData) 에서 온다.
     /// [흡입 시간을 청소기가 갖는 이유] 옛 구조와 같다 — 나중에 성능이 다른 청소기를 만들 여지.
@@ -64,6 +65,19 @@ namespace TrustNoOne.Missions
                 highlightedDust.SetHighlight(false);
 
             highlightedDust = null;
+        }
+
+        /// <summary>
+        /// 이 화면에서 먼지가 날아갈 흡입구 (8a — 다른 사람 화면에도 빨아들이는 모습이 보이게, 2c F6 바뀜).
+        /// 내가 들었으면 1인칭 모델의 흡입구, 남이 들었으면 손에 들린 청소기 모델의 흡입구(mouth). 아무도 안 들었으면 null (먼지는 제자리에서 작아진다).
+        /// </summary>
+        public Transform GetViewMouth()
+        {
+            if (HolderObject == null)
+                return null;
+
+            Transform local = GetLocalMouth();
+            return local != null ? local : mouth;
         }
 
         /// <summary>들고 있는 사람이 이 PC 의 플레이어면 1인칭 흡입구, 아니면 null.</summary>
