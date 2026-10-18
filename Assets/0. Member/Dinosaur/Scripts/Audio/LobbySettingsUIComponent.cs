@@ -185,7 +185,7 @@ public class LobbySettingsUIComponent : MonoBehaviour
         increaseButton.interactable = canEdit && draftMaximum < RoomManager.AbsoluteMaxPlayers;
         int minimum = startManager != null ? startManager.minimumPlayerCount : RoomManager.AbsoluteMinPlayers; //실제 최소 시작 인원
         bool canStart = canEdit && startManager != null && players.Count >= minimum &&
-            readyCount == players.Count && !dirty; //서버와 동일한 기본 조건
+            readyCount == players.Count && !dirty && !GameAudio.hasPendingRuleSettings; //서버와 동일한 기본 조건과 미적용 규칙
         startButton.interactable = canStart;
         startButtonText.text = "게임 시작";
         startHintText.text = $"방장만 시작할 수 있습니다.\n{minimum}명 이상·전원 준비 완료 시 시작";
@@ -194,7 +194,7 @@ public class LobbySettingsUIComponent : MonoBehaviour
             float? remaining = startManager.countdownRemaining; //복제된 실제 시작 타이머
             startButtonText.text = remaining.HasValue ? $"{Mathf.CeilToInt(remaining.Value)}초 후 시작" : "시작 중";
         }
-        else if (dirty) startHintText.text = "변경한 방 인원을 먼저 적용해 주세요.";
+        else if (dirty || GameAudio.hasPendingRuleSettings) startHintText.text = "변경한 방 인원과 규칙을 먼저 적용해 주세요.";
         if (room == null) feedbackText.text = "방에 참가하면 플레이어와 방 설정을 확인할 수 있습니다.";
         else if (SceneManager.GetActiveScene().name == "GamePlay") feedbackText.text = "게임 진행 중에는 로비 설정을 변경할 수 없습니다.";
         else if (Time.unscaledTime >= feedbackDeadline) feedbackText.text = string.Empty;

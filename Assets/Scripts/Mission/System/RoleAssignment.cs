@@ -1,6 +1,7 @@
 using Fusion;
 using System.Collections.Generic;
 using UnityEngine;
+using LockdownProtocol.Lobby;
 
 public enum PlayerRole
 {
@@ -86,8 +87,12 @@ public class RoleAssignment : NetworkBehaviour
                 return;
         }
 
+        RoomManager room = RoomManager.Instance; //이번 세션에서 방장이 적용한 규칙
+        NetworkBootstrap bootstrap = FindFirstObjectByType<NetworkBootstrap>(); //씬 전환 동안 규칙을 보관하는 기존 진입점
+        int configuredCount = room != null && room.Object != null && room.Object.IsValid && room.Runner == Runner ? room.KillerCount :
+            bootstrap != null ? bootstrap.getKillerCount(Runner) : killerCount; //독립 테스트 씬은 기존 Inspector 설정 유지
         int currentKillerCount = Mathf.Clamp(
-            killerCount,
+            configuredCount,
             1,
             players.Count - 1
         );

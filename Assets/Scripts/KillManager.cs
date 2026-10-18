@@ -36,6 +36,12 @@ namespace LockdownProtocol.Networking
                    items != null && items.tryGetEquippedWeapon(out _);
         }
 
+        internal void requestWeaponAttack() //아이템 입력이 집기와 구분한 공격 요청
+        {
+            if (HasInputAuthority && _health != null && _health.CanAct && usesWeaponAttackInput())
+                RPC_RequestAttack();
+        }
+
         public override void Spawned()
         {
             _health = GetComponent<PlayerHealth>();
@@ -179,8 +185,6 @@ namespace LockdownProtocol.Networking
                 if (tryGetAttackTarget(out PlayerHealth target)) RPC_RequestKill(target.Object.Id);
                 return;
             }
-            if (Input.GetMouseButtonDown(0) && usesWeaponAttackInput())
-                RPC_RequestAttack();
         }
     }
 }

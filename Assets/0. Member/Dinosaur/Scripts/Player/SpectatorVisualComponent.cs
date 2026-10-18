@@ -10,6 +10,7 @@ public class SpectatorVisualComponent : NetworkBehaviour
     [SerializeField] private Transform directionPivot; //상하 시선을 표시할 방향 축
     [SerializeField] private Renderer[] directionRenderers; //전방 표시의 색상을 적용할 렌더러
     [SerializeField] private Color directionColor = Color.white; //방향 표시 색상
+    [Networked] internal int appearanceColorIndex { get; set; } //사망 전 확정한 플레이어 색상
 
     private SimpleKCC kcc; //복제된 시선 방향
     private bool localViewReady; //기존 플레이어 화면을 정리했는지 여부
@@ -18,9 +19,15 @@ public class SpectatorVisualComponent : NetworkBehaviour
     {
         kcc = GetComponent<SimpleKCC>();
         MaterialPropertyBlock properties = new MaterialPropertyBlock(); //공유 머티리얼을 보존할 표시 색상
-        properties.SetColor("_BaseColor", directionColor);
-        foreach (Renderer directionRenderer in directionRenderers)
-            if (directionRenderer != null) directionRenderer.SetPropertyBlock(properties);
+        Color color = PlayerAppearance.getColor(appearanceColorIndex); //생존 캐릭터와 동일한 선택 색상
+        foreach (Renderer spectatorRenderer in spectatorRenderers)
+        {
+            if (spectatorRenderer == null) continue;
+            color.a = spectatorRenderer.sharedMaterial != null ? spectatorRenderer.sharedMaterial.color.a : directionColor.a;
+            spectatorRenderer.GetPropertyBlock(properties);
+            properties.SetColor("_BaseColor", color);
+            spectatorRenderer.SetPropertyBlock(properties);
+        }
         prepareLocalView();
     }
 

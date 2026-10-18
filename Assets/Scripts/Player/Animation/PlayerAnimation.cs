@@ -18,6 +18,7 @@ public class PlayerAnimation : NetworkBehaviour
     private PlayerHealth health; //플레이어 생존 상태
     private PlayerItemController items; //기존 네트워크 아이템 장착 상태
     private PlayerLookVisualComponent lookVisual; //시선과 분리된 모델 방향의 이동 애니메이션
+    private PlayerFirstPersonItemView firstPersonView; //본인에게 표시할 제스처 진입점
     private int holdLayerIndex = -1; //팔 전용 아이템 들기 레이어
     private float holdResumeTime; //공격과 제스처 진입 중 Hold 덮어쓰기 방지
     private static readonly int isHoldingHash = Animator.StringToHash("IsHolding"); //아이템을 들고 있는 상태
@@ -28,6 +29,7 @@ public class PlayerAnimation : NetworkBehaviour
     internal void playAttack(float duration) //승인된 공격 간격에 맞춰 모션 재생
     {
         if (animator == null || (health != null && health.IsDead)) return;
+        if (HasInputAuthority) firstPersonView?.stopGesture();
         animator.SetFloat(attackSpeedHash, attackClip != null ? attackClip.length / Mathf.Max(0.01f, duration) : 1f);
         holdResumeTime = Mathf.Max(holdResumeTime, Time.time + Mathf.Max(0f, duration));
         if (holdLayerIndex >= 0) animator.SetLayerWeight(holdLayerIndex, 0f);
@@ -53,6 +55,7 @@ public class PlayerAnimation : NetworkBehaviour
         health = GetComponent<PlayerHealth>();
         items = GetComponent<PlayerItemController>();
         lookVisual = GetComponent<PlayerLookVisualComponent>();
+        firstPersonView = GetComponent<PlayerFirstPersonItemView>();
         if (animator != null) holdLayerIndex = animator.GetLayerIndex("Item Hold");
     }
 
@@ -89,6 +92,7 @@ public class PlayerAnimation : NetworkBehaviour
         holdResumeTime = Mathf.Max(holdResumeTime, Time.time + 0.25f);
         if (holdLayerIndex >= 0) animator.SetLayerWeight(holdLayerIndex, 0f);
         animator.SetTrigger(IsThumbsUp);
+        if (HasInputAuthority) firstPersonView?.showThumbsUp();
     }
 
     private void updateHold() //장착 상태는 기존 동기화 값을 사용하고 팔 모션만 로컬 표시

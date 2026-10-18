@@ -56,6 +56,13 @@ public class PlayerFirstPersonArmsComponent : MonoBehaviour
 
     internal void showItem(GameObject item) //팔 표시와 기존 도구 손 추적 연결
     {
+        show();
+        ItemWorldView view = item.GetComponent<ItemWorldView>(); //1인칭 도구의 장착 보정
+        if (view != null) view.setHeld(handPoint, true);
+    }
+
+    internal void show() //빈손 제스처와 장착에 공통인 팔 표시
+    {
         gameObject.SetActive(true);
         copyPose();
         if (sourceRenderer != null && !hidingBody)
@@ -64,8 +71,6 @@ public class PlayerFirstPersonArmsComponent : MonoBehaviour
             sourceRenderer.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
             hidingBody = true;
         }
-        ItemWorldView view = item.GetComponent<ItemWorldView>(); //1인칭 도구의 장착 보정
-        if (view != null) view.setHeld(handPoint, true);
     }
 
     internal void hide() //빈손과 사망 시 팔 표시 해제

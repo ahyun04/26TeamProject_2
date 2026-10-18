@@ -55,6 +55,7 @@ namespace LockdownProtocol.Lobby
         [Networked] public NetworkString<_32> RoomName { get; private set; }
         [Networked] public PlayerRef HostPlayerId { get; private set; }
         [Networked] public int MaxPlayerCount { get; private set; }
+        [Networked] public int KillerCount { get; private set; } //방장이 확정한 다음 경기의 살인마 수
         [Networked] public RoomState CurrentRoomState { get; private set; }
         [Networked] public NetworkBool IsPrivate { get; private set; }
         /// <summary>8자리 영숫자 초대 코드(소문자). Fusion SessionName과 동일 — 서버(호스트)만 설정.</summary>
@@ -68,6 +69,8 @@ namespace LockdownProtocol.Lobby
 
         public event Action<int> MaxPlayerChanged;
         public event Action<string> MaxPlayerChangeRejected;
+        public event Action<int> KillerCountChanged; //규칙 적용 결과 알림
+        public event Action<string> KillerCountChangeRejected; //규칙 변경 거부 알림
 
         public static RoomManager Instance { get; private set; }
 
@@ -88,6 +91,7 @@ namespace LockdownProtocol.Lobby
                 CurrentRoomState = RoomState.Waiting;
                 MaxPlayerCount = defaultMaxPlayerCount;
             }
+            if (HasStateAuthority && KillerCount < 1) KillerCount = 1;
 
             _lastKnownState = CurrentRoomState;
 
@@ -182,6 +186,35 @@ namespace LockdownProtocol.Lobby
             MaxPlayerChangeRejected?.Invoke(reason);
         }
 
+        internal int getMaximumKillerCount() //시민 한 명을 남길 수 있는 현재 인원 기준 상한
+        {
+            int count = 0; //현재 접속 인원
+            foreach (PlayerRef player in Runner.ActivePlayers) count++;
+            return Mathf.Max(1, count - 1);
+        }
+
+        internal void restoreKillerCount(int count) //씬 전환 후 호스트가 보관한 확정 규칙 복원
+        {
+            if (HasStateAuthority && CurrentRoomState == RoomState.Waiting)
+                KillerCount = Mathf.Clamp(count, 1, getMaximumKillerCount());
+        }
+
+        [Rpc(RpcSources.All, RpcTargets.StateAuthority, HostMode = RpcHostMode.SourceIsHostPlayer)]
+        public void RPC_RequestChangeKillerCount(int count, RpcInfo info = default) //호스트가 요청 권한과 시민 최소 인원 검증
+        {
+            if (info.Source != HostPlayerId) { RPC_KillerCountRejected(info.Source, "방장만 변경할 수 있습니다."); return; }
+            if (CurrentRoomState != RoomState.Waiting) { RPC_KillerCountRejected(info.Source, "게임 시작 전에만 변경할 수 있습니다."); return; }
+            if (count < 1 || count > getMaximumKillerCount()) { RPC_KillerCountRejected(info.Source, "시민이 최소 한 명 남도록 설정하세요."); return; }
+            KillerCount = count;
+            RPC_NotifyKillerCountChanged(count);
+        }
+
+        [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+        private void RPC_NotifyKillerCountChanged(int count) => KillerCountChanged?.Invoke(count); //확정한 설정 알림
+
+        [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+        private void RPC_KillerCountRejected([RpcTarget] PlayerRef target, string reason) => KillerCountChangeRejected?.Invoke(reason); //요청자에게 거부 이유 전달
+
         // ================== 방 나가기 ==================
 
         /// <summary>방 나가기 버튼(확인창 통과 후) -> 이 메서드 호출. 실제 Shutdown/씬 전환은 NetworkBootstrap이 담당.</summary>
@@ -250,6 +283,18 @@ namespace LockdownProtocol.Lobby
         {
             if (runner != Runner) return;
             if (!Object.HasStateAuthority) return;
+
+            if (CurrentRoomState == RoomState.Waiting)
+            {
+                int remaining = 0; //퇴장 콜백 시점에 남은 참가자 수
+                foreach (PlayerRef active in runner.ActivePlayers) if (active != player) remaining++;
+                int count = Mathf.Clamp(KillerCount, 1, Mathf.Max(1, remaining - 1)); //설정이 시민 최소 인원을 넘지 않도록 보정
+                if (KillerCount != count)
+                {
+                    KillerCount = count;
+                    RPC_NotifyKillerCountChanged(count);
+                }
+            }
 
             if (player != HostPlayerId) return;
 

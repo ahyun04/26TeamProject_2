@@ -51,7 +51,13 @@ namespace LockdownProtocol.Networking
             SimpleKCC playerKcc = GetComponent<SimpleKCC>(); //사망 위치와 시선 유지
             Vector2 lookRotation = playerKcc.GetLookRotation(); //사망 전 시선
             spawnedSpectator = Runner.Spawn(spectatorPrefab, playerKcc.Position,
-                Quaternion.Euler(0f, lookRotation.y, 0f), Object.InputAuthority);
+                Quaternion.Euler(0f, lookRotation.y, 0f), Object.InputAuthority,
+                onBeforeSpawned: (runner, spawned) =>
+                {
+                    PlayerAppearance appearance = GetComponent<PlayerAppearance>(); //사망한 캐릭터의 확정 색상
+                    SpectatorVisualComponent visual = spawned.GetComponent<SpectatorVisualComponent>(); //관전자 색상 진입점
+                    if (visual != null) visual.appearanceColorIndex = appearance != null ? appearance.colorIndex : 0;
+                });
             SimpleKCC spectatorKcc = spawnedSpectator.GetComponent<SimpleKCC>(); //관전자 이동 컨트롤러
             spectatorKcc.AddLookRotation(lookRotation - spectatorKcc.GetLookRotation(), -80f, 80f);
             spectatorObject = spawnedSpectator;

@@ -9,9 +9,19 @@ public class PlayerFirstPersonItemView : MonoBehaviour
     [SerializeField] private PlayerFirstPersonArmsComponent armsPrefab; //본인 시점의 팔과 손
     [SerializeField] private Animator playerAnimator; //기존 Hold와 공격 자세의 원본
     [SerializeField] private Vector3 armsPosition = new Vector3(-0.08f, -1.05f, 0.25f); //카메라 기준 팔 모델 위치
+    [SerializeField] private ItemData knifeData; //칼만 적용할 화면 위치 설정
+    [SerializeField] private Vector3 knifeArmsPosition = new Vector3(0.12f, -1.1f, 0.25f); //칼과 팔을 함께 오른쪽 아래로 이동
+    [SerializeField] private Vector3 gestureArmsPosition = new Vector3(0.02f, -0.68f, 1.2f); //엄지척을 보여줄 팔 위치
+    [SerializeField] private Vector3 gestureArmsRotation = new Vector3(-60f, 0f, 0f); //팔이 엄지를 가리지 않도록 본인 표시만 기울이는 각도
 
     private GameObject currentView;
     private PlayerFirstPersonArmsComponent arms; //로컬 플레이어에게만 생성하는 팔 표시
+    private ItemData displayedData; //제스처 종료 시 복원할 도구 위치
+    private bool showingGesture; //빈손에서도 제스처를 표시하는 상태
+    private bool gestureEntered; //Animator 제스처 진입 확인
+    private float gestureStartTime; //제스처 진입 대기 제한
+    private PlayerHealth health; //관전 전환 시 남은 제스처 표시 해제
+    private static readonly int gestureHash = Animator.StringToHash("IsThumbsUp"); //원본 제스처 상태
 
 
     public void Show(ItemData data)
@@ -38,7 +48,9 @@ public class PlayerFirstPersonItemView : MonoBehaviour
         currentView.transform.localRotation = Quaternion.identity;
 
         currentView.transform.localScale = data.FirstPersonPrefab.transform.localScale;
+        displayedData = data;
         if (arms != null) arms.showItem(currentView);
+        refreshPresentation();
     }
 
 
@@ -50,13 +62,60 @@ public class PlayerFirstPersonItemView : MonoBehaviour
             Destroy(currentView);
         }
         currentView = null;
-        if (arms != null) arms.hide();
+        displayedData = null;
+        refreshPresentation();
+    }
+
+    internal void showThumbsUp() //승인된 원본 애니메이션을 본인 팔에도 표시
+    {
+        if (armsPrefab == null || holdPoint == null || !prepareArms()) return;
+        showingGesture = true;
+        gestureEntered = false;
+        gestureStartTime = Time.time;
+        refreshPresentation();
+    }
+
+    internal void stopGesture() //공격과 사망 시 제스처 전용 표시 중단
+    {
+        if (!showingGesture) return;
+        showingGesture = false;
+        refreshPresentation();
+    }
+
+    private void LateUpdate() //제스처 종료와 공격 중단에 맞춰 장착 표시 복원
+    {
+        if (!showingGesture) return;
+        if (health != null && health.Object != null && health.Object.IsValid && !health.CanAct)
+        {
+            showingGesture = false;
+            if (arms != null) arms.hide();
+            return;
+        }
+        bool playing = playerAnimator != null &&
+            (playerAnimator.GetCurrentAnimatorStateInfo(0).shortNameHash == gestureHash ||
+             (playerAnimator.IsInTransition(0) && playerAnimator.GetNextAnimatorStateInfo(0).shortNameHash == gestureHash));
+        if (playing) gestureEntered = true;
+        if (playing || (!gestureEntered && Time.time - gestureStartTime < 0.5f)) return;
+        showingGesture = false;
+        refreshPresentation();
+    }
+
+    private void refreshPresentation() //제스처와 도구에 맞는 팔 위치와 표시 선택
+    {
+        if (arms == null) return;
+        arms.transform.localPosition = showingGesture ? gestureArmsPosition :
+            displayedData != null && displayedData == knifeData ? knifeArmsPosition : armsPosition;
+        arms.transform.localRotation = showingGesture ? Quaternion.Euler(gestureArmsRotation) : Quaternion.identity;
+        if (currentView != null) currentView.SetActive(!showingGesture);
+        if (showingGesture || currentView != null) arms.show();
+        else arms.hide();
     }
 
     private bool prepareArms() //최초 장착 시 카메라 아래에 팔을 한 번 생성
     {
         if (arms != null) return true;
         if (playerAnimator == null) playerAnimator = GetComponentInChildren<Animator>(true);
+        health = GetComponent<PlayerHealth>();
         arms = Instantiate(armsPrefab, holdPoint.parent);
         arms.transform.localPosition = armsPosition;
         arms.transform.localRotation = Quaternion.identity;
@@ -69,6 +128,7 @@ public class PlayerFirstPersonItemView : MonoBehaviour
 
     private void OnDisable() //플레이어 비활성화 시 로컬 장착 표시 정리
     {
+        showingGesture = false;
         Clear();
     }
 

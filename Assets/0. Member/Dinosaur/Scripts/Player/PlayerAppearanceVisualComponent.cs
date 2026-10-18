@@ -15,6 +15,8 @@ public class PlayerAppearanceVisualComponent : MonoBehaviour
     [SerializeField, Min(0f)] private float voiceHoldSeconds = 0.2f; //짧은 음성 간격의 발광 유지 시간
     [SerializeField, Min(0.0001f)] private float voiceThreshold = 0.01f; //무음 패킷을 제외할 음성 크기
     [SerializeField, Min(0.01f)] private float fadeSeconds = 0.12f; //발광이 사라지는 시간
+    [SerializeField, Min(0.01f)] private float damageFlashSeconds = 0.3f; //피격 몸 발광 유지와 복원 시간
+    [SerializeField, Min(0f)] private float damageEmissionStrength = 2f; //몸의 붉은 피격 발광 세기
 
     private static readonly int baseColorProperty = Shader.PropertyToID("_BaseColor"); //기본색 셰이더 속성
     private static readonly int baseMapProperty = Shader.PropertyToID("_BaseMap"); //거의 검정인 원본 기본색 텍스처의 개별 표시 보정
@@ -30,19 +32,24 @@ public class PlayerAppearanceVisualComponent : MonoBehaviour
     private float holdTimer; //발화 유지 남은 시간
     private float glow; //현재 발광 비율
     private Color appearanceColor = Color.white; //배정된 캐릭터 색상
+    private float damageFlashRemaining; //몸 피격 표시 남은 시간
+    private Material[] characterMaterials; //피격 후 복원할 각 몸 재질의 기본색
 
     private void Awake() //메시별 속성 블록 준비
     {
         if (characterRenderer == null) characterRenderer = GetComponentInChildren<SkinnedMeshRenderer>(true);
         bodyProperties = new MaterialPropertyBlock();
         faceProperties = new MaterialPropertyBlock();
+        characterMaterials = characterRenderer != null ? characterRenderer.sharedMaterials : System.Array.Empty<Material>();
         resetGlow();
     }
 
     internal void initialize(VoiceNetworkObject connection, PlayerHealth playerHealth, bool local) //기존 음성·생존 상태 연결
     {
         voiceObject = connection;
+        if (health != null) health.Damaged -= flashDamage;
         health = playerHealth;
+        if (health != null) health.Damaged += flashDamage;
         isLocal = local;
         initialized = true;
     }
@@ -50,16 +57,43 @@ public class PlayerAppearanceVisualComponent : MonoBehaviour
     internal void setColor(Color color) //공유 재질을 수정하지 않고 해당 캐릭터만 색상 적용
     {
         appearanceColor = color;
+        applyBody();
+        applyGlow();
+    }
+
+    private void flashDamage() //기존 네트워크 피해 알림으로 모든 화면의 몸 표시 갱신
+    {
+        damageFlashRemaining = damageFlashSeconds;
+        applyBody();
+    }
+
+    private void applyBody() //피격 후 선택한 원래 색상을 그대로 복원
+    {
         if (characterRenderer == null) return;
+        float amount = Mathf.Clamp01(damageFlashRemaining / damageFlashSeconds); //피격 색의 복원 비율
         characterRenderer.GetPropertyBlock(bodyProperties, bodyMaterialIndex);
-        bodyProperties.SetColor(baseColorProperty, color);
+        bodyProperties.SetColor(baseColorProperty, Color.Lerp(appearanceColor, Color.red, amount));
+        bodyProperties.SetColor(emissionProperty, Color.red * (damageEmissionStrength * amount));
         bodyProperties.SetTexture(baseMapProperty, Texture2D.whiteTexture);
         characterRenderer.SetPropertyBlock(bodyProperties, bodyMaterialIndex);
-        applyGlow();
+        for (int index = 0; index < characterMaterials.Length; index++)
+        {
+            Material material = characterMaterials[index]; //얼굴을 제외한 흰색 장비와 몸의 원래 재질
+            if (index == bodyMaterialIndex || index == faceMaterialIndex || material == null) continue;
+            characterRenderer.GetPropertyBlock(bodyProperties, index);
+            bodyProperties.SetColor(baseColorProperty, Color.Lerp(material.GetColor(baseColorProperty), Color.red, amount));
+            bodyProperties.SetColor(emissionProperty, Color.Lerp(material.GetColor(emissionProperty), Color.red * damageEmissionStrength, amount));
+            characterRenderer.SetPropertyBlock(bodyProperties, index);
+        }
     }
 
     private void Update() //실제 송신·수신 음성으로 로컬 발광 갱신
     {
+        if (damageFlashRemaining > 0f)
+        {
+            damageFlashRemaining = Mathf.Max(0f, damageFlashRemaining - Time.unscaledDeltaTime);
+            applyBody();
+        }
         if (!initialized) return;
         if (health == null || !health.CanAct || voiceObject == null)
         {
@@ -128,6 +162,9 @@ public class PlayerAppearanceVisualComponent : MonoBehaviour
 
     internal void releaseVoice() //비활성 캐릭터의 음성 구독과 표시 정리
     {
+        if (health != null) health.Damaged -= flashDamage;
+        damageFlashRemaining = 0f;
+        applyBody();
         initialized = false;
         bindRemoteVoice(null);
         resetGlow();
@@ -135,12 +172,23 @@ public class PlayerAppearanceVisualComponent : MonoBehaviour
 
     private void OnDisable() //비활성화된 표시의 수신과 발광 해제
     {
+        if (health != null) health.Damaged -= flashDamage;
+        damageFlashRemaining = 0f;
+        applyBody();
         bindRemoteVoice(null);
         resetGlow();
     }
 
+    private void OnEnable() //같은 캐릭터를 다시 활성화해도 피해 구독 한 번 유지
+    {
+        if (!initialized || health == null) return;
+        health.Damaged -= flashDamage;
+        health.Damaged += flashDamage;
+    }
+
     private void OnDestroy() //남은 음성 구독 해제
     {
+        if (health != null) health.Damaged -= flashDamage;
         bindRemoteVoice(null);
     }
 }

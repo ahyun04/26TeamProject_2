@@ -1,4 +1,4 @@
-using LockdownProtocol.Lobby;
+﻿using LockdownProtocol.Lobby;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -32,6 +32,9 @@ public class GameSettingsUIComponent : MonoBehaviour
     [SerializeField] private GameObject customizationPage; //색상 팔레트와 모델 미리보기 페이지
     [SerializeField] private Button lobbyTabButton; //참가자와 방 설정 탭
     [SerializeField] private GameObject lobbyPage; //기존 방 기능을 통합한 페이지
+    [SerializeField] private Button rulesTabButton; //규칙 탭 선택
+    [SerializeField] private GameObject rulesPage; //살인마 수 설정 페이지
+    [SerializeField] private RuleSettingsUIComponent rulesUI; //공유 규칙 진입점
     [SerializeField] private LobbySettingsUIComponent lobbyUI; //방 설정과 기존 네트워크 기능 연결
     [SerializeField] private Button applyButton; //설정 적용과 저장
     [SerializeField] private Button cancelButton; //미적용 설정 취소
@@ -51,10 +54,12 @@ public class GameSettingsUIComponent : MonoBehaviour
     private int toggleFrame = -1; //Esc로 닫은 프레임의 입력 재사용 방지
     private bool soundSelected = true; //현재 열린 설정 탭
     private bool customizationSelected; //현재 커스터마이징 탭 선택 여부
+    private bool rulesSelected; //현재 규칙 탭 선택 여부
     private bool lobbySelected; //현재 로비 탭 선택 여부
     private bool applying; //방 설정의 서버 응답 대기 여부
     private bool auxiliaryModal; //기존 초대·나가기 창에서 돌아올 상태
     internal bool isLobbyOpen => isOpen && lobbySelected && !auxiliaryModal; //기존 방 UI와 공용 열림 상태
+    internal bool hasPendingRules => isOpen && rulesUI != null && rulesUI.hasPendingChange; //게임 시작 전에 적용할 공유 규칙
     private UnityAction<string>[] volumeInputActions; //숫자 입력 구독 해제에 사용할 함수
     private UnityAction[] decreaseActions; //감소 버튼 구독 해제에 사용할 함수
     private UnityAction[] increaseActions; //증가 버튼 구독 해제에 사용할 함수
@@ -75,6 +80,7 @@ public class GameSettingsUIComponent : MonoBehaviour
         controlsTabButton?.onClick.AddListener(showControlsTab);
         customizationTabButton?.onClick.AddListener(showCustomizationTab);
         lobbyTabButton?.onClick.AddListener(showLobbyTab);
+        rulesTabButton?.onClick.AddListener(showRulesTab);
         applyButton?.onClick.AddListener(apply);
         cancelButton?.onClick.AddListener(close);
         defaultsButton?.onClick.AddListener(restoreDefaults);
@@ -158,6 +164,7 @@ public class GameSettingsUIComponent : MonoBehaviour
         owner.beginSettingsEditing();
         PlayerAppearance.beginCustomization();
         lobbyUI?.beginEditing();
+        rulesUI?.beginEditing();
         applying = false;
         refreshApplyState();
         isOpen = true;
@@ -176,6 +183,7 @@ public class GameSettingsUIComponent : MonoBehaviour
         owner.cancelSettings();
         PlayerAppearance.cancelCustomization();
         lobbyUI?.endEditing();
+        rulesUI?.endEditing();
         finishClose();
     }
 
@@ -184,6 +192,7 @@ public class GameSettingsUIComponent : MonoBehaviour
         if (!isOpen || applying) return;
         finishVolumeInput();
         lobbyUI?.finishInput();
+        rulesUI?.finishInput();
         if (lobbyUI != null && lobbyUI.hasPendingChange)
         {
             applying = true;
@@ -192,10 +201,32 @@ public class GameSettingsUIComponent : MonoBehaviour
             lobbyUI.applyMaximum(handleRoomApplied);
             return;
         }
-        applyLocalSettings();
+        applyRulesOrLocal();
     }
 
     private void handleRoomApplied(bool accepted, string reason) //공유 설정 승인 뒤 개인 설정 저장
+    {
+        if (!isOpen) return;
+        applying = false;
+        refreshApplyState();
+        if (accepted) applyRulesOrLocal();
+        else if (saveHintText != null) saveHintText.text = reason;
+    }
+
+    private void applyRulesOrLocal() //방 인원 적용 후 공유 규칙과 개인 설정 순서로 확정
+    {
+        if (rulesUI != null && rulesUI.hasPendingChange)
+        {
+            applying = true;
+            refreshApplyState();
+            if (saveHintText != null) saveHintText.text = "살인마 수를 적용하는 중입니다.";
+            rulesUI.applyCount(handleRulesApplied);
+            return;
+        }
+        applyLocalSettings();
+    }
+
+    private void handleRulesApplied(bool accepted, string reason) //공유 규칙 승인 뒤 개인 설정 저장
     {
         if (!isOpen) return;
         applying = false;
@@ -225,6 +256,7 @@ public class GameSettingsUIComponent : MonoBehaviour
         owner.restoreDefaultSettings();
         PlayerAppearance.restoreDefaults();
         lobbyUI?.restoreDefaults();
+        rulesUI?.restoreDefaults();
         refreshValues();
     }
 
@@ -234,6 +266,7 @@ public class GameSettingsUIComponent : MonoBehaviour
         applying = false;
         auxiliaryModal = false;
         lobbyUI?.endEditing();
+        rulesUI?.endEditing();
         refreshApplyState();
         toggleFrame = Time.frameCount;
         panel.SetActive(false);
@@ -338,6 +371,8 @@ public class GameSettingsUIComponent : MonoBehaviour
     private void showSoundTab() //임시 설정을 유지하면서 사운드 탭 선택
     {
         finishVolumeInput();
+        rulesUI?.finishInput();
+        rulesSelected = false;
         soundSelected = true;
         customizationSelected = false;
         lobbySelected = false;
@@ -347,6 +382,8 @@ public class GameSettingsUIComponent : MonoBehaviour
     private void showControlsTab() //현재 키 안내 탭 선택
     {
         finishVolumeInput();
+        rulesUI?.finishInput();
+        rulesSelected = false;
         soundSelected = false;
         customizationSelected = false;
         lobbySelected = false;
@@ -356,6 +393,8 @@ public class GameSettingsUIComponent : MonoBehaviour
     private void showCustomizationTab() //기존 임시 설정을 유지하면서 색상 탭 선택
     {
         finishVolumeInput();
+        rulesUI?.finishInput();
+        rulesSelected = false;
         customizationSelected = true;
         lobbySelected = false;
         refreshTab();
@@ -364,8 +403,20 @@ public class GameSettingsUIComponent : MonoBehaviour
     private void showLobbyTab() //기존 방 상태를 같은 설정창에서 표시
     {
         finishVolumeInput();
+        rulesUI?.finishInput();
+        rulesSelected = false;
         customizationSelected = false;
         lobbySelected = true;
+        refreshTab();
+    }
+
+    private void showRulesTab() //편집 중인 값을 유지하면서 규칙 표시
+    {
+        finishVolumeInput();
+        lobbyUI?.finishInput();
+        rulesSelected = true;
+        customizationSelected = false;
+        lobbySelected = false;
         refreshTab();
     }
 
@@ -394,15 +445,17 @@ public class GameSettingsUIComponent : MonoBehaviour
 
     private void refreshTab() //현재 페이지와 아이콘 탭의 선택 배경 표시
     {
-        if (soundPage != null) soundPage.SetActive(!lobbySelected && !customizationSelected && soundSelected);
-        if (controlsPage != null) controlsPage.SetActive(!lobbySelected && !customizationSelected && !soundSelected);
+        if (soundPage != null) soundPage.SetActive(!rulesSelected && !lobbySelected && !customizationSelected && soundSelected);
+        if (controlsPage != null) controlsPage.SetActive(!rulesSelected && !lobbySelected && !customizationSelected && !soundSelected);
         if (customizationPage != null) customizationPage.SetActive(customizationSelected);
         if (lobbyPage != null) lobbyPage.SetActive(lobbySelected);
+        if (rulesPage != null) rulesPage.SetActive(rulesSelected);
         if (saveHintText != null) saveHintText.text = lobbySelected ? "적용을 누르면 방 최대 인원이 변경됩니다." : "적용을 누르면 변경 사항이 저장됩니다.";
         if (selectedTabSprite == null || neutralTabSprite == null) return;
-        if (soundTabButton != null) soundTabButton.image.sprite = !lobbySelected && !customizationSelected && soundSelected ? selectedTabSprite : neutralTabSprite;
-        if (controlsTabButton != null) controlsTabButton.image.sprite = !lobbySelected && !customizationSelected && !soundSelected ? selectedTabSprite : neutralTabSprite;
+        if (soundTabButton != null) soundTabButton.image.sprite = !rulesSelected && !lobbySelected && !customizationSelected && soundSelected ? selectedTabSprite : neutralTabSprite;
+        if (controlsTabButton != null) controlsTabButton.image.sprite = !rulesSelected && !lobbySelected && !customizationSelected && !soundSelected ? selectedTabSprite : neutralTabSprite;
         if (customizationTabButton != null) customizationTabButton.image.sprite = customizationSelected ? selectedTabSprite : neutralTabSprite;
+        if (rulesTabButton != null) rulesTabButton.image.sprite = rulesSelected ? selectedTabSprite : neutralTabSprite;
         if (lobbyTabButton != null) lobbyTabButton.image.sprite = lobbySelected ? selectedTabSprite : neutralTabSprite;
     }
 
@@ -458,6 +511,7 @@ public class GameSettingsUIComponent : MonoBehaviour
         controlsTabButton?.onClick.RemoveListener(showControlsTab);
         customizationTabButton?.onClick.RemoveListener(showCustomizationTab);
         lobbyTabButton?.onClick.RemoveListener(showLobbyTab);
+        rulesTabButton?.onClick.RemoveListener(showRulesTab);
         applyButton?.onClick.RemoveListener(apply);
         cancelButton?.onClick.RemoveListener(close);
         defaultsButton?.onClick.RemoveListener(restoreDefaults);

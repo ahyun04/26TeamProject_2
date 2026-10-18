@@ -43,6 +43,7 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
     private bool _leaving;
     private string _roomName;
     private int _maxPlayers;
+    private int killerCount = 1; //씬 전환 동안 유지할 확정 살인마 수
     private bool _isPrivate;
     private bool sessionConnected; //실제 방 입장 여부
     private bool disconnected; //연결 종료 안내 중복 방지
@@ -162,6 +163,7 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
         _sessionBusy = true;
         _roomName = roomName ?? sessionName;
         _maxPlayers = Mathf.Clamp(maxPlayers, 2, 10);
+        killerCount = 1;
         _isPrivate = isPrivate;
         try
         {
@@ -249,11 +251,17 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
 
     internal void retainRoomSettings(RoomManager room) //게임 씬에서 방 오브젝트가 사라지기 전에 확정 설정 보존
     {
-        if (_runner == null || !_runner.IsServer || room == null || room.Object == null ||
+        if (_runner == null || room == null || room.Object == null ||
             !room.Object.IsValid || room.Runner != _runner) return;
         _roomName = room.RoomName.ToString();
         _maxPlayers = room.MaxPlayerCount;
+        killerCount = room.KillerCount;
         _isPrivate = room.IsPrivate;
+    }
+
+    internal int getKillerCount(NetworkRunner source) //같은 세션의 게임 씬에서 확정 규칙 조회
+    {
+        return source != null && source == _runner ? killerCount : 1;
     }
 
     internal bool prepareGameResult(NetworkRunner source, PlayerRole role, PlayerResult result) //같은 세션의 본인 결과와 검은 화면 보관
@@ -301,7 +309,10 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
             SceneRef roomScene = GetSceneRefByName(roomSceneName);
             RoomManager room = RoomManager.Instance; //같은 방에서 적용한 정원을 복귀 후에도 유지
             if (room != null && room.Object != null && room.Object.IsValid && room.Runner == _runner)
+            {
                 _maxPlayers = room.MaxPlayerCount;
+                killerCount = room.KillerCount;
+            }
             RoomManager.Instance?.SetRoomState(RoomManager.RoomState.Ending);
             foreach (PlayerRef player in _runner.ActivePlayers)
             {
@@ -450,6 +461,7 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
                 // OnSceneLoadDone에서 InitializeRoom이 다시 불려도 값이 덮어써지지 않도록 복구된 값으로 맞춰둔다.
                 _roomName = room.RoomName.ToString();
                 _maxPlayers = room.MaxPlayerCount;
+                killerCount = room.KillerCount;
                 _isPrivate = room.IsPrivate;
                 room.RecoverAfterHostMigration(runner.LocalPlayer);
             }
@@ -479,12 +491,16 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
                 room = runner.Spawn(roomManagerPrefab).GetComponent<RoomManager>();
             }
             room.InitializeRoom(_roomName, _maxPlayers, _isPrivate, runner.LocalPlayer);
+            room.restoreKillerCount(killerCount);
         }
         OnSceneLoadDoneEvent?.Invoke(runner);
         if (resultFeedback != null && runner.SceneManager != null && runner.SceneManager.MainRunnerScene.name == roomSceneName)
             resultFeedback.showAfterSceneLoad(runner, roomSceneName);
     }
-    public void OnSceneLoadStart(NetworkRunner runner) { }
+    public void OnSceneLoadStart(NetworkRunner runner) //각 클라이언트가 씬 제거 전에 확정 규칙 보관
+    {
+        if (runner == _runner) retainRoomSettings(RoomManager.Instance);
+    }
     public void OnObjectExitAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
     public void OnObjectEnterAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
     public void OnUserSimulationMessage(NetworkRunner runner, SimulationMessagePtr message) { }
