@@ -6,10 +6,12 @@ namespace LockdownProtocol.Lobby
 {
     public class LobbyPlayerController : NetworkBehaviour
     {
+        private const int MaxNicknameLength = 12;
+
         [Networked] public NetworkString<_16> Nickname { get; private set; }
         [Networked] public NetworkBool IsReady { get; private set; }
         [Networked] public NetworkBool IsHost { get; private set; }
-        [Networked] public NetworkBool IsTalking { get; private set; } 
+        [Networked] public NetworkBool IsTalking { get; private set; }
         [Networked] public int JoinOrder { get; private set; }
 
         public event System.Action<bool> ReadyChanged;
@@ -18,8 +20,10 @@ namespace LockdownProtocol.Lobby
         {
             if (Object.HasInputAuthority)
             {
-                // 로컬 플레이어 초기 닉네임 세팅
-                RPC_SetNickname($"Player_{Object.InputAuthority.PlayerId}");
+                // 로컬 플레이어 초기 닉네임 세팅: Main 씬에서 입력한 닉네임, 없으면 Player_{번호}
+                string fallback = $"Player_{Object.InputAuthority.PlayerId}";
+                string nickname = NicknamePopupUI.HasSavedNickname() ? NicknamePopupUI.GetSavedNickname() : fallback;
+                RPC_SetNickname(string.IsNullOrWhiteSpace(nickname) ? fallback : nickname);
 
                 string roomId = RoomManager.Instance != null ? RoomManager.Instance.RoomName.ToString() : null;
                 bool isInGame = RoomManager.Instance != null && RoomManager.Instance.CurrentRoomState == RoomManager.RoomState.Playing;
@@ -97,7 +101,12 @@ namespace LockdownProtocol.Lobby
         [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
         private void RPC_SetNickname(string nickname)
         {
-            Nickname = nickname;
+            // 호스트 쪽에서 한 번 더 정리: 태그 문자 제거, 공백 제거, 길이 제한
+            string cleaned = (nickname ?? string.Empty).Replace("<", string.Empty).Replace(">", string.Empty).Trim();
+            if (cleaned.Length > MaxNicknameLength) cleaned = cleaned.Substring(0, MaxNicknameLength);
+            if (cleaned.Length == 0) cleaned = $"Player_{Object.InputAuthority.PlayerId}";
+
+            Nickname = cleaned;
         }
 
         // ================== 방장 지정 ==================
