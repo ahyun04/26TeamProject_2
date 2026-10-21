@@ -24,9 +24,11 @@ namespace LockdownProtocol.Lobby
             if (crownIcon != null) crownIcon.SetActive(isHost);
         }
 
-        internal void bindForSettings(string nickname, bool isReady, bool isHost, bool isLocal, Color color) //기존 표시에 본인·색상·준비 배경 연결
+        internal void bindForSettings(string nickname, bool isReady, bool isHost, bool isLocal, Color color, bool showReady = true) //기존 표시에 본인·색상·준비 배경 연결
         {
             Bind(nickname, isReady, isHost);
+            if (readyStateText != null) readyStateText.gameObject.SetActive(showReady);
+            if (readyBackground != null) readyBackground.gameObject.SetActive(showReady);
             if (localIndicator != null) localIndicator.SetActive(isLocal);
             if (avatarImage != null) avatarImage.color = color;
             if (avatarBackground != null) avatarBackground.color = new Color(color.r * 0.32f, color.g * 0.32f, color.b * 0.32f, 1f);

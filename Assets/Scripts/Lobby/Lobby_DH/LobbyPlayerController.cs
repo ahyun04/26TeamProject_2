@@ -8,20 +8,24 @@ namespace LockdownProtocol.Lobby
     {
         private const int MaxNicknameLength = 12;
 
-        [Networked] public NetworkString<_16> Nickname { get; private set; }
+        [Networked, OnChangedRender(nameof(retainLobbyIdentity))] public NetworkString<_16> Nickname { get; private set; }
         [Networked] public NetworkBool IsReady { get; private set; }
         [Networked] public NetworkBool IsHost { get; private set; }
         [Networked] public NetworkBool IsTalking { get; private set; }
-        [Networked] public int JoinOrder { get; private set; }
+        [Networked, OnChangedRender(nameof(retainLobbyIdentity))] public int JoinOrder { get; private set; }
+
+        private NetworkBootstrap bootstrap; //씬 전환 후에도 참가자 표시 정보를 유지할 진입점
 
         public event System.Action<bool> ReadyChanged;
 
         public override void Spawned()
         {
+            bootstrap = FindFirstObjectByType<NetworkBootstrap>();
             if (Object.HasInputAuthority)
             {
-                // 로컬 플레이어 초기 닉네임 세팅: Main 씬에서 입력한 닉네임, 없으면 Player_{번호}
-                string fallback = $"Player_{Object.InputAuthority.PlayerId}";
+                // Main에서 선택한 닉네임을 우선하고 저장값이 없으면 보존한 이름 사용
+                string fallback = bootstrap != null ? bootstrap.getLobbyIdentity(Object.InputAuthority).nickname
+                    : $"Player_{Object.InputAuthority.PlayerId}";
                 string nickname = NicknamePopupUI.HasSavedNickname() ? NicknamePopupUI.GetSavedNickname() : fallback;
                 RPC_SetNickname(string.IsNullOrWhiteSpace(nickname) ? fallback : nickname);
 
@@ -43,6 +47,17 @@ namespace LockdownProtocol.Lobby
                     IsHost = isHost;
                 }
             }
+            retainLobbyIdentity();
+        }
+
+        private void retainLobbyIdentity() //초기 생성과 복제 값 변경 시 이름과 입장 순서 보관
+        {
+            if (bootstrap != null) bootstrap.retainLobbyIdentity(this);
+        }
+
+        public override void Render() //본인 화면에서 확정 방 정보를 씬 제거 전에 보관
+        {
+            if (Object.HasInputAuthority && bootstrap != null) bootstrap.retainRoomSettings(RoomManager.Instance);
         }
 
         public override void Despawned(NetworkRunner runner, bool hasState)
@@ -107,6 +122,7 @@ namespace LockdownProtocol.Lobby
             if (cleaned.Length == 0) cleaned = $"Player_{Object.InputAuthority.PlayerId}";
 
             Nickname = cleaned;
+            retainLobbyIdentity();
         }
 
         // ================== 방장 지정 ==================
@@ -127,6 +143,7 @@ namespace LockdownProtocol.Lobby
         {
             if (!Object.HasStateAuthority) return;
             JoinOrder = order;
+            retainLobbyIdentity();
         }
     }
 }

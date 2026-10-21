@@ -99,6 +99,7 @@ public class GameSettingsUIComponent : MonoBehaviour
         sceneName = currentSceneName;
         gameEndSystem = null;
         close();
+        refreshTab();
         toggleFrame = -1;
         bool hasSceneEventSystem = false;
         foreach (EventSystem eventSystem in FindObjectsByType<EventSystem>(FindObjectsSortMode.None))
@@ -402,6 +403,7 @@ public class GameSettingsUIComponent : MonoBehaviour
 
     private void showLobbyTab() //기존 방 상태를 같은 설정창에서 표시
     {
+        if (sceneName == "Main") return;
         finishVolumeInput();
         rulesUI?.finishInput();
         rulesSelected = false;
@@ -445,6 +447,13 @@ public class GameSettingsUIComponent : MonoBehaviour
 
     private void refreshTab() //현재 페이지와 아이콘 탭의 선택 배경 표시
     {
+        bool lobbyAvailable = sceneName != "Main"; //메인 화면에서는 방 참가자 탭 선택 차단
+        if (lobbyTabButton != null) lobbyTabButton.interactable = lobbyAvailable;
+        if (!lobbyAvailable && lobbySelected)
+        {
+            lobbySelected = false;
+            soundSelected = true;
+        }
         if (soundPage != null) soundPage.SetActive(!rulesSelected && !lobbySelected && !customizationSelected && soundSelected);
         if (controlsPage != null) controlsPage.SetActive(!rulesSelected && !lobbySelected && !customizationSelected && !soundSelected);
         if (customizationPage != null) customizationPage.SetActive(customizationSelected);

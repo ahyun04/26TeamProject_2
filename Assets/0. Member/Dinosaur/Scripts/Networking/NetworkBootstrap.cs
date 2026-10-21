@@ -44,6 +44,8 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
     private string _roomName;
     private int _maxPlayers;
     private int killerCount = 1; //씬 전환 동안 유지할 확정 살인마 수
+    private PlayerRef roomHost; //씬 전환 동안 유지할 방장
+    private readonly Dictionary<PlayerRef, (string nickname, int joinOrder)> lobbyIdentities = new(); //현재 세션의 참가자 이름과 입장 순서
     private bool _isPrivate;
     private bool sessionConnected; //실제 방 입장 여부
     private bool disconnected; //연결 종료 안내 중복 방지
@@ -198,6 +200,8 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
     /// <summary>NetworkRunner와 연동 컴포넌트를 담을 새 자식 오브젝트를 매 시도마다 새로 만든다.</summary>
     private void PrepareRunner()
     {
+        lobbyIdentities.Clear();
+        roomHost = PlayerRef.None;
         if (_runnerObject != null)
         {
             Destroy(_runnerObject);
@@ -253,10 +257,37 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
     {
         if (_runner == null || room == null || room.Object == null ||
             !room.Object.IsValid || room.Runner != _runner) return;
-        _roomName = room.RoomName.ToString();
+        if (!room.RoomName.Equals(_roomName)) _roomName = room.RoomName.ToString();
         _maxPlayers = room.MaxPlayerCount;
         killerCount = room.KillerCount;
         _isPrivate = room.IsPrivate;
+        roomHost = room.HostPlayerId;
+    }
+
+    internal void retainLobbyIdentity(LobbyPlayerController player) //대기실 객체가 제거되기 전에 확정 참가자 정보 보관
+    {
+        if (player == null || player.Object == null || !player.Object.IsValid || player.Runner != _runner ||
+            SceneManager.GetActiveScene().name != roomSceneName) return;
+        PlayerRef actor = player.Object.InputAuthority; //정보가 속한 참가자
+        string nickname = player.Nickname.ToString(); //복제된 참가자 이름
+        if (string.IsNullOrEmpty(nickname) && lobbyIdentities.TryGetValue(actor, out var previous)) nickname = previous.nickname;
+        lobbyIdentities[actor] = (nickname, player.JoinOrder);
+    }
+
+    internal (string nickname, int joinOrder) getLobbyIdentity(PlayerRef player) //같은 세션에서 보존한 표시용 참가자 정보 조회
+    {
+        bool retained = lobbyIdentities.TryGetValue(player, out var identity); //보존한 표시 정보 유무
+        return (string.IsNullOrEmpty(identity.nickname) ? $"Player_{player.PlayerId}" : identity.nickname,
+            retained ? identity.joinOrder : int.MaxValue);
+    }
+
+    internal bool tryGetRoomSession(out NetworkRunner runner, out string roomName, out int maximum, out PlayerRef host) //게임 중 목록이 사용할 현재 세션과 확정 방 정보
+    {
+        runner = _runner;
+        roomName = _roomName;
+        maximum = _maxPlayers;
+        host = roomHost;
+        return runner != null && runner.IsRunning && sessionConnected && !disconnected && !_leaving && !_isMigrating;
     }
 
     internal int getKillerCount(NetworkRunner source) //같은 세션의 게임 씬에서 확정 규칙 조회
@@ -365,6 +396,7 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
 
     public void OnPlayerLeft(NetworkRunner runner, PlayerRef player)
     {
+        if (runner == _runner) lobbyIdentities.Remove(player);
         OnPlayerLeftEvent?.Invoke(runner, player);
     }
 
