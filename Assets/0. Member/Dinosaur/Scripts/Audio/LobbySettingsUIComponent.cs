@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Fusion;
 using LockdownProtocol.Lobby;
 using TMPro;
 using UnityEngine;
@@ -33,7 +34,9 @@ public class LobbySettingsUIComponent : MonoBehaviour
     [SerializeField, Min(1f)] private float responseTimeout = 8f; //인원 변경 응답 대기 한도
 
     private readonly List<LobbyPlayerController> players = new(); //같은 Runner의 유효 참가자
+    private readonly List<PlayerRef> gamePlayers = new(); //사망·관전 여부와 관계없이 접속 중인 참가자
     private readonly List<PlayerListEntryUI> entries = new(); //재사용할 목록 행
+    private NetworkBootstrap bootstrap; //씬 전환 후 유지되는 세션 정보 진입점
     private RoomManager room; //기존 방 상태 진입점
     private LobbyGameStartManager startManager; //기존 시작 조건 진입점
     private LobbyPlayerController localPlayer; //본인의 준비 요청 대상
@@ -137,7 +140,24 @@ public class LobbySettingsUIComponent : MonoBehaviour
     private void refresh() //서버 확정 상태로 목록·권한·시작 조건 표시
     {
         players.Clear();
+        gamePlayers.Clear();
         localPlayer = null;
+        if (bootstrap == null) bootstrap = FindFirstObjectByType<NetworkBootstrap>();
+        NetworkRunner gameRunner = null; //게임 중 목록의 실제 접속 세션
+        string gameRoomName = string.Empty; //보존된 방 이름
+        int gameMaximum = 0; //보존된 확정 정원
+        PlayerRef gameHost = PlayerRef.None; //보존된 방장
+        bool inGame = SceneManager.GetActiveScene().name == "GamePlay" && bootstrap != null &&
+            bootstrap.tryGetRoomSession(out gameRunner, out gameRoomName, out gameMaximum, out gameHost); //대기실 객체 없이 조회 가능한 게임 세션
+        if (inGame)
+        {
+            foreach (PlayerRef player in gameRunner.ActivePlayers) gamePlayers.Add(player);
+            gamePlayers.Sort((left, right) =>
+            {
+                int order = bootstrap.getLobbyIdentity(left).joinOrder.CompareTo(bootstrap.getLobbyIdentity(right).joinOrder); //기존 대기실의 입장 순서 유지
+                return order != 0 ? order : left.PlayerId.CompareTo(right.PlayerId);
+            });
+        }
         if (room != null)
         {
             foreach (LobbyPlayerController player in FindObjectsByType<LobbyPlayerController>(FindObjectsSortMode.None))
@@ -156,11 +176,22 @@ public class LobbySettingsUIComponent : MonoBehaviour
             }
         }
         int readyCount = 0; //준비 완료 참가자
-        while (entries.Count < players.Count) entries.Add(Instantiate(playerEntryPrefab, playerListContainer));
+        int playerCount = inGame ? gamePlayers.Count : players.Count; //현재 화면에 표시할 실제 참가 인원
+        while (entries.Count < playerCount) entries.Add(Instantiate(playerEntryPrefab, playerListContainer));
         for (int i = 0; i < entries.Count; i++)
         {
-            entries[i].gameObject.SetActive(i < players.Count);
-            if (i >= players.Count) continue;
+            entries[i].gameObject.SetActive(i < playerCount);
+            if (i >= playerCount) continue;
+            if (inGame)
+            {
+                PlayerRef actor = gamePlayers[i]; //표시할 접속 참가자
+                NetworkObject actorObject = gameRunner.GetPlayerObject(actor); //사망 후에도 유지되는 원래 플레이어 객체
+                PlayerAppearance gameAppearance = actorObject != null && actorObject.IsValid ? actorObject.GetComponent<PlayerAppearance>() : null; //기존 확정 캐릭터 색상
+                Color gameColor = gameAppearance != null ? PlayerAppearance.getColor(gameAppearance.colorIndex) : Color.gray; //접속 참가자의 아바타 색상
+                entries[i].bindForSettings(bootstrap.getLobbyIdentity(actor).nickname, false,
+                    actor == gameHost, actor == gameRunner.LocalPlayer, gameColor, false);
+                continue;
+            }
             LobbyPlayerController player = players[i]; //표시할 참가자
             PlayerAppearance appearance = player.GetComponent<PlayerAppearance>(); //기존 확정 캐릭터 색상
             Color color = appearance != null ? PlayerAppearance.getColor(appearance.colorIndex) : Color.gray; //아바타 색상
@@ -168,19 +199,19 @@ public class LobbySettingsUIComponent : MonoBehaviour
                 room.HostPlayerId == player.Object.InputAuthority, player == localPlayer, color);
             if (player.IsReady) readyCount++;
         }
-        int maximum = room != null ? room.MaxPlayerCount : 0; //서버 확정 정원
-        playerCountText.text = $"{players.Count} / {maximum}명";
-        currentCountText.text = $"{players.Count}명";
-        readyCountText.text = $"{readyCount} / {players.Count}명";
+        int maximum = inGame ? gameMaximum : room != null ? room.MaxPlayerCount : 0; //서버 확정 정원
+        playerCountText.text = $"{playerCount} / {maximum}명";
+        currentCountText.text = $"{playerCount}명";
+        readyCountText.text = inGame ? "—" : $"{readyCount} / {playerCount}명";
         bool ready = localPlayer != null && localPlayer.IsReady; //본인의 확정 준비 상태
-        myReadyText.text = ready ? "준비 완료" : "준비 안 됨";
+        myReadyText.text = inGame ? "게임 진행 중" : ready ? "준비 완료" : "준비 안 됨";
         myReadyText.color = ready ? new Color(0.45f, 0.9f, 0.37f) : new Color(0.6f, 0.67f, 0.75f);
         if (myReadyBackground != null) myReadyBackground.color = ready ? new Color(0.18f, 0.63f, 0.22f) : new Color(0.55f, 0.67f, 0.82f);
         readyButtonText.text = ready ? "준비 취소" : "준비";
         readyButton.interactable = canUseRoom() && localPlayer != null && applyCompleted == null;
         bool canEdit = canEditMaximum(); //정원 UI 입력 권한
         maximumInput.interactable = canEdit;
-        if (!maximumInput.isFocused) maximumInput.SetTextWithoutNotify(room != null ? draftMaximum.ToString() : "—");
+        if (!maximumInput.isFocused) maximumInput.SetTextWithoutNotify(inGame ? gameMaximum.ToString() : room != null ? draftMaximum.ToString() : "—");
         decreaseButton.interactable = canEdit && draftMaximum > Mathf.Max(RoomManager.AbsoluteMinPlayers, players.Count);
         increaseButton.interactable = canEdit && draftMaximum < RoomManager.AbsoluteMaxPlayers;
         int minimum = startManager != null ? startManager.minimumPlayerCount : RoomManager.AbsoluteMinPlayers; //실제 최소 시작 인원
@@ -195,11 +226,16 @@ public class LobbySettingsUIComponent : MonoBehaviour
             startButtonText.text = remaining.HasValue ? $"{Mathf.CeilToInt(remaining.Value)}초 후 시작" : "시작 중";
         }
         else if (dirty || GameAudio.hasPendingRuleSettings) startHintText.text = "변경한 방 인원과 규칙을 먼저 적용해 주세요.";
-        if (room == null) feedbackText.text = "방에 참가하면 플레이어와 방 설정을 확인할 수 있습니다.";
-        else if (SceneManager.GetActiveScene().name == "GamePlay") feedbackText.text = "게임 진행 중에는 로비 설정을 변경할 수 없습니다.";
+        if (inGame)
+        {
+            startHintText.text = "게임 진행 중에는 인원 변경·준비·시작을 할 수 없습니다.";
+            feedbackText.text = "게임 진행 중에는 로비 설정을 변경할 수 없습니다.";
+        }
+        else if (room == null) feedbackText.text = "방에 참가하면 플레이어와 방 설정을 확인할 수 있습니다.";
         else if (Time.unscaledTime >= feedbackDeadline) feedbackText.text = string.Empty;
-        roomNameText.text = room != null ? room.RoomName.ToString() : "방 미참가";
-        inviteCodeText.text = room != null ? room.InviteCode.ToString().ToUpperInvariant() : "—";
+        roomNameText.text = inGame ? gameRoomName : room != null ? room.RoomName.ToString() : "방 미참가";
+        inviteCodeText.text = inGame && gameRunner.SessionInfo.IsValid ? gameRunner.SessionInfo.Name.ToUpperInvariant()
+            : room != null ? room.InviteCode.ToString().ToUpperInvariant() : "—";
         bool connected = room != null && localPlayer != null && applyCompleted == null; //연결된 본인의 보조 기능
         copyInviteButton.interactable = connected && room.IsInviteEnabled;
         inviteButton.interactable = connected && canUseRoom() && LobbyRoomUI.Instance != null;
