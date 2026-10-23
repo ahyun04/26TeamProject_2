@@ -9,6 +9,8 @@ public class PlayerFirstPersonItemView : MonoBehaviour
     [SerializeField] private PlayerFirstPersonArmsComponent armsPrefab; //본인 시점의 팔과 손
     [SerializeField] private Animator playerAnimator; //기존 Hold와 공격 자세의 원본
     [SerializeField] private Vector3 armsPosition = new Vector3(-0.08f, -1.05f, 0.25f); //카메라 기준 팔 모델 위치
+    [SerializeField] private Vector3 twoHandedArmsPosition = new Vector3(0f, -0.70f, 1.35f); //어깨를 숨기고 양손 도구를 화면 아래에 표시할 위치
+    [SerializeField] private Vector3 twoHandedArmsRotation = new Vector3(-65f, 0f, 0f); //어깨 절단면을 카메라 뒤로 향하게 할 양손 팔 각도
     [SerializeField] private ItemData knifeData; //칼만 적용할 화면 위치 설정
     [SerializeField] private Vector3 knifeArmsPosition = new Vector3(0.12f, -1.1f, 0.25f); //칼과 팔을 함께 오른쪽 아래로 이동
     [SerializeField] private Vector3 gestureArmsPosition = new Vector3(0.02f, -0.68f, 1.2f); //엄지척을 보여줄 팔 위치
@@ -103,9 +105,12 @@ public class PlayerFirstPersonItemView : MonoBehaviour
     private void refreshPresentation() //제스처와 도구에 맞는 팔 위치와 표시 선택
     {
         if (arms == null) return;
+        bool twoHanded = displayedData != null && displayedData.usesTwoHandedHold; //양손 도구 전용 표시 여부
         arms.transform.localPosition = showingGesture ? gestureArmsPosition :
-            displayedData != null && displayedData == knifeData ? knifeArmsPosition : armsPosition;
-        arms.transform.localRotation = showingGesture ? Quaternion.Euler(gestureArmsRotation) : Quaternion.identity;
+            displayedData != null && displayedData == knifeData ? knifeArmsPosition :
+            twoHanded ? twoHandedArmsPosition : armsPosition;
+        arms.transform.localRotation = showingGesture ? Quaternion.Euler(gestureArmsRotation) :
+            twoHanded ? Quaternion.Euler(twoHandedArmsRotation) : Quaternion.identity;
         if (currentView != null) currentView.SetActive(!showingGesture);
         if (showingGesture || currentView != null) arms.show();
         else arms.hide();
