@@ -17,7 +17,7 @@ public enum PlayerRole
 public class RoleAssignment : NetworkBehaviour
 {
     private const int MinPlayerCount = 2;
-    private const int MaxPlayerCount = 10;
+    private const int MaxPlayerCount = RoomManager.AbsoluteMaxPlayers;
 
     [Header("역할 설정")]
     [SerializeField, Min(1)] private int killerCount = 1;

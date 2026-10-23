@@ -6,6 +6,7 @@ public class GameAudio : MonoBehaviour
     [SerializeField] private AudioSettingsComponent settings; //음량 저장 담당
     [SerializeField] private GameAudioComponent audioComponent; //공용 사운드 재생 담당
     [SerializeField] private GameSettingsUIComponent settingsUI; //설정창 담당
+    [SerializeField] private LobbyControlGuideUIComponent controlGuide; //대기실 조작키 안내
 
     private static GameAudio instance; //클라이언트 하나의 사운드 진입점
     internal static bool blocksPlayerInput => GameResultFeedbackComponent.blocksPlayerInput ||
@@ -21,6 +22,16 @@ public class GameAudio : MonoBehaviour
     internal static void showLobbyModal(bool invite) //초대·나가기 화면으로 연결
     {
         if (instance != null) instance.settingsUI.showAuxiliaryModal(invite);
+    }
+
+    internal static bool showGameSettings(GameSettingsInteractionComponent station) //방장 단말기의 게임 설정 진입점
+    {
+        return instance != null && instance.settingsUI.showGameSettings(station);
+    }
+
+    internal static void setGameSettingsHint(bool visible) //설정 단말기의 접근 안내 표시
+    {
+        if (instance != null) instance.settingsUI.setGameSettingsHint(visible);
     }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -59,9 +70,10 @@ public class GameAudio : MonoBehaviour
 
     private void handleSceneLoaded(Scene scene, LoadSceneMode mode) //씬별 재생과 설정창 상태 전달
     {
-        if (scene.name != "Main" && scene.name != "Lobby" && scene.name != "StandBy" && scene.name != "GamePlay") return;
+        if (scene.name != "Main" && scene.name != "Lobby" && scene.name != "StandBy" && !NetworkBootstrap.isGameplayScene(scene.name)) return;
         audioComponent.changeScene(scene.name);
         settingsUI.changeScene(scene.name);
+        controlGuide?.changeScene(scene.name);
     }
 
     internal float getVolume(AudioVolumeChannel channel) //설정창의 음량 조회 진입점

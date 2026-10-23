@@ -18,7 +18,7 @@ public class PlayerAppearance : NetworkBehaviour
     internal static PlayerAppearanceSettingsComponent settings => PlayerAppearanceSettingsComponent.instance; //개인 설정 구성 요소 연결
     internal static int selectedColorIndex => settings != null ? settings.selectedIndex : 0; //설정창 미리보기 색상
     internal static int colorCount => settings != null ? settings.colorCount : 0; //공통 팔레트 크기
-    internal static bool canCustomize => SceneManager.GetActiveScene().name != "GamePlay" &&
+    internal static bool canCustomize => !NetworkBootstrap.isGameplayScene(SceneManager.GetActiveScene().name) &&
         (RoomManager.Instance == null || RoomManager.Instance.Object == null || !RoomManager.Instance.Object.IsValid ||
          RoomManager.Instance.CurrentRoomState == RoomManager.RoomState.Waiting); //게임 진행·시작 중 색상 변경 차단
 

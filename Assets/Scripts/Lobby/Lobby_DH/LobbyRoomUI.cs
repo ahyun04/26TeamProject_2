@@ -364,6 +364,8 @@ namespace LockdownProtocol.Lobby
                 LobbyGameStartManager.StartFailReason.NotEnoughPlayers => "최소 인원이 부족합니다",
                 LobbyGameStartManager.StartFailReason.NotAllReady => "모든 플레이어가 준비되지 않았습니다",
                 LobbyGameStartManager.StartFailReason.AlreadyStarting => "이미 시작 절차가 진행 중입니다",
+                LobbyGameStartManager.StartFailReason.InvalidSettings => "게임 설정에서 살인마 수를 확인해 주세요",
+                LobbyGameStartManager.StartFailReason.NoMapSelected => "맵을 골라주세요",
                 _ => "게임을 시작할 수 없습니다"
             });
         }

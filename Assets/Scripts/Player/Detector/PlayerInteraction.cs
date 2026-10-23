@@ -15,6 +15,7 @@ public class PlayerInteraction : NetworkBehaviour
     private IDragInteractable activeDragTarget;
     private PlayerHealth health;
     private LockdownProtocol.Networking.KillManager combat; //좌클릭 공격 입력과 상호작용 구분
+    internal bool isInteracting => activeHoldTarget != null || activeDragTarget != null; //진행 중인 미션과 드래그 입력
 
 
     public override void Spawned()

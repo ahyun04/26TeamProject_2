@@ -33,7 +33,7 @@ public class GameSettingsUIComponent : MonoBehaviour
     [SerializeField] private Button lobbyTabButton; //참가자와 방 설정 탭
     [SerializeField] private GameObject lobbyPage; //기존 방 기능을 통합한 페이지
     [SerializeField] private Button rulesTabButton; //규칙 탭 선택
-    [SerializeField] private GameObject rulesPage; //살인마 수 설정 페이지
+    [SerializeField] private GameObject rulesPage; //내용을 비워 둔 규칙 페이지
     [SerializeField] private RuleSettingsUIComponent rulesUI; //공유 규칙 진입점
     [SerializeField] private LobbySettingsUIComponent lobbyUI; //방 설정과 기존 네트워크 기능 연결
     [SerializeField] private Button applyButton; //설정 적용과 저장
@@ -46,6 +46,12 @@ public class GameSettingsUIComponent : MonoBehaviour
     [SerializeField] private Sprite selectedButtonSprite; //선택한 송신 방식의 버튼 리소스
     [SerializeField] private Sprite neutralButtonSprite; //일반 송신 방식의 버튼 리소스
     [SerializeField] private EventSystem fallbackEventSystem; //씬에 UI 입력 시스템이 없을 때 사용
+    [SerializeField] private GameObject gameSettingsPanel; //단말기에서 여는 게임 설정 팝업
+    [SerializeField] private Button gameSettingsApplyButton; //게임 설정만 서버에 적용
+    [SerializeField] private Button gameSettingsCancelButton; //게임 설정 편집 취소
+    [SerializeField] private Button gameSettingsCloseButton; //게임 설정 팝업 닫기
+    [SerializeField] private TMP_Text gameSettingsMessage; //게임 설정 적용 결과 안내
+    [SerializeField] private GameObject gameSettingsHint; //단말기 접근 시 G키 안내
 
     private GameAudio owner; //설정 기능 진입점
     private GameEndSystem gameEndSystem; //결과 화면 우선 표시
@@ -58,16 +64,24 @@ public class GameSettingsUIComponent : MonoBehaviour
     private bool lobbySelected; //현재 로비 탭 선택 여부
     private bool applying; //방 설정의 서버 응답 대기 여부
     private bool auxiliaryModal; //기존 초대·나가기 창에서 돌아올 상태
+    private bool gameSettingsOpen; //게임 설정 팝업의 열림 상태
+    private bool gameSettingsApplying; //게임 설정 서버 응답 대기 상태
+    private GameSettingsInteractionComponent gameSettingsStation; //현재 접근한 게임 설정 단말기
     internal bool isLobbyOpen => isOpen && lobbySelected && !auxiliaryModal; //기존 방 UI와 공용 열림 상태
-    internal bool hasPendingRules => isOpen && rulesUI != null && rulesUI.hasPendingChange; //게임 시작 전에 적용할 공유 규칙
+    internal bool hasPendingRules => gameSettingsOpen && rulesUI != null && rulesUI.hasPendingChange; //게임 시작 전에 적용할 공유 규칙
     private UnityAction<string>[] volumeInputActions; //숫자 입력 구독 해제에 사용할 함수
     private UnityAction[] decreaseActions; //감소 버튼 구독 해제에 사용할 함수
     private UnityAction[] increaseActions; //증가 버튼 구독 해제에 사용할 함수
-    internal bool blocksPlayerInput => isOpen || toggleFrame == Time.frameCount; //로컬 게임 입력 차단
+    internal bool blocksPlayerInput => isOpen || gameSettingsOpen || toggleFrame == Time.frameCount; //로컬 게임 입력 차단
 
     private void Awake() //버튼과 슬라이더 입력 연결
     {
         panel.SetActive(false);
+        gameSettingsPanel?.SetActive(false);
+        gameSettingsHint?.SetActive(false);
+        gameSettingsApplyButton?.onClick.AddListener(applyGameSettings);
+        gameSettingsCancelButton?.onClick.AddListener(closeGameSettings);
+        gameSettingsCloseButton?.onClick.AddListener(closeGameSettings);
         openButton.onClick.AddListener(open);
         closeButton.onClick.AddListener(close);
         masterSlider.onValueChanged.AddListener(setMasterVolume);
@@ -99,6 +113,8 @@ public class GameSettingsUIComponent : MonoBehaviour
         sceneName = currentSceneName;
         gameEndSystem = null;
         close();
+        closeGameSettings();
+        setGameSettingsHint(false);
         refreshTab();
         toggleFrame = -1;
         bool hasSceneEventSystem = false;
@@ -115,12 +131,19 @@ public class GameSettingsUIComponent : MonoBehaviour
 
     private void Update() //설정창 Esc 처리와 다른 필수 화면 우선 처리
     {
-        if (sceneName == "GamePlay" && gameEndSystem == null)
+        if (NetworkBootstrap.isGameplayScene(sceneName) && gameEndSystem == null)
             gameEndSystem = FindFirstObjectByType<GameEndSystem>();
         if (SessionDisconnectUIComponent.IsOpen || GameResultFeedbackComponent.blocksPlayerInput || isGameEnded())
         {
             if (isOpen) close();
+            closeGameSettings();
+            setGameSettingsHint(false);
             openButton.gameObject.SetActive(false);
+            return;
+        }
+        if (gameSettingsOpen)
+        {
+            if (gameSettingsStation == null || !gameSettingsStation.canUse || Input.GetKeyDown(KeyCode.Escape)) closeGameSettings();
             return;
         }
         if (auxiliaryModal)
@@ -137,16 +160,17 @@ public class GameSettingsUIComponent : MonoBehaviour
         if (!Input.GetKeyDown(KeyCode.Escape)) return;
         if (isOpen) close();
         else if (sceneName == "StandBy" && LobbyRoomUI.Instance != null && !LobbyRoomUI.Instance.hasAuxiliaryModal) showLobbySettings();
-        else if (sceneName == "GamePlay" && PlayerCameraController.LocalListenerTransform != null) open();
+        else if (NetworkBootstrap.isGameplayScene(sceneName) && PlayerCameraController.LocalListenerTransform != null) open();
+        else if (sceneName == "Main" || sceneName == "Lobby") open();
     }
 
     private void LateUpdate() //기존 방 메뉴와 설정 버튼 표시 협력
     {
-        bool canShowButton = !isOpen && !SessionDisconnectUIComponent.IsOpen && !GameResultFeedbackComponent.blocksPlayerInput && !isGameEnded() &&
+        bool canShowButton = !isOpen && !gameSettingsOpen && !SessionDisconnectUIComponent.IsOpen && !GameResultFeedbackComponent.blocksPlayerInput && !isGameEnded() &&
             (sceneName == "Main" || sceneName == "Lobby" ||
              (sceneName == "StandBy" && LobbyRoomUI.Instance != null));
         if (openButton.gameObject.activeSelf != canShowButton) openButton.gameObject.SetActive(canShowButton);
-        if (isOpen)
+        if (isOpen || gameSettingsOpen)
         {
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
@@ -161,11 +185,10 @@ public class GameSettingsUIComponent : MonoBehaviour
 
     private void open() //설정창 열기와 본인의 게임 입력 차단
     {
-        if (isOpen || owner == null || SessionDisconnectUIComponent.IsOpen || GameResultFeedbackComponent.blocksPlayerInput || isGameEnded()) return;
+        if (isOpen || gameSettingsOpen || owner == null || SessionDisconnectUIComponent.IsOpen || GameResultFeedbackComponent.blocksPlayerInput || isGameEnded()) return;
         owner.beginSettingsEditing();
         PlayerAppearance.beginCustomization();
         lobbyUI?.beginEditing();
-        rulesUI?.beginEditing();
         applying = false;
         refreshApplyState();
         isOpen = true;
@@ -184,7 +207,6 @@ public class GameSettingsUIComponent : MonoBehaviour
         owner.cancelSettings();
         PlayerAppearance.cancelCustomization();
         lobbyUI?.endEditing();
-        rulesUI?.endEditing();
         finishClose();
     }
 
@@ -193,7 +215,6 @@ public class GameSettingsUIComponent : MonoBehaviour
         if (!isOpen || applying) return;
         finishVolumeInput();
         lobbyUI?.finishInput();
-        rulesUI?.finishInput();
         if (lobbyUI != null && lobbyUI.hasPendingChange)
         {
             applying = true;
@@ -202,7 +223,7 @@ public class GameSettingsUIComponent : MonoBehaviour
             lobbyUI.applyMaximum(handleRoomApplied);
             return;
         }
-        applyRulesOrLocal();
+        applyLocalSettings();
     }
 
     private void handleRoomApplied(bool accepted, string reason) //공유 설정 승인 뒤 개인 설정 저장
@@ -210,30 +231,61 @@ public class GameSettingsUIComponent : MonoBehaviour
         if (!isOpen) return;
         applying = false;
         refreshApplyState();
-        if (accepted) applyRulesOrLocal();
-        else if (saveHintText != null) saveHintText.text = reason;
-    }
-
-    private void applyRulesOrLocal() //방 인원 적용 후 공유 규칙과 개인 설정 순서로 확정
-    {
-        if (rulesUI != null && rulesUI.hasPendingChange)
-        {
-            applying = true;
-            refreshApplyState();
-            if (saveHintText != null) saveHintText.text = "살인마 수를 적용하는 중입니다.";
-            rulesUI.applyCount(handleRulesApplied);
-            return;
-        }
-        applyLocalSettings();
-    }
-
-    private void handleRulesApplied(bool accepted, string reason) //공유 규칙 승인 뒤 개인 설정 저장
-    {
-        if (!isOpen) return;
-        applying = false;
-        refreshApplyState();
         if (accepted) applyLocalSettings();
         else if (saveHintText != null) saveHintText.text = reason;
+    }
+
+    internal bool showGameSettings(GameSettingsInteractionComponent station) //단말기 접근으로만 게임 설정 팝업 열기
+    {
+        if (station == null || !station.canUse || isOpen || gameSettingsOpen || blocksPlayerInput ||
+            SessionDisconnectUIComponent.IsOpen || GameResultFeedbackComponent.blocksPlayerInput ||
+            gameSettingsPanel == null || rulesUI == null) return false;
+        gameSettingsStation = station;
+        rulesUI.beginEditing();
+        gameSettingsOpen = true;
+        gameSettingsApplying = false;
+        gameSettingsApplyButton.interactable = true;
+        gameSettingsMessage.text = "변경한 살인마 수는 적용 후 다음 경기에 반영됩니다.";
+        gameSettingsPanel.SetActive(true);
+        setGameSettingsHint(false);
+        toggleFrame = Time.frameCount;
+        restoreCursor();
+        return true;
+    }
+
+    internal void setGameSettingsHint(bool visible) //중앙 오른쪽의 단말기 접근 안내 표시
+    {
+        if (gameSettingsHint != null) gameSettingsHint.SetActive(visible && !isOpen && !gameSettingsOpen);
+    }
+
+    private void applyGameSettings() //기존 방 규칙 RPC의 승인 후에만 팝업 종료
+    {
+        if (!gameSettingsOpen || gameSettingsApplying || gameSettingsStation == null || !gameSettingsStation.canUse) return;
+        gameSettingsApplying = true;
+        gameSettingsApplyButton.interactable = false;
+        gameSettingsMessage.text = "게임 설정을 적용하는 중입니다.";
+        rulesUI.applyCount(handleGameSettingsApplied);
+    }
+
+    private void handleGameSettingsApplied(bool accepted, string reason) //서버 승인 또는 거부 결과 반영
+    {
+        if (!gameSettingsOpen) return;
+        gameSettingsApplying = false;
+        gameSettingsApplyButton.interactable = true;
+        if (accepted) closeGameSettings();
+        else gameSettingsMessage.text = reason;
+    }
+
+    private void closeGameSettings() //취소와 Esc 및 씬 전환 시 임시 게임 설정 폐기
+    {
+        if (!gameSettingsOpen) return;
+        gameSettingsOpen = false;
+        gameSettingsApplying = false;
+        gameSettingsStation = null;
+        rulesUI?.endEditing();
+        gameSettingsPanel.SetActive(false);
+        toggleFrame = Time.frameCount;
+        restoreCursor();
     }
 
     private void applyLocalSettings() //기존 음량과 캐릭터 설정 확정
@@ -257,7 +309,6 @@ public class GameSettingsUIComponent : MonoBehaviour
         owner.restoreDefaultSettings();
         PlayerAppearance.restoreDefaults();
         lobbyUI?.restoreDefaults();
-        rulesUI?.restoreDefaults();
         refreshValues();
     }
 
@@ -267,11 +318,15 @@ public class GameSettingsUIComponent : MonoBehaviour
         applying = false;
         auxiliaryModal = false;
         lobbyUI?.endEditing();
-        rulesUI?.endEditing();
         refreshApplyState();
         toggleFrame = Time.frameCount;
         panel.SetActive(false);
-        bool showCursor = PlayerCameraController.LocalListenerTransform == null ||
+        restoreCursor();
+    }
+
+    private void restoreCursor() //설정 팝업과 기존 설정창의 커서 상태 일치
+    {
+        bool showCursor = isOpen || gameSettingsOpen || PlayerCameraController.LocalListenerTransform == null ||
             SessionDisconnectUIComponent.IsOpen || isGameEnded() ||
             (LobbyRoomUI.Instance != null && LobbyRoomUI.Instance.BlocksPlayerInput);
         Cursor.lockState = showCursor ? CursorLockMode.None : CursorLockMode.Locked;
@@ -403,7 +458,7 @@ public class GameSettingsUIComponent : MonoBehaviour
 
     private void showLobbyTab() //기존 방 상태를 같은 설정창에서 표시
     {
-        if (sceneName == "Main") return;
+        if (sceneName == "Main" || sceneName == "Lobby") return;
         finishVolumeInput();
         rulesUI?.finishInput();
         rulesSelected = false;
@@ -447,7 +502,7 @@ public class GameSettingsUIComponent : MonoBehaviour
 
     private void refreshTab() //현재 페이지와 아이콘 탭의 선택 배경 표시
     {
-        bool lobbyAvailable = sceneName != "Main"; //메인 화면에서는 방 참가자 탭 선택 차단
+        bool lobbyAvailable = sceneName == "StandBy" || NetworkBootstrap.isGameplayScene(sceneName); //방에 참가한 화면에서만 참가자 탭 허용
         if (lobbyTabButton != null) lobbyTabButton.interactable = lobbyAvailable;
         if (!lobbyAvailable && lobbySelected)
         {
@@ -508,6 +563,10 @@ public class GameSettingsUIComponent : MonoBehaviour
 
     private void OnDestroy() //UI 입력 구독 정리
     {
+        rulesUI?.endEditing();
+        gameSettingsApplyButton?.onClick.RemoveListener(applyGameSettings);
+        gameSettingsCancelButton?.onClick.RemoveListener(closeGameSettings);
+        gameSettingsCloseButton?.onClick.RemoveListener(closeGameSettings);
         openButton.onClick.RemoveListener(open);
         closeButton.onClick.RemoveListener(close);
         masterSlider.onValueChanged.RemoveListener(setMasterVolume);
