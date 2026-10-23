@@ -23,8 +23,12 @@ public class PlayerItemController : NetworkBehaviour
     private IItemTargetHandler targetHandler;
     private PlayerHealth health;
     private KillManager combat; //집기와 공격을 한 입력 경로에서 구분
+    private PlayerInteraction interaction; //미션 수행 중 아이템 획득 제한
     private NetworkObject displayedItem; //현재 1인칭 표시를 적용한 아이템
     private bool presentationInitialized; //장착 표시 초기화 여부
+    private bool pickupPending; //서버 응답 전 중복 획득 요청 방지
+    private float pickupDeadline; //응답 지연 시 입력 복구 시각
+    internal bool isPickupPending => pickupPending; //획득 안내의 중복 표시 제한
 
     internal bool tryGetEquippedWeapon(out ItemData weapon) //현재 플레이어가 실제로 소유한 무기 조회
     {
@@ -41,6 +45,7 @@ public class PlayerItemController : NetworkBehaviour
     {
         health = GetComponent<PlayerHealth>();
         combat = GetComponent<KillManager>();
+        interaction = GetComponent<PlayerInteraction>();
         if (HasStateAuthority && health != null)
         {
             health.Died += DropCurrentItem;
@@ -110,6 +115,7 @@ public class PlayerItemController : NetworkBehaviour
     /// </summary>
     private void HandleItemInput()
     {
+        if (pickupPending && Time.unscaledTime >= pickupDeadline) pickupPending = false;
         handleItemInput(Input.GetMouseButtonDown(0), Input.GetMouseButtonDown(1), Input.GetKeyDown(KeyCode.G));
     }
 
@@ -124,6 +130,7 @@ public class PlayerItemController : NetworkBehaviour
         // 아무것도 들고 있지 않을 때 좌클릭 = 장착
         if (leftDown && CurrentItemObject == null)
         {
+            if (interaction != null && interaction.isInteracting) return;
             TryEquipTargetItem();
             return;
         }
@@ -167,6 +174,9 @@ public class PlayerItemController : NetworkBehaviour
         if (itemObject == null)
             return;
 
+        if (pickupPending) return;
+        pickupPending = true;
+        pickupDeadline = Time.unscaledTime + 5f;
         RPC_RequestEquipItem(itemObject.Id);
     }
 
@@ -217,7 +227,20 @@ public class PlayerItemController : NetworkBehaviour
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
     private void RPC_RequestEquipItem(NetworkId itemId)
     {
+        tryEquipItem(itemId);
+        RPC_CompletePickupRequest();
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.InputAuthority)]
+    private void RPC_CompletePickupRequest() //서버 판정이 끝나면 획득 입력 복구
+    {
+        pickupPending = false;
+    }
+
+    private void tryEquipItem(NetworkId itemId) //기존 소지와 거리 검증을 서버에서 일괄 수행
+    {
         if (health != null && !health.CanAct) return;
+        if (RoomManager.Instance != null && RoomManager.Instance.CurrentRoomState == RoomManager.RoomState.Starting) return;
         if (CurrentItemObject != null)
             return;
 

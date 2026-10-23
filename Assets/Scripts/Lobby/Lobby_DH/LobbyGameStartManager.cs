@@ -18,22 +18,20 @@ namespace LockdownProtocol.Lobby
 
         [Networked] private TickTimer StartCountdown { get; set; }
 
-        // 현우 추가
-        // 게임플레이 씬 전환 때문에 추가
-        [SerializeField] private int gameplaySceneIndex = 3;
-
         public enum StartFailReason
         {
             NotHost,
             NotEnoughPlayers,
             NotAllReady,
-            AlreadyStarting
+            AlreadyStarting,
+            InvalidSettings,
+            NoMapSelected
         }
 
         public event System.Action<StartFailReason> StartFailed;
         public event System.Action CountdownStarted;
         public event System.Action CountdownCancelled;
-        internal int minimumPlayerCount => minPlayerCount; //로비 탭과 같은 최소 시작 조건
+        internal int minimumPlayerCount => RoomManager.Instance != null && RoomManager.Instance.GameplayMap.ToString() == NetworkBootstrap.smallMapSceneName ? 4 : minPlayerCount; //선택한 맵의 최소 시작 인원
         internal float? countdownRemaining => Object != null && Object.IsValid ? StartCountdown.RemainingTime(Runner) : null; //실제 복제된 시작 타이머
 
         public override void FixedUpdateNetwork()
@@ -44,7 +42,9 @@ namespace LockdownProtocol.Lobby
             var room = RoomManager.Instance;
             var players = GetAllLobbyPlayers();
             bool canStart = room != null && room.CurrentRoomState == RoomManager.RoomState.Starting &&
-                            players.Count >= minPlayerCount && players.TrueForAll(player => player.IsReady);
+                            players.Count >= minimumPlayerCount && players.Count <= RoomManager.AbsoluteMaxPlayers &&
+                            NetworkBootstrap.tryGetMapScene(room.GameplayMap.ToString(), out _) && players.TrueForAll(player => player.IsReady) &&
+                            room.KillerCount >= 1 && room.KillerCount <= Mathf.Max(1, players.Count - 1);
             if (!canStart)
             {
                 StartCountdown = TickTimer.None;
@@ -89,8 +89,14 @@ namespace LockdownProtocol.Lobby
 
             var players = GetAllLobbyPlayers();
 
+            if (!NetworkBootstrap.tryGetMapScene(RoomManager.Instance.GameplayMap.ToString(), out _))
+            {
+                RPC_NotifyStartFailed(requester, StartFailReason.NoMapSelected);
+                return;
+            }
+
             // 3. 최소 인원 확인
-            if (players.Count < minPlayerCount)
+            if (players.Count < minimumPlayerCount || players.Count > RoomManager.AbsoluteMaxPlayers)
             {
                 RPC_NotifyStartFailed(requester, StartFailReason.NotEnoughPlayers);
                 return;
@@ -104,6 +110,12 @@ namespace LockdownProtocol.Lobby
                     RPC_NotifyStartFailed(requester, StartFailReason.NotAllReady);
                     return;
                 }
+            }
+
+            if (RoomManager.Instance.KillerCount < 1 || RoomManager.Instance.KillerCount > Mathf.Max(1, players.Count - 1))
+            {
+                RPC_NotifyStartFailed(requester, StartFailReason.InvalidSettings);
+                return;
             }
 
             // ---- 시작 승인 ----
@@ -123,6 +135,12 @@ namespace LockdownProtocol.Lobby
         private void BeginGameSceneTransition()
         {
             if (!Object.HasStateAuthority) return;
+            if (!NetworkBootstrap.tryGetMapScene(RoomManager.Instance.GameplayMap.ToString(), out SceneRef gameplayScene))
+            {
+                RoomManager.Instance.SetRoomState(RoomManager.RoomState.Waiting);
+                RPC_NotifyStartCancelled();
+                return;
+            }
             FindFirstObjectByType<NetworkBootstrap>()?.retainRoomSettings(RoomManager.Instance); //적용한 방 설정을 대기실 복귀까지 보존
 
             // 로비 이동/Ready 입력 제한 + 음성 채널 종료는 각 클라에서
@@ -135,7 +153,7 @@ namespace LockdownProtocol.Lobby
 
             // 현우 추가
             // 게임플레이 씬으로 이동
-            var loadOperation = Runner.LoadScene(SceneRef.FromIndex(gameplaySceneIndex), LoadSceneMode.Single);
+            var loadOperation = Runner.LoadScene(gameplayScene, LoadSceneMode.Single);
         }
 
         private List<LobbyPlayerController> GetAllLobbyPlayers()

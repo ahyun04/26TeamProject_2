@@ -75,7 +75,7 @@ public class PlayerFeedback : NetworkBehaviour
     {
         if (hud == null || Runner.SceneManager == null) return;
         string sceneName = Runner.SceneManager.MainRunnerScene.name; //사망이 발생한 실제 네트워크 씬
-        if (sceneName != "GamePlay" && sceneName != "StandBy") return;
+        if (!NetworkBootstrap.isGameplayScene(sceneName) && sceneName != "StandBy") return;
         hud.showDeath(Runner);
     }
 

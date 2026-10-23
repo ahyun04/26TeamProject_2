@@ -6,7 +6,7 @@ using UnityEngine;
 
 public class GameEndSystem : NetworkBehaviour
 {
-    private const int MaxPlayerCount = 10;
+    private const int MaxPlayerCount = LockdownProtocol.Lobby.RoomManager.AbsoluteMaxPlayers;
 
     [SerializeField] private TrustNoOne.Missions.MissionManager missionSystem; // 새 미션 시스템으로 교체(6b)
     [SerializeField] private RoleAssignment roleAssignment;

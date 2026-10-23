@@ -129,7 +129,7 @@ public class LobbySettingsUIComponent : MonoBehaviour
     private bool canUseRoom() //게임 중·유효하지 않은 방의 변경 차단
     {
         return editing && room != null && room.Object != null && room.Object.IsValid &&
-            SceneManager.GetActiveScene().name != "GamePlay" && room.CurrentRoomState == RoomManager.RoomState.Waiting;
+            SceneManager.GetActiveScene().name == "StandBy" && room.CurrentRoomState == RoomManager.RoomState.Waiting;
     }
 
     private bool canEditMaximum() //방장만 공유 정원 변경 요청
@@ -147,7 +147,7 @@ public class LobbySettingsUIComponent : MonoBehaviour
         string gameRoomName = string.Empty; //보존된 방 이름
         int gameMaximum = 0; //보존된 확정 정원
         PlayerRef gameHost = PlayerRef.None; //보존된 방장
-        bool inGame = SceneManager.GetActiveScene().name == "GamePlay" && bootstrap != null &&
+        bool inGame = NetworkBootstrap.isGameplayScene(SceneManager.GetActiveScene().name) && bootstrap != null &&
             bootstrap.tryGetRoomSession(out gameRunner, out gameRoomName, out gameMaximum, out gameHost); //대기실 객체 없이 조회 가능한 게임 세션
         if (inGame)
         {
@@ -216,10 +216,11 @@ public class LobbySettingsUIComponent : MonoBehaviour
         increaseButton.interactable = canEdit && draftMaximum < RoomManager.AbsoluteMaxPlayers;
         int minimum = startManager != null ? startManager.minimumPlayerCount : RoomManager.AbsoluteMinPlayers; //실제 최소 시작 인원
         bool canStart = canEdit && startManager != null && players.Count >= minimum &&
-            readyCount == players.Count && !dirty && !GameAudio.hasPendingRuleSettings; //서버와 동일한 기본 조건과 미적용 규칙
+            readyCount == players.Count && !dirty && !GameAudio.hasPendingRuleSettings &&
+            NetworkBootstrap.tryGetMapScene(room.GameplayMap.ToString(), out _); //서버와 동일한 맵 선택과 시작 조건
         startButton.interactable = canStart;
         startButtonText.text = "게임 시작";
-        startHintText.text = $"방장만 시작할 수 있습니다.\n{minimum}명 이상·전원 준비 완료 시 시작";
+        startHintText.text = room != null && !NetworkBootstrap.tryGetMapScene(room.GameplayMap.ToString(), out _) ? "게임 설정 단말기에서 맵을 골라주세요." : $"방장만 시작할 수 있습니다.\n{minimum}명 이상·전원 준비 완료 시 시작";
         if (room != null && room.CurrentRoomState == RoomManager.RoomState.Starting && startManager != null)
         {
             float? remaining = startManager.countdownRemaining; //복제된 실제 시작 타이머
@@ -340,6 +341,8 @@ public class LobbySettingsUIComponent : MonoBehaviour
             LobbyGameStartManager.StartFailReason.NotHost => "방장만 게임을 시작할 수 있습니다.",
             LobbyGameStartManager.StartFailReason.NotEnoughPlayers => "게임을 시작할 최소 인원이 부족합니다.",
             LobbyGameStartManager.StartFailReason.NotAllReady => "모든 플레이어가 준비해야 시작할 수 있습니다.",
+            LobbyGameStartManager.StartFailReason.InvalidSettings => "게임 설정에서 살인마 수를 다시 확인해 주세요.",
+            LobbyGameStartManager.StartFailReason.NoMapSelected => "맵을 골라주세요.",
             _ => "이미 게임 시작 절차가 진행 중입니다."
         });
     }

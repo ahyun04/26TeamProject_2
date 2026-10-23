@@ -44,6 +44,23 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
     private string _roomName;
     private int _maxPlayers;
     private int killerCount = 1; //씬 전환 동안 유지할 확정 살인마 수
+    private string gameplayMap = string.Empty; //대기실 복귀에도 유지할 확정 맵
+    internal const string smallMapSceneName = "4~12"; //현재 선택 가능한 게임 맵
+
+    internal static bool isGameplayScene(string sceneName) => sceneName == "GamePlay" || sceneName == smallMapSceneName; //공통 게임 UI와 연출의 씬 판별
+
+    internal static bool tryGetMapScene(string map, out SceneRef scene) //허용된 맵과 실제 빌드 등록을 함께 확인
+    {
+        scene = default;
+        if (map != smallMapSceneName) return false;
+        for (int i = 0; i < SceneManager.sceneCountInBuildSettings; i++)
+            if (Path.GetFileNameWithoutExtension(SceneUtility.GetScenePathByBuildIndex(i)) == map)
+            {
+                scene = SceneRef.FromIndex(i);
+                return true;
+            }
+        return false;
+    }
     private PlayerRef roomHost; //씬 전환 동안 유지할 방장
     private readonly Dictionary<PlayerRef, (string nickname, int joinOrder)> lobbyIdentities = new(); //현재 세션의 참가자 이름과 입장 순서
     private bool _isPrivate;
@@ -164,8 +181,9 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
 
         _sessionBusy = true;
         _roomName = roomName ?? sessionName;
-        _maxPlayers = Mathf.Clamp(maxPlayers, 2, 10);
+        _maxPlayers = Mathf.Clamp(maxPlayers, RoomManager.AbsoluteMinPlayers, RoomManager.AbsoluteMaxPlayers);
         killerCount = 1;
+        gameplayMap = string.Empty;
         _isPrivate = isPrivate;
         try
         {
@@ -260,6 +278,7 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
         if (!room.RoomName.Equals(_roomName)) _roomName = room.RoomName.ToString();
         _maxPlayers = room.MaxPlayerCount;
         killerCount = room.KillerCount;
+        gameplayMap = room.GameplayMap.ToString();
         _isPrivate = room.IsPrivate;
         roomHost = room.HostPlayerId;
     }
@@ -343,6 +362,7 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
             {
                 _maxPlayers = room.MaxPlayerCount;
                 killerCount = room.KillerCount;
+                gameplayMap = room.GameplayMap.ToString();
             }
             RoomManager.Instance?.SetRoomState(RoomManager.RoomState.Ending);
             foreach (PlayerRef player in _runner.ActivePlayers)
@@ -494,6 +514,7 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
                 _roomName = room.RoomName.ToString();
                 _maxPlayers = room.MaxPlayerCount;
                 killerCount = room.KillerCount;
+                gameplayMap = room.GameplayMap.ToString();
                 _isPrivate = room.IsPrivate;
                 room.RecoverAfterHostMigration(runner.LocalPlayer);
             }
@@ -524,6 +545,7 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
             }
             room.InitializeRoom(_roomName, _maxPlayers, _isPrivate, runner.LocalPlayer);
             room.restoreKillerCount(killerCount);
+            room.restoreGameplayMap(gameplayMap);
         }
         OnSceneLoadDoneEvent?.Invoke(runner);
         if (resultFeedback != null && runner.SceneManager != null && runner.SceneManager.MainRunnerScene.name == roomSceneName)

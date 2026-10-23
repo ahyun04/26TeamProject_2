@@ -9,6 +9,7 @@ using UnityEngine.UI;
 public class RuleSettingsUIComponent : MonoBehaviour
 {
     [SerializeField] private TMP_InputField killerCountInput; //적용 전 살인마 수
+    [SerializeField] private TMP_Dropdown mapDropdown; //다음 경기에 사용할 맵 선택
     [SerializeField] private Button decreaseButton; //살인마 수 감소
     [SerializeField] private Button increaseButton; //살인마 수 증가
     [SerializeField] private TMP_Text hintText; //권한과 현재 규칙 안내
@@ -19,6 +20,7 @@ public class RuleSettingsUIComponent : MonoBehaviour
     private bool editing; //설정창 편집 중 여부
     private bool dirty; //확정 값과 다른 임시 설정 여부
     private int draftCount = 1; //적용 전 살인마 수
+    private string draftMap = string.Empty; //적용 전 맵 선택
     private float nextRefresh; //연결과 권한 확인 간격
     private float responseDeadline; //서버 응답 제한 시각
     internal bool hasPendingChange => editing && dirty && room != null; //공유 적용이 필요한 규칙
@@ -28,6 +30,7 @@ public class RuleSettingsUIComponent : MonoBehaviour
         decreaseButton.onClick.AddListener(decreaseCount);
         increaseButton.onClick.AddListener(increaseCount);
         killerCountInput.onEndEdit.AddListener(setCount);
+        mapDropdown.onValueChanged.AddListener(selectMap);
     }
 
     internal void beginEditing() //서버 확정 값부터 새 편집 시작
@@ -36,6 +39,7 @@ public class RuleSettingsUIComponent : MonoBehaviour
         dirty = false;
         bindRoom();
         draftCount = room != null ? room.KillerCount : 1;
+        draftMap = room != null ? room.GameplayMap.ToString() : string.Empty;
         refresh();
     }
 
@@ -51,7 +55,7 @@ public class RuleSettingsUIComponent : MonoBehaviour
     {
         if (!editing) return;
         if (applyCompleted != null && Time.unscaledTime >= responseDeadline)
-            finishApply(false, "응답을 받지 못했습니다. 살인마 수를 확인한 뒤 다시 적용해 주세요.");
+            finishApply(false, "응답을 받지 못했습니다. 게임 설정을 확인한 뒤 다시 적용해 주세요.");
         if (Time.unscaledTime < nextRefresh) return;
         nextRefresh = Time.unscaledTime + 0.15f;
         bindRoom();
@@ -69,8 +73,11 @@ public class RuleSettingsUIComponent : MonoBehaviour
         dirty = false;
         if (room == null) return;
         draftCount = room.KillerCount;
+        draftMap = room.GameplayMap.ToString();
         room.KillerCountChanged += handleCountChanged;
         room.KillerCountChangeRejected += handleCountRejected;
+        room.GameSettingsChanged += handleSettingsChanged;
+        room.GameSettingsChangeRejected += handleCountRejected;
     }
 
     private void unbindRoom() //파괴된 Unity 객체도 이벤트 구독 해제
@@ -79,6 +86,8 @@ public class RuleSettingsUIComponent : MonoBehaviour
         {
             room.KillerCountChanged -= handleCountChanged;
             room.KillerCountChangeRejected -= handleCountRejected;
+            room.GameSettingsChanged -= handleSettingsChanged;
+            room.GameSettingsChangeRejected -= handleCountRejected;
         }
         room = null;
     }
@@ -87,21 +96,25 @@ public class RuleSettingsUIComponent : MonoBehaviour
     {
         return editing && room != null && room.Object != null && room.Object.IsValid &&
             room.HostPlayerId == room.Runner.LocalPlayer && room.CurrentRoomState == RoomManager.RoomState.Waiting &&
-            SceneManager.GetActiveScene().name != "GamePlay" && applyCompleted == null;
+            SceneManager.GetActiveScene().name == "StandBy" && applyCompleted == null;
     }
 
     private void refresh() //현재 인원 상한과 확정 상태 표시
     {
         if (room != null)
         {
-            if (!dirty || room.HostPlayerId != room.Runner.LocalPlayer) draftCount = room.KillerCount;
+            if (!dirty || room.HostPlayerId != room.Runner.LocalPlayer)
+            {
+                draftCount = room.KillerCount;
+                draftMap = room.GameplayMap.ToString();
+            }
             if (applyCompleted == null)
             {
                 draftCount = Mathf.Clamp(draftCount, 1, room.getMaximumKillerCount());
-                dirty = draftCount != room.KillerCount;
+                dirty = draftCount != room.KillerCount || draftMap != room.GameplayMap.ToString();
             }
         }
-        else if (SceneManager.GetActiveScene().name == "GamePlay")
+        else if (NetworkBootstrap.isGameplayScene(SceneManager.GetActiveScene().name))
         {
             RoleAssignment roles = FindFirstObjectByType<RoleAssignment>(); //진행 중 경기에서 실제로 배정한 역할 수
             if (roles != null && roles.Object != null && roles.Object.IsValid && roles.Initialized)
@@ -112,11 +125,13 @@ public class RuleSettingsUIComponent : MonoBehaviour
         }
         bool allowed = canEdit(); //버튼과 숫자 입력의 동일한 권한
         killerCountInput.interactable = allowed;
+        mapDropdown.interactable = allowed;
+        mapDropdown.SetValueWithoutNotify(draftMap == NetworkBootstrap.smallMapSceneName ? 1 : 0);
         if (!killerCountInput.isFocused) killerCountInput.SetTextWithoutNotify(draftCount.ToString());
         decreaseButton.interactable = allowed && draftCount > 1;
         increaseButton.interactable = allowed && draftCount < room.getMaximumKillerCount();
-        hintText.text = room == null ? (SceneManager.GetActiveScene().name == "GamePlay" ? $"현재 살인마 {draftCount}명\n게임 진행 중에는 규칙을 변경할 수 없습니다." : "방에 참가하면 규칙을 확인할 수 있습니다.") :
-            allowed ? $"살인마 1~{room.getMaximumKillerCount()}명 · 시민 최소 1명\n적용을 누르면 다음 경기에 반영됩니다." :
+        hintText.text = room == null ? (NetworkBootstrap.isGameplayScene(SceneManager.GetActiveScene().name) ? $"현재 살인마 {draftCount}명\n게임 진행 중에는 규칙을 변경할 수 없습니다." : "방에 참가하면 규칙을 확인할 수 있습니다.") :
+            allowed ? $"4~12인 맵 · 살인마 1~{room.getMaximumKillerCount()}명\n맵과 살인마 수는 적용 후 반영됩니다." :
             $"현재 살인마 {room.KillerCount}명\n방장만 게임 시작 전에 변경할 수 있습니다.";
     }
 
@@ -133,7 +148,15 @@ public class RuleSettingsUIComponent : MonoBehaviour
     {
         if (!canEdit()) return;
         draftCount = Mathf.Clamp(count, 1, room.getMaximumKillerCount());
-        dirty = draftCount != room.KillerCount;
+        dirty = draftCount != room.KillerCount || draftMap != room.GameplayMap.ToString();
+        refresh();
+    }
+
+    private void selectMap(int index) //맵 선택은 적용 전까지 임시 값으로 보관
+    {
+        if (!canEdit()) return;
+        draftMap = index == 1 ? NetworkBootstrap.smallMapSceneName : string.Empty;
+        dirty = draftCount != room.KillerCount || draftMap != room.GameplayMap.ToString();
         refresh();
     }
 
@@ -149,22 +172,25 @@ public class RuleSettingsUIComponent : MonoBehaviour
     internal void applyCount(Action<bool, string> completed) //호스트 승인 뒤 공용 설정 저장 계속
     {
         finishInput();
+        if (!NetworkBootstrap.tryGetMapScene(draftMap, out _)) { completed(false, "맵을 골라주세요."); return; }
         if (!dirty) { completed(true, string.Empty); return; }
         if (!canEdit()) { completed(false, "방장만 대기 중에 규칙을 변경할 수 있습니다."); return; }
         applyCompleted = completed;
         responseDeadline = Time.unscaledTime + responseTimeout;
-        room.RPC_RequestChangeKillerCount(draftCount);
+        room.RPC_RequestGameSettings(draftMap, draftCount);
     }
 
     private void handleCountChanged(int count) //확정 값과 대기 중 요청 결과 반영
     {
-        if (applyCompleted != null && draftCount == count)
+        if (applyCompleted != null && draftCount == count && draftMap == room.GameplayMap.ToString())
         {
             dirty = false;
             finishApply(true, string.Empty);
         }
         else if (!dirty) draftCount = count;
     }
+
+    private void handleSettingsChanged() => handleCountChanged(room.KillerCount); //일괄 적용 결과를 기존 완료 경로로 전달
 
     private void handleCountRejected(string reason) => finishApply(false, reason); //요청 거부를 공용 적용 안내로 전달
 
@@ -181,5 +207,6 @@ public class RuleSettingsUIComponent : MonoBehaviour
         decreaseButton.onClick.RemoveListener(decreaseCount);
         increaseButton.onClick.RemoveListener(increaseCount);
         killerCountInput.onEndEdit.RemoveListener(setCount);
+        mapDropdown.onValueChanged.RemoveListener(selectMap);
     }
 }
