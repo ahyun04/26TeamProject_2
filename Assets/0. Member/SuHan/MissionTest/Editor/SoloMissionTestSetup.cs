@@ -334,6 +334,11 @@ public static class SoloMissionTestSetup
         so.FindProperty("killerMissionsPerKiller").intValue = 0;   // 기획서에 살인마 미션 본문이 없음
         so.FindProperty("actionGoalsPerPlayer").intValue = ActionGoalCount;
         so.FindProperty("killersJoinTeamMissions").boolValue = true;   // 7b-2: 살인마도 단체 미션 진행 (사용자 결정 A)
+        // 9b: 테스트 씬은 난이도별 배정을 끈 채 단체 11개 전부 (DF9). 개수는 실제 게임 기본값을 미리 넣어 둔다 — 체크만 켜면 바로 시험할 수 있게
+        so.FindProperty("useDifficultyCounts").boolValue = false;
+        so.FindProperty("easyCount").intValue = MissionDifficultySetup.DefaultEasy;
+        so.FindProperty("normalCount").intValue = MissionDifficultySetup.DefaultNormal;
+        so.FindProperty("hardCount").intValue = MissionDifficultySetup.DefaultHard;
         so.ApplyModifiedPropertiesWithoutUndo();
 
         if (isNew)
@@ -365,6 +370,8 @@ public static class SoloMissionTestSetup
         so.FindProperty("timeLimitSeconds").floatValue = spec.TimeLimit;
         so.FindProperty("timeLimitMode").intValue = (int)spec.TimeLimitMode;
         so.FindProperty("alwaysInclude").boolValue = spec.AlwaysInclude;
+        // 9b: 실제 게임과 같은 난이도 표 (DF5 · DF9). 방화문 · 행동 목표는 없음
+        so.FindProperty("difficulty").intValue = (int)MissionDifficultySetup.For(spec.Id);
         so.ApplyModifiedPropertiesWithoutUndo();
 
         if (isNew)

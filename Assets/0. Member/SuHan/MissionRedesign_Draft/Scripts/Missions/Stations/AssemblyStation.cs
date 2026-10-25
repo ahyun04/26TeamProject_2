@@ -107,7 +107,8 @@ namespace TrustNoOne.Missions
             if (slotColor < 0 || slotColor >= AssemblyRules.PartCount)
                 return false;
 
-            if (!parts.Contains(part) || part.HolderObject == null || part.HolderObject.InputAuthority != actor)
+            // 그 사람이 손에 들고 있어야 한다 (9c — 주머니 칸 부품은 들고 있지 않은 것으로 본다)
+            if (!parts.Contains(part) || !MissionItems.IsInHandOf(Runner, part, actor))
                 return false;
 
             if (!AssemblyRules.CanAttach(part.ColorIndex, slotColor, AttachTime[slotColor] < 0f))

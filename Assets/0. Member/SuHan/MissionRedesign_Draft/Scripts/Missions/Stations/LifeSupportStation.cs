@@ -143,7 +143,7 @@ namespace TrustNoOne.Missions
                 return false;
 
             // 한 번에 하나 · 성공한 본체는 받지 않음 (L3B8). 어느 본체가 놓은 통이든 그 사람이 들고 있으면 된다 (L3B7)
-            if (!LifeSupportRules.CanInsert(Completed, InsertStart >= 0f) || !IsHeldBy(tank, actor))
+            if (!LifeSupportRules.CanInsert(Completed, InsertStart >= 0f) || !MissionItems.IsInHandOf(Runner, tank, actor))
                 return false;
 
             // 공통 자격 검사만 하고 바로 해제 (LS12): TG004 없음 · 행동 불가 · 범위 밖 · 다른 행동 중이면 거부
@@ -359,13 +359,6 @@ namespace TrustNoOne.Missions
                 MissionItems.Despawn(Runner, tanks[i]);
 
             tanks.Clear();
-        }
-
-        private bool IsHeldBy(OxygenTank tank, PlayerRef actor)
-        {
-            return Runner.TryGetPlayerObject(actor, out NetworkObject playerObject)
-                && playerObject != null
-                && tank.HolderObject == playerObject;
         }
 
         private void ShowOnScreen(LifeSupportScreen screen, int number)

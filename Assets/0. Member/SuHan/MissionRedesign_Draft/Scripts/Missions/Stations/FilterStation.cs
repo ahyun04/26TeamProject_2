@@ -9,7 +9,7 @@ namespace TrustNoOne.Missions
     ///
     /// [상태를 여기서 모두 갖는 이유 — F2] 먼지 5개가 각자 조작자 · 중단 규칙을 들면 규칙이 흩어진다. 먼지는 주소 + 모습만(FilterDust).
     /// [한 번에 하나 — F3] SuckingIndex 하나만 둔다.
-    /// [취소 — F4] 흡입 중 청소기를 놓치면(들고 있는 사람이 바뀜) 그 먼지만 취소.
+    /// [취소 — F4 · 9c] 흡입 중 청소기를 놓치거나(들고 있는 사람이 바뀜) 주머니 칸에 넣으면(인벤토리 — 손에 든 것만 "든 것") 그 먼지만 취소.
     ///  범위 이탈 · 행동 불가는 베이스가 조작을 취소 → 먼지 전부 원래대로 ("중단하면 처음부터", 차단기 · 전선과 같음).
     /// [조작자] 첫 흡입에서 TryBeginOperation (권한 · 범위 · 내 미션), 이후는 조작자 본인만. 조작 중인 사람은 busy (차단기와 같음).
     /// [먼지 콜라이더 — F8] "내 미션(LocalInteractionAllowed) && 안 치운 먼지"일 때만 켠다. 베이스 interactionColliders 는 쓰지 않는다.
@@ -74,7 +74,7 @@ namespace TrustNoOne.Missions
             if (!FilterRules.CanStartSuction(ReadCleaned(), SuckingIndex, dustIndex))
                 return false;
 
-            if (!IsHeldBy(tool, actor))
+            if (!MissionItems.IsInHandOf(Runner, tool, actor))
                 return false;
 
             if (Operator.IsNone)
@@ -103,8 +103,8 @@ namespace TrustNoOne.Missions
 
             VacuumTool tool = ResolveTool();
 
-            // F4: 청소기를 놓치면 그 먼지만 취소 (치운 먼지는 그대로)
-            if (tool == null || !IsHeldBy(tool, actor))
+            // F4 · 9c: 청소기를 놓치거나 주머니 칸에 넣으면 그 먼지만 취소 (치운 먼지는 그대로)
+            if (tool == null || !MissionItems.IsInHandOf(Runner, tool, actor))
             {
                 StopSuction();
                 return;
@@ -182,13 +182,6 @@ namespace TrustNoOne.Missions
                 dusts[i].ApplyVisual(cleaned, SuckingIndex == i, t, mouth);
                 dusts[i].SetColliderEnabled(LocalInteractionAllowed && !cleaned);
             }
-        }
-
-        private bool IsHeldBy(VacuumTool tool, PlayerRef actor)
-        {
-            return Runner.TryGetPlayerObject(actor, out NetworkObject playerObject)
-                && playerObject != null
-                && tool.HolderObject == playerObject;
         }
 
         private VacuumTool ResolveTool()

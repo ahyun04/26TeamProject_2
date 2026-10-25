@@ -49,6 +49,10 @@ namespace TrustNoOne.Missions
         [Tooltip("SinceLastProgress: 진행할 때마다 다시 계산(발전기) / SinceFirstProgress: 첫 진행부터 계산(생명 유지 장치)")]
         [SerializeField] private TimeLimitMode timeLimitMode = TimeLimitMode.SinceLastProgress;
 
+        [Header("난이도 (9b)")]
+        [Tooltip("풀의 [난이도별 배정 사용] 이 켜졌을 때 이 미션이 들어갈 목록. 없음 = 난이도별 개수에 세지 않음 (방화문처럼 항상 포함인 미션)")]
+        [SerializeField] private MissionDifficulty difficulty;
+
         [Header("배정 (7a)")]
         [Tooltip("켜면 이 미션은 매 판 항상 뽑힌다 (개수 안에서 먼저). 예) 대형 방화문 — 탈출 미션이라 빠지면 안 된다")]
         [SerializeField] private bool alwaysInclude;
@@ -71,6 +75,7 @@ namespace TrustNoOne.Missions
         public TimeLimitMode TimeLimitMode => timeLimitMode;
         public bool HasTimeLimit => timeLimitSeconds > 0f;
         public bool AlwaysInclude => alwaysInclude;
+        public MissionDifficulty Difficulty => difficulty;
 
         /// <summary>이 미션을 하려면 event 를 반드시 해야 하는가? (충돌 검사용)</summary>
         public bool RequiresEvent(MissionEventType eventType)

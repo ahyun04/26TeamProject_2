@@ -139,7 +139,7 @@ namespace TrustNoOne.Missions
             if (CountdownStart >= 0f || (FailStart >= 0f && now < FailStart + popDuration))
                 return false;
 
-            if (!levers.Contains(lever) || !IsHeldBy(lever, actor))
+            if (!levers.Contains(lever) || !MissionItems.IsInHandOf(Runner, lever, actor))
                 return false;
 
             // 해금 전 시도는 거부만 한다 (FD2 — 기획서 실패 조건, 벌 없음)
@@ -345,13 +345,6 @@ namespace TrustNoOne.Missions
                 pulledBuffer[i] = PulledTime[i];
 
             return pulledBuffer;
-        }
-
-        private bool IsHeldBy(FireDoorLever lever, PlayerRef actor)
-        {
-            return Runner.TryGetPlayerObject(actor, out NetworkObject playerObject)
-                && playerObject != null
-                && lever.HolderObject == playerObject;
         }
 
         private void ShowScreen(int panel, FireDoorRules.PanelScreen screen, int seconds)

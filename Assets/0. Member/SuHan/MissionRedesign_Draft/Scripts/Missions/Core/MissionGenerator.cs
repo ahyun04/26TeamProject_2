@@ -21,6 +21,7 @@ namespace TrustNoOne.Missions
     ///    행동 목표는 단체 미션과도 충돌 검사한다 (기획서엔 개인 미션만 언급되나, 단체 "발전기 수리" +
     ///    목표 "발전기 만지지 않기"는 원천 패배라 기획 의도로 보기 어렵다).
     ///  - 단체 미션: "매 판 항상 포함" 정의(예: 대형 방화문)를 먼저 넣고 나머지를 무작위로 채운다 (7a 명세 TC3 ~ TC5).
+    ///    풀의 [난이도별 배정 사용] 이 켜지면 항상 포함(개수 밖) + 쉬움 · 보통 · 어려움마다 개수만큼 (9b 명세 DF6 · DF7 — PickTeamByDifficulty).
     ///  - 단체 미션 참여자: 시민 전원 + (풀의 "살인마도 단체 미션 진행"이 켜져 있으면) 살인마 (7b-2). 살인마의 행동 목표 충돌 검사는 그대로 — 단체 미션은 살인마가 꼭 해야 하는 일이 아니다.
     ///  - 랜덤 소스를 주입받으므로 시드를 고정하면 같은 결과를 재현할 수 있다 (검증/디버깅용).
     /// </summary>
@@ -56,9 +57,10 @@ namespace TrustNoOne.Missions
             if (pool.KillersJoinTeamMissions)
                 teamParticipants.AddRange(killers);
 
-            List<MissionDefinition> teamDefinitions = Pick(
-                plan, MissionCategory.Team, pool.TeamMissionCount,
-                new HashSet<string>(), null, checkConflict: false, allowDuplicateFallback: false);
+            List<MissionDefinition> teamDefinitions = pool.UseDifficultyCounts
+                ? PickTeamByDifficulty(plan)
+                : Pick(plan, MissionCategory.Team, pool.TeamMissionCount,
+                    new HashSet<string>(), null, checkConflict: false, allowDuplicateFallback: false);
 
             foreach (MissionDefinition definition in teamDefinitions)
                 AddObjective(plan, definition, PlayerRef.None, teamParticipants);
@@ -189,6 +191,67 @@ namespace TrustNoOne.Missions
                 usedIds.Add(definition.Id);
 
             return result;
+        }
+
+        // 난이도별 배정에서 뽑는 순서 = 결과(미션 목록) 순서 (9b 명세 DF6)
+        private static readonly MissionDifficulty[] DifficultyOrder = { MissionDifficulty.Easy, MissionDifficulty.Normal, MissionDifficulty.Hard };
+
+        /// <summary>
+        /// 난이도별 단체 미션 (9b 명세 DF6 · DF7 — 배정 기획 "각 난이도 목록에서 미션을 무작위로 배정", "동일한 미션은 중복 배정 안됨",
+        ///  "대형 방화문 열기는 일반 미션 개수에 포함하지 않고"):
+        ///  섞기 → 항상 포함(방화문)을 먼저, 개수 밖 → 쉬움 · 보통 · 어려움 순서로 그 난이도에서 풀의 개수만큼.
+        ///  모자라면 있는 만큼 + 경고 — 다른 난이도로 채우지 않는다 (난이도 구성을 흐리지 않게).
+        ///  난이도 없음인 일반 단체 미션은 이 방식에서 뽑히지 않으므로 경고한다 (미션 데이터에 난이도를 안 넣은 경우를 잡으려고).
+        /// </summary>
+        private List<MissionDefinition> PickTeamByDifficulty(MissionPlan plan)
+        {
+            List<MissionDefinition> candidates = new List<MissionDefinition>();
+            pool.GetByCategory(MissionCategory.Team, candidates);
+            Shuffle(candidates);
+
+            List<MissionDefinition> result = new List<MissionDefinition>();
+
+            foreach (MissionDefinition candidate in candidates)
+            {
+                if (candidate.AlwaysInclude)
+                    result.Add(candidate);
+                else if (candidate.Difficulty == MissionDifficulty.None)
+                    plan.Warnings.Add($"[난이도 없음] {candidate.Id} 는 난이도가 없어 난이도별 배정에서 빠집니다 (미션 데이터의 난이도를 확인하세요).");
+            }
+
+            foreach (MissionDifficulty difficulty in DifficultyOrder)
+            {
+                int wanted = pool.CountFor(difficulty);
+                int picked = 0;
+
+                foreach (MissionDefinition candidate in candidates)
+                {
+                    if (picked >= wanted)
+                        break;
+
+                    if (candidate.AlwaysInclude || candidate.Difficulty != difficulty)
+                        continue;
+
+                    result.Add(candidate);
+                    picked++;
+                }
+
+                if (picked < wanted)
+                    plan.Warnings.Add($"[단체 부족] {DifficultyName(difficulty)} {wanted}개가 필요하지만 {picked}개만 배정했습니다 (그 난이도의 단체 미션이 모자람 — 다른 난이도로 채우지 않음).");
+            }
+
+            return result;
+        }
+
+        private static string DifficultyName(MissionDifficulty difficulty)
+        {
+            switch (difficulty)
+            {
+                case MissionDifficulty.Easy: return "쉬움";
+                case MissionDifficulty.Normal: return "보통";
+                case MissionDifficulty.Hard: return "어려움";
+                default: return "없음";
+            }
         }
 
         /// <summary>

@@ -54,4 +54,18 @@ namespace TrustNoOne.Missions
         /// <summary>첫 진행부터 센다. 예) 생명 유지 장치: "제한 시간 안에 밸브 4개 모두".</summary>
         SinceFirstProgress = 1,
     }
+
+    /// <summary>
+    /// [역할] 단체 미션 난이도 (9b 명세 DF5 — 미션 난이도 설정 기획). 풀의 난이도별 배정이 이 값으로 목록을 나눈다.
+    ///  쉬움 = 밸브 · 차단기 · 전선 · 필터, 보통 = 안테나 · 발전기 · 코드, 어려움 = 압력 · 장비 조립 · 생명 유지.
+    /// [없음] 난이도별 개수에 세지 않는다 — 방화문처럼 "항상 포함"인 미션 (배정 기획 "일반 미션 개수에 포함하지 않고").
+    /// [주의] ScriptableObject 에 정수로 저장된다 — 값을 바꾸거나 재정렬하지 말 것.
+    /// </summary>
+    public enum MissionDifficulty
+    {
+        None = 0,
+        Easy = 1,
+        Normal = 2,
+        Hard = 3,
+    }
 }

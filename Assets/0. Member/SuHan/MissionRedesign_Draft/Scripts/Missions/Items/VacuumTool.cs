@@ -69,11 +69,12 @@ namespace TrustNoOne.Missions
 
         /// <summary>
         /// 이 화면에서 먼지가 날아갈 흡입구 (8a — 다른 사람 화면에도 빨아들이는 모습이 보이게, 2c F6 바뀜).
-        /// 내가 들었으면 1인칭 모델의 흡입구, 남이 들었으면 손에 들린 청소기 모델의 흡입구(mouth). 아무도 안 들었으면 null (먼지는 제자리에서 작아진다).
+        /// 내가 들었으면 1인칭 모델의 흡입구, 남이 들었으면 손에 들린 청소기 모델의 흡입구(mouth). 아무도 안 들었거나 주머니 칸이면 null (먼지는 제자리에서 작아진다).
+        /// 주머니 칸(9c)이면 모델이 숨겨져 있다 — 호스트가 흡입을 취소하기 전 잠깐 동안 보이지 않는 곳으로 날아가지 않게.
         /// </summary>
         public Transform GetViewMouth()
         {
-            if (HolderObject == null)
+            if (HolderObject == null || !IsInHand)
                 return null;
 
             Transform local = GetLocalMouth();
