@@ -20,13 +20,19 @@ public class PlayerHudUIComponent : MonoBehaviour
     [SerializeField] private PlayerDamageFeedbackComponent damageFeedback; //피격 화면 연출
     [SerializeField] private CanvasGroup rolePanel; //검은 배경 역할 안내
     [SerializeField] private TMP_Text roleText; //본인의 역할
-    [SerializeField, Min(0f)] private float roleHoldSeconds = 1.6f; //역할 안내 유지 시간
-    [SerializeField, Min(0.01f)] private float roleFadeSeconds = 1.2f; //역할 안내 사라지는 시간
+    [SerializeField] private Image roleIcon; //역할 공개 화면 중앙의 역할 아이콘
+    [SerializeField] private Sprite killerIcon; //살인마 전용 아이콘
+    [SerializeField] private Sprite citizenIcon; //시민 전용 아이콘
+    [SerializeField, Min(0.01f)] private float roleFadeOutSeconds = 0.5f; //게임 화면이 검은색으로 어두워지는 시간
+    [SerializeField, Min(0f)] private float roleHoldSeconds = 3f; //역할 안내 유지 시간
+    [SerializeField, Min(0.01f)] private float roleFadeSeconds = 0.5f; //역할 안내 사라지며 게임 화면이 밝아지는 시간
 
     private PlayerHealth health; //본인의 체력
     private PlayerStamina stamina; //본인의 스태미나
     private bool subscribed; //중복 이벤트 구독 방지
     private Coroutine roleRoutine; //현재 역할 안내 연출
+
+    internal bool IsRoleRevealing => roleRoutine != null; //역할 공개 중에는 이동·공격·상호작용 입력을 막는 쪽에서 확인
 
     internal void initialize(PlayerHealth playerHealth, PlayerStamina playerStamina) //현재 값 표시와 변경 이벤트 연결
     {
@@ -133,15 +139,23 @@ public class PlayerHudUIComponent : MonoBehaviour
         return damageFeedback != null ? damageFeedback.getShakeRotation() : Quaternion.identity;
     }
 
-    internal void showRole(PlayerRole role) //검은 배경에 흰색 역할 표시
+    internal void showRole(PlayerRole role) //페이드 아웃 → 검은 배경에 역할 아이콘과 문구 → 페이드 인
     {
         if (rolePanel == null || roleText == null || !isActiveAndEnabled) return;
+        if (roleRoutine != null) return; //같은 시작 이벤트가 여러 번 와도 연출은 한 번만
         hideRole();
-        roleText.text = role == PlayerRole.Killer ? "당신은 살인마입니다" : "당신은 시민입니다";
+        bool killer = role == PlayerRole.Killer;
+        roleText.text = killer ? "당신은 살인마입니다" : "당신은 시민입니다";
+        if (roleIcon != null)
+        {
+            Sprite icon = killer ? killerIcon : citizenIcon;
+            roleIcon.sprite = icon;
+            roleIcon.gameObject.SetActive(icon != null);
+        }
         showRoleBadge(role);
+        rolePanel.alpha = 0f;
         rolePanel.gameObject.SetActive(true);
         setCrosshairVisible(false);
-        rolePanel.alpha = 1f;
         roleRoutine = StartCoroutine(fadeRole());
     }
 
@@ -154,14 +168,33 @@ public class PlayerHudUIComponent : MonoBehaviour
         roleBadgeText.gameObject.SetActive(true);
     }
 
-    private IEnumerator fadeRole() //역할 안내를 잠시 유지한 뒤 서서히 제거
+    private IEnumerator fadeRole() //검은 화면으로 페이드 아웃 → 역할 유지 → 페이드 인
     {
         float elapsed = 0f;
+        if (LoadingScreenUI.IsVisible)
+        {
+            //로딩 화면이 이미 화면을 덮고 있으면 페이드 아웃 없이 검은 역할 화면을 뒤에 깔아 두고, 로딩이 끝나면 바로 이어서 보여 준다
+            rolePanel.alpha = 1f;
+            while (LoadingScreenUI.IsVisible) yield return null;
+        }
+        else
+        {
+            while (elapsed < roleFadeOutSeconds)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                rolePanel.alpha = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / roleFadeOutSeconds));
+                yield return null;
+            }
+            rolePanel.alpha = 1f;
+        }
+
+        elapsed = 0f;
         while (elapsed < roleHoldSeconds)
         {
             elapsed += Time.unscaledDeltaTime;
             yield return null;
         }
+
         elapsed = 0f;
         while (elapsed < roleFadeSeconds)
         {
