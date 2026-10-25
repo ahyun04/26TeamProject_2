@@ -21,7 +21,7 @@ public class AudioSettingsComponent : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float defaultMasterVolume = 1f; //전체 기본 음량
     [SerializeField, Range(0f, 1f)] private float defaultMusicVolume = 1f; //배경음 기본 음량
     [SerializeField, Range(0f, 1f)] private float defaultEffectsVolume = 1f; //효과음 기본 음량
-    [SerializeField, Range(0f, 1f)] private float defaultVoiceVolume = 1f; //음성 수신 기본 음량
+    [SerializeField, Range(0f, 2f)] private float defaultVoiceVolume = 1f; //최대 두 배까지 조절할 음성 수신 기본 음량
 
     private readonly float[] volumes = new float[4]; //현재 로컬 음량
     private readonly float[] savedVolumes = new float[4]; //적용을 마친 음량
@@ -36,7 +36,7 @@ public class AudioSettingsComponent : MonoBehaviour
         for (int i = 0; i < volumes.Length; i++)
         {
             float saved = PlayerPrefs.GetFloat(preferencePrefix + (AudioVolumeChannel)i, defaults[i]);
-            volumes[i] = float.IsNaN(saved) || float.IsInfinity(saved) ? defaults[i] : Mathf.Clamp01(saved);
+            volumes[i] = float.IsNaN(saved) || float.IsInfinity(saved) ? defaults[i] : Mathf.Clamp(saved, 0f, getMaximumVolume((AudioVolumeChannel)i));
         }
         int savedMode = PlayerPrefs.GetInt(preferencePrefix + "VoiceInputMode", (int)VoiceInputMode.VoiceActivation); //저장된 송신 방식
         voiceInputMode = savedMode == (int)VoiceInputMode.PushToTalk ? VoiceInputMode.PushToTalk : VoiceInputMode.VoiceActivation;
@@ -67,6 +67,11 @@ public class AudioSettingsComponent : MonoBehaviour
         return volumes[(int)channel];
     }
 
+    internal static float getMaximumVolume(AudioVolumeChannel channel) //음성 수신만 최대 두 배로 허용
+    {
+        return channel == AudioVolumeChannel.Voice ? 2f : 1f;
+    }
+
     internal float getEffectiveVolume(AudioVolumeChannel channel) //전체 음량을 곱한 실제 음량
     {
         return getVolume(AudioVolumeChannel.Master) * getVolume(channel);
@@ -75,7 +80,7 @@ public class AudioSettingsComponent : MonoBehaviour
     internal void setVolume(AudioVolumeChannel channel, float volume) //본인의 음량 미리 듣기
     {
         if (float.IsNaN(volume) || float.IsInfinity(volume)) return;
-        volume = Mathf.Clamp01(volume);
+        volume = Mathf.Clamp(volume, 0f, getMaximumVolume(channel));
         if (Mathf.Approximately(volumes[(int)channel], volume)) return;
         volumes[(int)channel] = volume;
         if (!isEditing)

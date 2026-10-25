@@ -237,7 +237,7 @@ public class GameSettingsUIComponent : MonoBehaviour
 
     internal bool showGameSettings(GameSettingsInteractionComponent station) //단말기 접근으로만 게임 설정 팝업 열기
     {
-        if (station == null || !station.canUse || isOpen || gameSettingsOpen || blocksPlayerInput ||
+        if (station == null || !station.canInteract || isOpen || gameSettingsOpen || blocksPlayerInput ||
             SessionDisconnectUIComponent.IsOpen || GameResultFeedbackComponent.blocksPlayerInput ||
             gameSettingsPanel == null || rulesUI == null) return false;
         gameSettingsStation = station;
@@ -377,7 +377,7 @@ public class GameSettingsUIComponent : MonoBehaviour
         if (decreaseButtons != null && decreaseButtons.Length > index && decreaseButtons[index] != null)
             decreaseButtons[index].interactable = volume > 0f;
         if (increaseButtons != null && increaseButtons.Length > index && increaseButtons[index] != null)
-            increaseButtons[index].interactable = volume < 1f;
+            increaseButtons[index].interactable = volume < GameAudio.getMaximumVolume(channel);
     }
 
     private void connectVolumeInputs() //숫자 입력과 증감 버튼 연결
@@ -398,10 +398,10 @@ public class GameSettingsUIComponent : MonoBehaviour
         }
     }
 
-    private void setVolumeInput(AudioVolumeChannel channel, string value) //숫자 입력을 0~100 범위로 적용
+    private void setVolumeInput(AudioVolumeChannel channel, string value) //음성은 0~200, 다른 음량은 0~100 범위로 적용
     {
         if (!isOpen || owner == null) return;
-        if (int.TryParse(value, out int percent)) owner.setVolume(channel, Mathf.Clamp(percent, 0, 100) / 100f);
+        if (int.TryParse(value, out int percent)) owner.setVolume(channel, Mathf.Clamp(percent, 0, Mathf.RoundToInt(GameAudio.getMaximumVolume(channel) * 100f)) / 100f);
         refreshVolumeRow(channel);
     }
 

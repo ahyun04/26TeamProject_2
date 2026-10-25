@@ -31,7 +31,7 @@ namespace LockdownProtocol.Lobby
         public event System.Action<StartFailReason> StartFailed;
         public event System.Action CountdownStarted;
         public event System.Action CountdownCancelled;
-        internal int minimumPlayerCount => RoomManager.Instance != null && RoomManager.Instance.GameplayMap.ToString() == NetworkBootstrap.smallMapSceneName ? 4 : minPlayerCount; //선택한 맵의 최소 시작 인원
+        internal int minimumPlayerCount => Mathf.Max(2, minPlayerCount); //4명 권장 맵도 두 명부터 시작 가능
         internal float? countdownRemaining => Object != null && Object.IsValid ? StartCountdown.RemainingTime(Runner) : null; //실제 복제된 시작 타이머
 
         public override void FixedUpdateNetwork()

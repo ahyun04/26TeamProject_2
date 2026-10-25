@@ -81,6 +81,11 @@ public class GameAudio : MonoBehaviour
         return settings.getVolume(channel);
     }
 
+    internal static float getMaximumVolume(AudioVolumeChannel channel) //설정창과 음성 재생기의 음량 상한 조회
+    {
+        return AudioSettingsComponent.getMaximumVolume(channel);
+    }
+
     internal void setVolume(AudioVolumeChannel channel, float volume) //설정창의 음량 변경 진입점
     {
         settings.setVolume(channel, volume);
