@@ -4,10 +4,14 @@ using LockdownProtocol.Networking;
 using UnityEngine;
 
 /// <summary>
-/// 플레이어의 아이템 장착, 사용, 1인칭 언제 무엇을 보여줄지
+/// 플레이어의 아이템 주머니(슬롯 2개), 장착, 사용, 1인칭 언제 무엇을 보여줄지
+/// - 슬롯은 서버(State Authority)가 관리하고, 마우스 휠로 슬롯을 전환한다.
+/// - CurrentItemObject는 "지금 손에 든 아이템"(= 선택 슬롯의 아이템)으로, 기존 코드와 같은 의미를 유지한다.
 /// </summary>
 public class PlayerItemController : NetworkBehaviour
 {
+    private const int SlotCount = 2; //주머니 슬롯 개수
+
     [Header("참조")]
     [SerializeField] private PlayerTargetDetector targetDetector;
     [SerializeField] private PlayerFirstPersonItemView firstPersonItemView;
@@ -15,9 +19,14 @@ public class PlayerItemController : NetworkBehaviour
     [Header("서버 검증")]
     [SerializeField] private float maxInteractDistance = 3f;
 
-    // 현재 플레이어가 장착하고 있는 네트워크 아이템
+    // 현재 플레이어가 손에 들고 있는 네트워크 아이템 (선택 슬롯의 아이템)
     [Networked, OnChangedRender(nameof(OnCurrentItemChanged))]
     public NetworkObject CurrentItemObject { get; private set; }
+
+    // 주머니 슬롯 (슬롯당 아이템 최대 1개) 과 현재 선택 슬롯 (0 = 1번, 1 = 2번)
+    [Networked] private NetworkObject SlotItem0 { get; set; }
+    [Networked] private NetworkObject SlotItem1 { get; set; }
+    [Networked] public int SelectedSlotIndex { get; private set; }
 
     // 현재 아이템이 Target 변화에 반응하는 기능을 가지고 있을 경우 저장
     private IItemTargetHandler targetHandler;
@@ -29,6 +38,7 @@ public class PlayerItemController : NetworkBehaviour
     private bool pickupPending; //서버 응답 전 중복 획득 요청 방지
     private float pickupDeadline; //응답 지연 시 입력 복구 시각
     internal bool isPickupPending => pickupPending; //획득 안내의 중복 표시 제한
+    internal int selectedSlot => SelectedSlotIndex; //인벤토리 UI가 읽는 선택 슬롯
 
     internal bool tryGetEquippedWeapon(out ItemData weapon) //현재 플레이어가 실제로 소유한 무기 조회
     {
@@ -40,6 +50,26 @@ public class PlayerItemController : NetworkBehaviour
         return true;
     }
 
+    internal ItemData getSlotItemData(int index) //인벤토리 UI용: 슬롯에 든 아이템 정보 (없으면 null)
+    {
+        if (index < 0 || index >= SlotCount || Object == null || !Object.IsValid) return null;
+        NetworkObject slotObject = getSlot(index);
+        if (slotObject == null || !slotObject.IsValid) return null;
+        ItemBase item = slotObject.GetComponentInChildren<ItemBase>(true);
+        return item != null ? item.Data : null;
+    }
+
+    private NetworkObject getSlot(int index) //슬롯 번호로 보관 아이템 조회
+    {
+        return index == 0 ? SlotItem0 : SlotItem1;
+    }
+
+    private void setSlot(int index, NetworkObject item) //슬롯 번호로 보관 아이템 지정
+    {
+        if (index == 0) SlotItem0 = item;
+        else SlotItem1 = item;
+    }
+
 
     public override void Spawned()
     {
@@ -48,8 +78,8 @@ public class PlayerItemController : NetworkBehaviour
         interaction = GetComponent<PlayerInteraction>();
         if (HasStateAuthority && health != null)
         {
-            health.Died += DropCurrentItem;
-            health.Escaped += DropCurrentItem;
+            health.Died += DropAllItems;
+            health.Escaped += DropAllItems;
         }
         if (!HasInputAuthority)
             return;
@@ -72,6 +102,15 @@ public class PlayerItemController : NetworkBehaviour
         RefreshCurrentItem();
     }
 
+    public override void FixedUpdateNetwork() //소모·삭제로 아이템이 사라져도 손 상태를 슬롯 기준으로 보정
+    {
+        if (!HasStateAuthority)
+            return;
+
+        if (CurrentItemObject != getSlot(SelectedSlotIndex))
+            syncHand();
+    }
+
     public override void Render() //아이템 오브젝트의 수신이 늦어져도 로컬 표시 갱신
     {
         if (HasInputAuthority && (!presentationInitialized || displayedItem != CurrentItemObject))
@@ -81,10 +120,13 @@ public class PlayerItemController : NetworkBehaviour
 
     public override void Despawned(NetworkRunner runner, bool hasState)
     {
+        if (hasState && HasStateAuthority)
+            DropAllItems(); //연결 종료 등으로 사라질 때 서버가 주머니를 정리
+
         if (health != null)
         {
-            health.Died -= DropCurrentItem;
-            health.Escaped -= DropCurrentItem;
+            health.Died -= DropAllItems;
+            health.Escaped -= DropAllItems;
         }
         if (targetDetector != null)
             targetDetector.TargetChanged -= OnTargetChanged;
@@ -116,6 +158,10 @@ public class PlayerItemController : NetworkBehaviour
     private void HandleItemInput()
     {
         if (pickupPending && Time.unscaledTime >= pickupDeadline) pickupPending = false;
+
+        // 마우스 휠 위·아래 모두 반대 슬롯으로 한 번 전환 (연속 입력은 입력마다 전환)
+        if (Input.mouseScrollDelta.y != 0f) RequestSwitchSlot();
+
         handleItemInput(Input.GetMouseButtonDown(0), Input.GetMouseButtonDown(1), Input.GetKeyDown(KeyCode.G));
     }
 
@@ -127,7 +173,7 @@ public class PlayerItemController : NetworkBehaviour
             return;
         }
 
-        // 아무것도 들고 있지 않을 때 좌클릭 = 장착
+        // 선택한 슬롯이 비어 있을 때(손에 아무것도 없을 때) 좌클릭 = 장착
         if (leftDown && CurrentItemObject == null)
         {
             if (interaction != null && interaction.isInteracting) return;
@@ -194,6 +240,24 @@ public class PlayerItemController : NetworkBehaviour
 
 
     /// <summary>
+    /// 슬롯 전환을 Host에게 요청 (미션 수행 중에는 요청하지 않는다)
+    /// </summary>
+    public void RequestSwitchSlot()
+    {
+        if (!HasInputAuthority)
+            return;
+
+        if (interaction != null && interaction.isInteracting)
+            return;
+
+        if (RoomManager.Instance != null && RoomManager.Instance.CurrentRoomState == RoomManager.RoomState.Starting)
+            return;
+
+        RPC_RequestSwitchSlot();
+    }
+
+
+    /// <summary>
     /// 현재 아이템 기능 사용 시도
     /// </summary>
     private void TryUseCurrentItem()
@@ -237,11 +301,22 @@ public class PlayerItemController : NetworkBehaviour
         pickupPending = false;
     }
 
-    private void tryEquipItem(NetworkId itemId) //기존 소지와 거리 검증을 서버에서 일괄 수행
+    private int findFreeSlot() //선택 슬롯이 비어 있으면 그 슬롯, 아니면 다른 빈 슬롯, 둘 다 차 있으면 -1
+    {
+        int selected = SelectedSlotIndex;
+        if (getSlot(selected) == null) return selected;
+
+        int other = selected == 0 ? 1 : 0;
+        return getSlot(other) == null ? other : -1;
+    }
+
+    private void tryEquipItem(NetworkId itemId) //빈 슬롯과 거리 검증을 서버에서 일괄 수행
     {
         if (health != null && !health.CanAct) return;
         if (RoomManager.Instance != null && RoomManager.Instance.CurrentRoomState == RoomManager.RoomState.Starting) return;
-        if (CurrentItemObject != null)
+
+        int slot = findFreeSlot();
+        if (slot < 0) //주머니가 가득 차면 기존 아이템을 덮어쓰지 않고 거부
             return;
 
         if (!Runner.TryFindObject(itemId, out NetworkObject itemObject))
@@ -259,7 +334,45 @@ public class PlayerItemController : NetworkBehaviour
         if (!item.TryEquip(Object))
             return;
 
-        CurrentItemObject = itemObject;
+        setSlot(slot, itemObject);
+        syncHand();
+    }
+
+
+    /// <summary>
+    /// Host가 슬롯 전환 검증 후 반대 슬롯을 선택 (빈 슬롯도 선택 가능, 아이템은 버리거나 소모하지 않음)
+    /// </summary>
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    private void RPC_RequestSwitchSlot()
+    {
+        if (health != null && !health.CanAct) return;
+        if (RoomManager.Instance != null && RoomManager.Instance.CurrentRoomState == RoomManager.RoomState.Starting) return;
+
+        SelectedSlotIndex = SelectedSlotIndex == 0 ? 1 : 0;
+        syncHand();
+    }
+
+
+    /// <summary>
+    /// 호스트: 선택 슬롯 기준으로 손에 든 아이템과 각 아이템의 표시 상태를 맞춘다.
+    /// </summary>
+    private void syncHand()
+    {
+        if (!HasStateAuthority) return;
+
+        int selected = SelectedSlotIndex;
+        for (int i = 0; i < SlotCount; i++)
+        {
+            NetworkObject slotObject = getSlot(i);
+            if (slotObject == null) continue;
+
+            ItemBase slotItem = slotObject.GetComponentInChildren<ItemBase>(true);
+            if (slotItem != null) slotItem.SetInHand(i == selected);
+        }
+
+        NetworkObject handObject = getSlot(selected);
+        if (CurrentItemObject != handObject)
+            CurrentItemObject = handObject;
     }
 
 
@@ -273,19 +386,43 @@ public class PlayerItemController : NetworkBehaviour
         DropCurrentItem();
     }
 
-    internal void DropCurrentItem()
+    internal void DropCurrentItem() //손에 든(선택 슬롯) 아이템만 내려놓는다
     {
         if (!HasStateAuthority) return;
-        if (CurrentItemObject == null)
+
+        int selected = SelectedSlotIndex;
+        NetworkObject handObject = getSlot(selected);
+        if (handObject == null)
+        {
+            syncHand();
             return;
+        }
 
-        ItemBase item =
-        CurrentItemObject.GetComponentInChildren<ItemBase>(true);
-
+        ItemBase item = handObject.GetComponentInChildren<ItemBase>(true);
         if (item != null)
             item.Unequip();
 
-        CurrentItemObject = null;
+        setSlot(selected, null);
+        syncHand();
+    }
+
+    internal void DropAllItems() //사망·탈출·연결 종료 시 두 슬롯의 아이템을 모두 내려놓는다
+    {
+        if (!HasStateAuthority) return;
+
+        for (int i = 0; i < SlotCount; i++)
+        {
+            NetworkObject slotObject = getSlot(i);
+            if (slotObject == null) continue;
+
+            ItemBase item = slotObject.GetComponentInChildren<ItemBase>(true);
+            if (item != null)
+                item.Unequip(transform.right * (0.3f * i)); //같은 자리에 겹치지 않도록 살짝 띄운다
+
+            setSlot(i, null);
+        }
+
+        syncHand();
     }
 
 

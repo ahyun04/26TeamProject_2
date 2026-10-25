@@ -16,6 +16,8 @@ public abstract class ItemBase : NetworkBehaviour, ITargetable
     private Vector3 WorldPosition { get; set; }
     [Networked, OnChangedRender(nameof(OnHolderChanged))]
     private Quaternion worldRotation { get; set; } //내려놓은 아이템의 회전
+    [Networked, OnChangedRender(nameof(OnHolderChanged))]
+    public NetworkBool IsInHand { get; private set; } //소유자의 주머니 중 현재 손에 든 슬롯인지 (아니면 주머니에 숨겨 둠)
 
 
     public ItemData Data => data;
@@ -58,6 +60,7 @@ public abstract class ItemBase : NetworkBehaviour, ITargetable
         if (HolderObject != null)
             return false;
 
+        IsInHand = true; //손에 들지 여부는 소유자의 인벤토리가 이어서 SetInHand로 확정
         HolderObject = holder;
 
         ApplyHeldState();
@@ -66,15 +69,30 @@ public abstract class ItemBase : NetworkBehaviour, ITargetable
     }
 
 
-    public void Unequip()
+    public void Unequip(Vector3 extraOffset = default)
     {
         if (!HasStateAuthority)
             return;
 
         if (HolderObject != null)
-            WorldPosition = HolderObject.transform.position + Vector3.up * 0.3f;
+            WorldPosition = HolderObject.transform.position + Vector3.up * 0.3f + extraOffset;
+        IsInHand = false;
         HolderObject = null;
 
+        ApplyHeldState();
+    }
+
+
+    /// <summary>소유자의 선택 슬롯이 바뀔 때 호스트가 호출 - 손에 든 아이템만 모델을 보여 준다.</summary>
+    internal void SetInHand(bool inHand)
+    {
+        if (!HasStateAuthority)
+            return;
+
+        if (IsInHand == inHand)
+            return;
+
+        IsInHand = inHand;
         ApplyHeldState();
     }
 
@@ -110,6 +128,7 @@ public abstract class ItemBase : NetworkBehaviour, ITargetable
         if (hand == null)
             Debug.LogError($"[{name}] 소유자의 PlayerItemHoldPoint가 연결되지 않았습니다.");
 
-        worldView.setHeld(hand, !displayedHolder.HasInputAuthority && hand != null);
+        //주머니에만 있는 아이템(IsInHand false)은 모두에게 숨긴다. 내 화면의 손 아이템은 1인칭 모델이 따로 처리한다.
+        worldView.setHeld(hand, IsInHand && !displayedHolder.HasInputAuthority && hand != null);
     }
 }
