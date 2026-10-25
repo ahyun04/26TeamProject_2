@@ -59,6 +59,13 @@ public class PlayerItemController : NetworkBehaviour
         return item != null ? item.Data : null;
     }
 
+    internal GameObject getSlotItemModel(int index) //인벤토리 UI: 아이콘이 없는 아이템의 미리보기를 만들 원본 모델
+    {
+        if (index < 0 || index >= SlotCount || Object == null || !Object.IsValid) return null;
+        NetworkObject slotObject = getSlot(index);
+        return slotObject != null && slotObject.IsValid ? slotObject.gameObject : null;
+    }
+
     private NetworkObject getSlot(int index) //슬롯 번호로 보관 아이템 조회
     {
         return index == 0 ? SlotItem0 : SlotItem1;

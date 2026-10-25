@@ -72,7 +72,8 @@ public class InventoryHudUI : MonoBehaviour
             if (view == null) continue;
 
             ItemData data = controller.getSlotItemData(i);
-            Sprite sprite = data != null ? data.Icon : null;
+            //ItemData에 Icon이 있으면 그것을, 없으면 아이템 모델을 작게 찍은 미리보기를 쓴다
+            Sprite sprite = data != null ? ItemIconProvider.Get(data, controller.getSlotItemModel(i)) : null;
 
             if (view.icon != null)
             {
