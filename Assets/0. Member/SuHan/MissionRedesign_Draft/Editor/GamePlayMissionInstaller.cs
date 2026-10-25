@@ -4,7 +4,6 @@ using TrustNoOne.Missions;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using UnityEngine.UI;
 using Object = UnityEngine.Object;
 
 /// <summary>
@@ -12,7 +11,8 @@ using Object = UnityEngine.Object;
 ///
 /// [하는 일] 옛 개인 미션 6종을 단체로 옮기기(7a — 한 번) → 실제 게임 데이터 준비(없을 때만) · 풀 숫자 7a 값(옛 기본값일 때만) → 옛 미션 프리팹 제거 → 옛 MissionSystem 컴포넌트만 제거 →
 ///  `Missions (새 미션)` 아래에 MissionManager · PlayerHealthActorGate · 새 장치(없을 때만) → 옛 아이템 자리 후보 묶음 제거 →
-///  팀원 스크립트의 미션 시스템 칸 연결 → 미션 목록 패널의 옛 MissionUI 를 MissionListUI 로 바꿔 끼우기(6c) → 1층 아이템 NavMesh 굽기(6b 보강 — 매번) → 새 5종 겹침 경고 → 저장.
+///  팀원 스크립트의 미션 시스템 칸 연결 → 미션 목록 패널의 옛 MissionUI 를 MissionListUI 로 바꿔 끼우기(6c) → 1층 아이템 NavMesh 굽기(6b 보강 — 매번) → 새 5종 겹침 경고 →
+///  미션 목록을 왼쪽 위 글자 칸으로 설정(10 — 공통 단계, 글자 칸이 없을 때만) → 저장.
 /// [다시 실행해도 안전 — SW7] 이름으로 찾아 이미 있으면 건드리지 않는다 → 기획자가 옮긴 배치 · 바꾼 데이터 숫자가 남는다.
 ///  지운 것만 다시 만든다. 처음 배치로 되돌리려면 `Missions (새 미션)` 을 지우고 다시 실행한다.
 /// [MissionSystem 오브젝트 — SW8] 옛 MissionSystem 과 같은 오브젝트에 RoleAssignment · GameTimer · GameEndSystem 이 붙어 있어
@@ -22,7 +22,7 @@ using Object = UnityEngine.Object;
 /// [겹침 경고] 새 5종만 검사한다. 옛 미션 자리(벽에 붙은 밸브 · 차단기 등)는 원래 배치라 경고가 소음이 된다.
 /// [9a 정리] 어느 맵에나 같은 단계(씬 열기 · 루트 · 매니저 · 게이트 · 배치 · NavMesh · 겹침 · 저장 · 테스트 표시)는 MissionMapInstaller 로 옮겼다.
 ///  여기는 GamePlay 설정 묶음(배치표 · NavMesh 범위)과 GamePlay 에서만 한 번 필요했던 단계(개인 → 단체 · 풀 숫자 · 옛 미션 · 미션 목록 UI)만 갖는다 — 동작 · 값은 그대로.
-/// [근거] 6b 명세 SW1 · SW2 · SW5 · SW6 · SW7 · SW8 · SW11 · SW12 (사용자 결정 — 질문 1 ~ 6, 접근 1), 6b 보강 명세 NS2 · NS4 · NS12 · 7a 명세 TC6 · TC13 · 9a 명세 MP4
+/// [근거] 6b 명세 SW1 · SW2 · SW5 · SW6 · SW7 · SW8 · SW11 · SW12 (사용자 결정 — 질문 1 ~ 6, 접근 1), 6b 보강 명세 NS2 · NS4 · NS12 · 7a 명세 TC6 · TC13 · 9a 명세 MP4 · 10 명세 ML12 · ML13
 /// </summary>
 public static class GamePlayMissionInstaller
 {
@@ -47,9 +47,6 @@ public static class GamePlayMissionInstaller
         { "PS001", "TG006" }, { "PS002", "TG007" }, { "PS003", "TG008" },
         { "PS004", "TG009" }, { "PS005", "TG010" }, { "PS006", "TG011" },
     };
-
-    // 미션 목록 칸의 줄 간격 (6c 테스트 후 — 위에서부터 붙여 쌓을 때)
-    private const float ListLineSpacing = 4f;
 
     private sealed class DefSpec
     {
@@ -156,10 +153,11 @@ public static class GamePlayMissionInstaller
         int spotGroupsRemoved = RemoveOldItemSpots(root);
         int wired = WireTeamScripts(scene, manager);
         int listSwapped = SwapMissionListUI(scene, manager);
-        int listLayoutFixed = FixMissionListLayout();
         // 장치를 다 놓은 뒤 굽는다 — 장치 몸체도 길을 막는 것으로 들어간다 (6b 보강 NS2 · NS4: 매번 다시 굽기)
         bool navMeshBaked = MissionMapInstaller.BakeNavMesh(Spec, root);
         int overlaps = MissionMapInstaller.CheckOverlaps(Spec, placedNow, root);
+        // 미션 목록: 왼쪽 위 글자 칸 하나 (10 명세 ML12 — 바꿔 끼운 뒤, 글자 칸이 없는 목록만)
+        int listsSetUp = MissionMapInstaller.SetupMissionList(scene);
 
         // 저장할 때 Fusion 이 씬 오브젝트의 정렬 키를 굽는다 (호스트 · 손님이 같은 오브젝트로 짝을 맞추는 번호)
         MissionMapInstaller.SaveScene(scene);
@@ -167,7 +165,7 @@ public static class GamePlayMissionInstaller
         Debug.Log($"[GamePlayMissionInstaller] 완료 — 개인 → 단체 {movedToTeam}개 옮김, 풀 숫자 {(poolUpdated ? $"단체 {TeamCount} · 개인 {PersonalCount} 으로 바꿈" : "그대로")}, 옛 미션 {removedOld}개 · 옛 MissionSystem 컴포넌트 {removedSystems}개 제거, " +
                   $"새 장치 {placedNow.Count}개 놓음 · {skipped}개 이미 있어 건너뜀, MissionManager {(managerCreated ? "새로 만듦" : "있음")}, " +
                   $"PlayerHealthActorGate {(gateCreated ? "새로 만듦" : "있음")}, 옛 자리 후보 묶음 {spotGroupsRemoved}개 제거, NavMesh {(navMeshBaked ? "구움" : "실패")}, " +
-                  $"미션 시스템 칸 {wired}개 연결, 미션 목록 UI {listSwapped}개 교체 · 칸 설정 {listLayoutFixed}개 고침, 겹침 경고 {overlaps}개. 멀티 테스트 전에는 SuHan/Build Full Game (Windows) 로 다시 빌드하세요.");
+                  $"미션 시스템 칸 {wired}개 연결, 미션 목록 UI {listSwapped}개 교체 · {listsSetUp}개 설정, 겹침 경고 {overlaps}개. 멀티 테스트 전에는 SuHan/Build Full Game (Windows) 로 다시 빌드하세요.");
     }
 
     /// <summary>테스트 동안만 메인 씬에 디버그 패널(단체 · 개인 미션 표시, 호스트 F8 ~ F10)을 넣는다 (SW12 — 미션 목록 UI 는 6c). 커밋 전에 끄기.</summary>
@@ -451,7 +449,8 @@ public static class GamePlayMissionInstaller
     }
 
     /// <summary>
-    /// 미션 목록 패널의 옛 MissionUI 를 새 MissionListUI 로 바꿔 끼운다 (6c — 사용자 결정 A). 줄 프리팹 · 단체 칸 · 개인 칸은 그대로 옮긴다.
+    /// 미션 목록 패널의 옛 MissionUI 를 새 MissionListUI 로 바꿔 끼운다 (6c — 사용자 결정 A).
+    /// 옛 줄 프리팹 · 단체 칸 · 개인 칸은 옮기지 않는다 — 새 목록은 글자 칸 하나에 쓰고, 그 칸은 공통 단계 SetupMissionList 가 만든다 (10 명세 ML13).
     /// 옛 컴포넌트가 없으면(이미 바꿨으면) 아무것도 하지 않는다 → 다시 실행해도 안전. 팀원 파일 MissionUI.cs 는 고치지 않는다 (6e 정리).
     /// </summary>
     private static int SwapMissionListUI(Scene scene, MissionManager manager)
@@ -474,67 +473,17 @@ public static class GamePlayMissionInstaller
                 continue;
             }
 
-            SerializedObject oldSO = new SerializedObject(oldUI);
-            Object itemPrefab = oldSO.FindProperty("itemPrefab")?.objectReferenceValue;
-            Object sharedRoot = oldSO.FindProperty("sharedRoot")?.objectReferenceValue;
-            Object personalRoot = oldSO.FindProperty("personalRoot")?.objectReferenceValue;
-
-            if (itemPrefab == null || sharedRoot == null || personalRoot == null)
-                Debug.LogWarning($"[GamePlayMissionInstaller] '{panel.name}' 의 옛 MissionUI 에 비어 있는 칸이 있습니다 (줄 프리팹 · 단체 칸 · 개인 칸) — 새 목록에서 연결을 확인해 주세요.", panel);
-
             MissionListUI list = panel.AddComponent<MissionListUI>();
             SerializedObject so = new SerializedObject(list);
             so.FindProperty("manager").objectReferenceValue = manager;
-            so.FindProperty("itemPrefab").objectReferenceValue = itemPrefab;
-            so.FindProperty("sharedRoot").objectReferenceValue = sharedRoot;
-            so.FindProperty("personalRoot").objectReferenceValue = personalRoot;
             so.ApplyModifiedPropertiesWithoutUndo();
 
             Object.DestroyImmediate(oldUI);
             swapped++;
-            Debug.Log($"[GamePlayMissionInstaller] '{panel.name}' 의 옛 MissionUI 를 MissionListUI 로 바꿔 끼웠습니다 (줄 프리팹 · 단체 칸 · 개인 칸 그대로).");
+            Debug.Log($"[GamePlayMissionInstaller] '{panel.name}' 의 옛 MissionUI 를 MissionListUI 로 바꿔 끼웠습니다 (글자 칸은 미션 목록 설정 단계가 만든다).");
         }
 
         return swapped;
-    }
-
-    /// <summary>
-    /// 미션 목록 칸(단체 · 개인)의 줄 쌓기 설정을 여러 줄에 맞게 바꾼다 (6c 테스트 후 수정).
-    /// [원인] 칸이 300 × 200 이고 줄 프리팹도 300 × 200 인데, 칸의 세로 쌓기(VerticalLayoutGroup)가 줄 높이를 정하지 않고(Control Child Size 꺼짐)
-    ///  남는 공간을 벌려 채우게(Child Force Expand 켜짐) 되어 있다 → 옛 게임처럼 칸마다 한 줄일 때만 맞고, 여러 줄이면 줄마다 200 씩 내려가
-    ///  칸 · 패널 밖으로 넘치고 단체 · 개인 줄이 겹친다.
-    /// [수정] 줄 높이를 글자 높이에 맞추고(Control Child Size 켬) 위에서부터 붙여 쌓는다(Force Expand 끔, 간격 4).
-    ///  옛 설정일 때만 바꾼다 → 기획자가 다르게 바꾼 값은 다시 실행해도 그대로 둔다. 줄 프리팹(팀원)은 고치지 않는다.
-    /// </summary>
-    private static int FixMissionListLayout()
-    {
-        int fixedCount = 0;
-
-        foreach (MissionListUI list in Object.FindObjectsByType<MissionListUI>(FindObjectsInactive.Include, FindObjectsSortMode.None))
-        {
-            SerializedObject so = new SerializedObject(list);
-
-            foreach (string field in new[] { "sharedRoot", "personalRoot" })
-            {
-                Transform content = so.FindProperty(field).objectReferenceValue as Transform;
-                VerticalLayoutGroup layout = content != null ? content.GetComponent<VerticalLayoutGroup>() : null;
-
-                if (layout == null || (layout.childControlHeight && !layout.childForceExpandHeight))
-                    continue;
-
-                layout.childControlHeight = true;
-                layout.childForceExpandHeight = false;
-
-                if (layout.spacing <= 0f)
-                    layout.spacing = ListLineSpacing;
-
-                EditorUtility.SetDirty(layout);
-                fixedCount++;
-                Debug.Log($"[GamePlayMissionInstaller] '{content.name}' 줄 쌓기 설정을 여러 줄에 맞게 바꿨습니다 (줄 높이 = 글자 높이, 위에서부터 간격 {layout.spacing}).", content);
-            }
-        }
-
-        return fixedCount;
     }
 
     // ═════════════════════════════════════════════════════════════

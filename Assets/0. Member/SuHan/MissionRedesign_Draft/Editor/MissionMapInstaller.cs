@@ -1,11 +1,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using Fusion;
+using TMPro;
 using TrustNoOne.Missions;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 using Object = UnityEngine.Object;
 
 /// <summary>
@@ -55,13 +57,13 @@ public sealed class MissionMapSpec
 /// <summary>
 /// [역할 · 에디터 전용] 맵 씬에 미션 장치를 놓는 공통 단계 (9a 명세 MP4). GamePlay · 4~12 메뉴가 같이 쓴다.
 ///  씬 열기 → `Missions (새 미션)` 루트 → MissionManager · PlayerHealthActorGate (씬에 있으면 그대로, 없을 때만 만듦) →
-///  배치표대로 놓기 (같은 이름이 있으면 건너뜀) → 1층 아이템 NavMesh 굽기 → 겹침 경고 → 저장.
+///  배치표대로 놓기 (같은 이름이 있으면 건너뜀) → 1층 아이템 NavMesh 굽기 → 겹침 경고 → 미션 목록 설정(10 — 처음 한 번만) → 저장.
 /// [이유] 처음에는 메인 씬 도구(GamePlayMissionInstaller) 안에 상수로 있었다. 4~12 맵이 생겨 맵마다 다른 값(씬 · 표 · NavMesh)만
 ///  설정 묶음으로 빼고 단계는 한 벌로 둔다. 동작 · 로그 문구는 메인 씬 도구 때와 같다.
 /// [다시 실행해도 안전 — SW7 · MP3] 이름으로 찾아 이미 있으면 건드리지 않는다 → 기획자가 옮긴 자리가 남는다.
 ///  처음 배치로 되돌리려면 `Missions (새 미션)` 을 지우고 다시 실행한다.
 /// [저장] 씬을 저장할 때 Fusion 이 씬 오브젝트의 정렬 키를 굽는다 (호스트 · 손님이 같은 오브젝트로 짝을 맞추는 번호) — 반드시 저장한다.
-/// [근거] 6b 명세 SW5 ~ SW8 · SW12, 6b 보강 NS2 ~ NS4, 9a 명세 MP3 ~ MP5 · MP8 · MP9
+/// [근거] 6b 명세 SW5 ~ SW8 · SW12, 6b 보강 NS2 ~ NS4, 9a 명세 MP3 ~ MP5 · MP8 · MP9, 10 명세 ML10 ~ ML12
 /// </summary>
 public static class MissionMapInstaller
 {
@@ -287,6 +289,125 @@ public static class MissionMapInstaller
         }
 
         return warnings;
+    }
+
+    // ═════════════════════════════════════════════════════════════
+    //  미션 목록 (10 명세 ML10 ~ ML12)
+    // ═════════════════════════════════════════════════════════════
+
+    private const string ListTextName = "MissionListText";
+    // 팀원 줄 프리팹(MissionUIItem_Text)과 같은 글꼴
+    private const string ListFontPath = "Assets/TextMesh Pro/Resources/Fonts & Materials/NotoSansKR/NotoSansKR-Medium SDF.asset";
+    // 기준 화면 800 × 600 단위 (화면 폭에 맞춰 커진다 — 1920 폭이면 2.4배, 9 → 약 22픽셀)
+    private const float ListFontSize = 9f;
+    private const int ListPadding = 6;
+    // 화면 왼쪽 위 모서리에서 안쪽으로 (ML3 — 테스트 패널 자리)
+    private static readonly Vector2 ListMargin = new Vector2(8f, -8f);
+
+    /// <summary>
+    /// 씬의 미션 목록(MissionListUI)을 테스트 패널처럼 왼쪽 위 글자 칸 하나로 바꾼다 (10 명세 ML10 ~ ML12). 바꾼 목록 수를 돌려준다.
+    ///  패널(팀원 Mission_Panel)의 기존 자식(옛 줄 칸 Mission_List)은 지우지 않고 끈다 → 다시 켜면 예전 모습.
+    ///  패널: 기준점 · 피벗 왼쪽 위, 크기는 글에 맞춤(세로 쌓기 + 내용 맞춤). 배경 이미지는 그대로.
+    ///  새 자식 MissionListText(TMP)를 만들어 MissionListUI.listText 에 연결한다.
+    /// [처음 한 번만] 글자 칸이 이미 연결된 목록은 건너뛴다 → UI 담당이 나중에 바꾼 위치 · 크기 · 글자는 다시 실행해도 그대로 (9b DF8 과 같은 방식).
+    /// </summary>
+    public static int SetupMissionList(Scene scene)
+    {
+        int setUp = 0;
+
+        foreach (GameObject sceneRoot in scene.GetRootGameObjects())
+        {
+            foreach (MissionListUI list in sceneRoot.GetComponentsInChildren<MissionListUI>(true))
+            {
+                SerializedObject so = new SerializedObject(list);
+                SerializedProperty textProperty = so.FindProperty("listText");
+
+                if (textProperty == null || textProperty.objectReferenceValue != null)
+                    continue;
+
+                RectTransform panel = list.transform as RectTransform;
+
+                if (panel == null)
+                {
+                    Debug.LogWarning($"[MissionMapInstaller] '{list.name}' 은 UI(RectTransform)가 아니라 미션 목록을 설정하지 않았습니다.", list);
+                    continue;
+                }
+
+                // 옛 줄 칸 끄기 (ML11 — 지우지 않는다)
+                int hidden = 0;
+
+                foreach (Transform child in panel)
+                {
+                    if (!child.gameObject.activeSelf)
+                        continue;
+
+                    child.gameObject.SetActive(false);
+                    hidden++;
+                }
+
+                // 패널: 왼쪽 위 기준, 글에 맞춰 크기가 바뀐다 (ML10)
+                panel.anchorMin = new Vector2(0f, 1f);
+                panel.anchorMax = new Vector2(0f, 1f);
+                panel.pivot = new Vector2(0f, 1f);
+                panel.anchoredPosition = ListMargin;
+
+                VerticalLayoutGroup layout = GetOrAdd<VerticalLayoutGroup>(panel.gameObject);
+                layout.padding = new RectOffset(ListPadding, ListPadding, ListPadding, ListPadding);
+                layout.childAlignment = TextAnchor.UpperLeft;
+                layout.spacing = 0f;
+                layout.childControlWidth = true;
+                layout.childControlHeight = true;
+                layout.childForceExpandWidth = false;
+                layout.childForceExpandHeight = false;
+
+                ContentSizeFitter fitter = GetOrAdd<ContentSizeFitter>(panel.gameObject);
+                fitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+                fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+                TextMeshProUGUI text = CreateListText(panel);
+                textProperty.objectReferenceValue = text;
+                so.ApplyModifiedPropertiesWithoutUndo();
+
+                EditorUtility.SetDirty(panel);
+                EditorUtility.SetDirty(list);
+                setUp++;
+                Debug.Log($"[MissionMapInstaller] '{panel.name}' 미션 목록을 왼쪽 위 글자 칸으로 바꿨습니다 (옛 자식 {hidden}개 끔, 글자 크기 {ListFontSize}).", panel);
+            }
+        }
+
+        return setUp;
+    }
+
+    /// <summary>목록 글자 칸: 왼쪽 위 정렬 · 줄바꿈 끔(한 미션이 두 줄로 쪼개지지 않게) · 색 태그 · 클릭 안 받음 (ML10).</summary>
+    private static TextMeshProUGUI CreateListText(RectTransform panel)
+    {
+        GameObject textObject = new GameObject(ListTextName, typeof(RectTransform));
+        textObject.layer = panel.gameObject.layer;
+        textObject.transform.SetParent(panel, false);
+
+        TextMeshProUGUI text = textObject.AddComponent<TextMeshProUGUI>();
+        TMP_FontAsset font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(ListFontPath);
+
+        if (font != null)
+            text.font = font;
+        else
+            Debug.LogWarning($"[MissionMapInstaller] 목록 글꼴이 없어 기본 글꼴을 씁니다 (한글이 안 보일 수 있음): {ListFontPath}");
+
+        text.fontSize = ListFontSize;
+        text.enableAutoSizing = false;
+        text.alignment = TextAlignmentOptions.TopLeft;
+        text.enableWordWrapping = false;
+        text.richText = true;
+        text.raycastTarget = false;
+        text.color = Color.white;
+        text.text = MissionListRules.WaitingText;
+        return text;
+    }
+
+    private static T GetOrAdd<T>(GameObject target) where T : Component
+    {
+        T component = target.GetComponent<T>();
+        return component != null ? component : target.AddComponent<T>();
     }
 
     // ═════════════════════════════════════════════════════════════

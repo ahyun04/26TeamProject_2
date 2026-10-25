@@ -1,93 +1,95 @@
-using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 
 namespace TrustNoOne.Missions
 {
     /// <summary>
-    /// [역할] 메인 게임 화면 왼쪽 미션 목록: 단체 미션(모두)과 내 개인 미션을 한 줄씩 보여 준다 (6c). 옛 MissionUI 를 대신한다.
-    /// [동작] 미션 관리자의 화면용 정보(Client — 이 PC 가 봐도 되는 것만)가 바뀌었다는 알림(Changed)마다 줄을 다시 만든다.
-    ///  어떤 줄을 어느 칸에 둘지는 순수 규칙 MissionListRules. 줄 글자는 기존 줄 프리팹(MissionUIItem.SetData — "[단체] 이름 ( p / r )")에 맡기고,
-    ///  끝난 미션만 줄 끝에 초록 "완료"를 이어 붙인다 (개인 미션은 끝나면 장치가 원래대로 돌아가 숫자만으로는 알아보기 어렵다).
+    /// [역할] 메인 게임 화면 왼쪽 위 미션 목록: 완료 개수 요약 · 단체 미션(모두) · 내 개인 미션을 글자 칸 하나에 쓴다 (10 명세). 옛 MissionUI 를 대신한다 (6c).
+    /// [동작] 미션 관리자의 화면용 정보(Client — 이 PC 가 봐도 되는 것만)가 바뀌었다는 알림(Changed)이 오거나,
+    ///  남은 시간 숫자가 바뀔 때(MissionListRules.NextRefreshTime)에만 글을 다시 만든다. 글이 같으면 글자 칸에 다시 넣지 않는다.
+    ///  무엇을 어떤 형식 · 색으로 쓸지는 순수 규칙 MissionListRules (테스트 T35).
+    /// [지금 시각] 미션 관리자 러너의 시뮬레이션 시각 — 마감(호스트가 동기화)과 같은 기준이다 (stage1 명세 2-4, 테스트 패널과 같음).
     /// [미션 관리자를 기다리는 이유] 씬 오브젝트라 러너가 등록한 뒤에야 Client 가 생긴다 → 생길 때까지 매 프레임 확인하고 한 번만 구독한다.
-    /// [팀원 코드] MissionUIItem 은 부르기만 하고 고치지 않는다. 옛 MissionUI 는 메인 씬 도구가 이 컴포넌트로 바꿔 끼운다.
-    /// [근거] 6c 결정 — 사용자 결정 A (질문 1: 옛 형식 + 완료 표시, 질문 2: 새 컴포넌트로 바꿔 끼우기)
+    /// [글자 칸] 메뉴 SuHan/Apply Missions To 4~12 · GamePlay 가 패널 안에 만들어 연결한다 (MissionMapInstaller.SetupMissionList — ML12).
+    ///  예전 줄 프리팹(팀원 MissionUIItem_Text) · 단체 칸 · 개인 칸은 더 쓰지 않는다 (씬에서는 꺼 둔다 — ML11).
+    /// [근거] 10 명세 ML1 · ML4 (접근 1 — 글자 칸 하나) · ML14, 6c UI2 (옛 MissionUI 바꿔 끼우기)
     /// </summary>
     public class MissionListUI : MonoBehaviour
     {
-        [Tooltip("완료된 미션 글자색")]
-        [SerializeField] private Color completedColor = new Color32(0x7C, 0xFC, 0x7C, 0xFF);
-
         [Tooltip("비워 두면 씬에서 찾는다")]
         [SerializeField] private MissionManager manager;
 
-        [Tooltip("한 줄 프리팹 (기존 MissionUIItem_Text)")]
-        [SerializeField] private MissionUIItem itemPrefab;
-
-        [Tooltip("단체 미션 줄이 들어갈 칸")]
-        [SerializeField] private Transform sharedRoot;
-
-        [Tooltip("내 개인 미션 줄이 들어갈 칸")]
-        [SerializeField] private Transform personalRoot;
+        [Tooltip("목록 전체를 쓰는 글자 칸 (메뉴 SuHan/Apply Missions To … 가 만들어 연결한다)")]
+        [SerializeField] private TMP_Text listText;
 
         private MissionClientState client;
-        private readonly List<MissionListLine> lines = new List<MissionListLine>();
+        private bool dirty;
+        private double nextRefreshTime = double.MaxValue;
+        private bool warnedMissingText;
 
         private void Update()
         {
-            if (client != null)
+            if (client == null && !TryAttach())
                 return;
 
-            if (manager == null)
-                manager = FindFirstObjectByType<MissionManager>();
-
-            if (manager == null || manager.Client == null)
+            if (!dirty && Now() < nextRefreshTime)
                 return;
 
-            client = manager.Client;
-            client.Changed += Rebuild;
             Rebuild();
         }
 
         private void OnDestroy()
         {
             if (client != null)
-                client.Changed -= Rebuild;
+                client.Changed -= MarkDirty;
+        }
+
+        private bool TryAttach()
+        {
+            if (manager == null)
+                manager = FindFirstObjectByType<MissionManager>();
+
+            if (manager == null || manager.Client == null)
+                return false;
+
+            client = manager.Client;
+            client.Changed += MarkDirty;
+            dirty = true;
+            return true;
+        }
+
+        private void MarkDirty()
+        {
+            dirty = true;
+        }
+
+        /// <summary>지금 시뮬레이션 시각. 러너가 없으면(게임 종료 중) 0 — 남은 시간 갱신만 멈추고 상태 알림 갱신은 그대로.</summary>
+        private double Now()
+        {
+            return manager != null && manager.Runner != null ? manager.Runner.SimulationTime : 0d;
         }
 
         private void Rebuild()
         {
-            MissionListRules.Build(client.Team, client.Mine, lines);
+            dirty = false;
+            double now = Now();
+            nextRefreshTime = MissionListRules.NextRefreshTime(client.Team, client.Mine, now);
 
-            Clear(sharedRoot);
-            Clear(personalRoot);
-
-            foreach (MissionListLine line in lines)
+            if (listText == null)
             {
-                Transform parent = line.Personal ? personalRoot : sharedRoot;
+                if (!warnedMissingText)
+                {
+                    warnedMissingText = true;
+                    Debug.LogWarning("[MissionListUI] 목록 글자 칸이 연결되지 않았습니다 — SuHan/Apply Missions To 4~12 (또는 GamePlay) 를 실행하세요.", this);
+                }
 
-                if (itemPrefab == null || parent == null)
-                    continue;
-
-                MissionUIItem item = Instantiate(itemPrefab, parent);
-                item.SetData(line.Label, line.Name, line.Progress, line.Required);
-
-                if (!line.Completed)
-                    continue;
-
-                // 줄 안의 모든 글자를 초록으로
-                foreach (TMP_Text text in item.GetComponentsInChildren<TMP_Text>(true))
-                    text.color = completedColor;
-            }
-        }
-
-        private static void Clear(Transform parent)
-        {
-            if (parent == null)
                 return;
+            }
 
-            for (int i = parent.childCount - 1; i >= 0; i--)
-                Destroy(parent.GetChild(i).gameObject);
+            string text = MissionListRules.BuildText(client.Team, client.Mine, now);
+
+            if (listText.text != text)
+                listText.text = text;
         }
     }
 }

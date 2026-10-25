@@ -11,8 +11,9 @@ using UnityEngine.SceneManagement;
 ///  좌표는 씬의 바닥 · 벽 좌표를 분석해 정한 임시값이다 (벽에서 0.15m · 장치끼리 0.4m · 스폰에서 3m — 검사 스크립트 `MissionDesign/Verification~/Layout/`).
 ///  기획자가 옮긴다 → 같은 이름이 이미 있으면 건너뛴다 (MP3).
 /// [공유 데이터 — MP5] 미션 풀 · TG 데이터를 건드리지 않는다. 씬에 이미 있는 MissionManager(실제 게임 풀) · PlayerHealthActorGate 를 그대로 쓴다.
-/// [공유 씬 — MP11] 4~12.unity 는 맵 담당이 만든 씬 — 이 메뉴로만 바꾼다 (미션 루트 하나 추가 · NavMesh · 저장).
-/// [근거] 9a 명세 MP1 ~ MP11 (질문 1 · 2 · 3 사용자 결정, 접근 1)
+/// [공유 씬 — MP11] 4~12.unity 는 맵 담당이 만든 씬 — 이 메뉴로만 바꾼다 (미션 루트 하나 추가 · NavMesh · 미션 목록 설정 · 저장).
+/// [미션 목록 — 10 명세 ML12] 왼쪽 미션 목록 패널을 왼쪽 위 글자 칸 하나로 바꾼다 (공통 단계 SetupMissionList — 글자 칸이 없을 때만).
+/// [근거] 9a 명세 MP1 ~ MP11 (질문 1 · 2 · 3 사용자 결정, 접근 1), 10 명세 ML10 ~ ML12
 /// </summary>
 public static class Map412MissionInstaller
 {
@@ -99,13 +100,15 @@ public static class Map412MissionInstaller
         List<GameObject> placedNow = MissionMapInstaller.PlaceMissing(Spec, root, out int skipped);
         bool navMeshBaked = MissionMapInstaller.BakeNavMesh(Spec, root);
         int overlaps = MissionMapInstaller.CheckOverlaps(Spec, placedNow, root);
+        // 미션 목록: 왼쪽 위 글자 칸 하나 (10 명세 ML12 — 글자 칸이 없는 목록만)
+        int listsSetUp = MissionMapInstaller.SetupMissionList(scene);
 
         // 저장할 때 Fusion 이 씬 오브젝트의 정렬 키를 굽는다 (호스트 · 손님이 같은 오브젝트로 짝을 맞추는 번호)
         MissionMapInstaller.SaveScene(scene);
 
         Debug.Log($"[Map412MissionInstaller] 완료 — 새 장치 {placedNow.Count}개 놓음 · {skipped}개 이미 있어 건너뜀, " +
                   $"MissionManager {(managerCreated ? "새로 만듦" : "있음")}, PlayerHealthActorGate {(gateCreated ? "새로 만듦" : "있음")}, " +
-                  $"NavMesh {(navMeshBaked ? "구움" : "실패")}, 겹침 경고 {overlaps}개. 멀티 테스트 전에는 SuHan/Build Full Game (Windows) 로 다시 빌드하세요.");
+                  $"NavMesh {(navMeshBaked ? "구움" : "실패")}, 겹침 경고 {overlaps}개, 미션 목록 {listsSetUp}개 설정. 멀티 테스트 전에는 SuHan/Build Full Game (Windows) 로 다시 빌드하세요.");
     }
 
     /// <summary>테스트 동안만 4~12 씬에 디버그 패널(호스트 F8 = 방화문 빼고 단체 미션 즉시 완료 등)을 넣는다 (MP9). 커밋 전에 끄기.</summary>
