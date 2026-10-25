@@ -16766,10 +16766,7 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 4958979677061151793, guid: f04ba2b19779a8942a1e71a0b8f606f3, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 8888100002}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: f04ba2b19779a8942a1e71a0b8f606f3, type: 3}
 --- !u!4 &1609344589 stripped
 Transform:
@@ -17983,10 +17980,17 @@ PrefabInstance:
       propertyPath: m_Name
       value: Terminal_002
       objectReference: {fileID: 0}
+    - target: {fileID: 4104732799503667981, guid: 4ca8a7394848a5344bde774ad44c5c12, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 4104732799503667981, guid: 4ca8a7394848a5344bde774ad44c5c12, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 8888100002}
   m_SourcePrefab: {fileID: 100100000, guid: 4ca8a7394848a5344bde774ad44c5c12, type: 3}
 --- !u!4 &1721631537 stripped
 Transform:
@@ -22775,8 +22779,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
 --- !u!1 &8888100001 stripped
 GameObject:
-  m_CorrespondingSourceObject: {fileID: 4958979677061151793, guid: f04ba2b19779a8942a1e71a0b8f606f3, type: 3}
-  m_PrefabInstance: {fileID: 1609344588}
+  m_CorrespondingSourceObject: {fileID: 4104732799503667981, guid: 4ca8a7394848a5344bde774ad44c5c12, type: 3}
+  m_PrefabInstance: {fileID: 1721631536}
   m_PrefabAsset: {fileID: 0}
 --- !u!114 &8888100002
 MonoBehaviour:

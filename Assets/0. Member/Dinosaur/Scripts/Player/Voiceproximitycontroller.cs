@@ -26,11 +26,14 @@ public class VoiceProximityController : NetworkBehaviour
     [SerializeField] private LayerMask obstacleMask;
 
     private AudioSource _audioSource;
+    private VoicePlaybackGainComponent playbackGain; //다른 소리와 분리한 음성 수신 증폭
     private bool _isLobbyPlayer;
 
     private void Awake()
     {
         _audioSource = GetComponent<AudioSource>();
+        playbackGain = GetComponent<VoicePlaybackGainComponent>();
+        if (playbackGain == null) playbackGain = gameObject.AddComponent<VoicePlaybackGainComponent>();
 
         _audioSource.spatialBlend = 1f; // 완전 3D 사운드
         _audioSource.rolloffMode = AudioRolloffMode.Logarithmic; // 자연스러운 감쇠 곡선
@@ -78,7 +81,9 @@ public class VoiceProximityController : NetworkBehaviour
             room.CurrentRoomState != RoomManager.RoomState.Waiting);
         bool blocked = lobbyClosed || Vector3.Distance(transform.position, listener.position) >= maxAudibleDistance ||
             (!_isLobbyPlayer && IsBlockedByObstacle(listener.position));
-        _audioSource.volume = blocked ? 0f : GameAudio.getVoiceVolume();
+        float volume = GameAudio.getVoiceVolume(); //전체 음량이 반영된 0~2 수신 음량
+        _audioSource.volume = blocked ? 0f : Mathf.Clamp01(volume);
+        playbackGain.setGain(blocked ? 1f : volume);
     }
 
     private bool IsBlockedByObstacle(Vector3 listenerPosition)

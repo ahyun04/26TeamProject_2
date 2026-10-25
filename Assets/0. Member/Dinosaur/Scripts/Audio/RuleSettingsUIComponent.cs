@@ -131,7 +131,7 @@ public class RuleSettingsUIComponent : MonoBehaviour
         decreaseButton.interactable = allowed && draftCount > 1;
         increaseButton.interactable = allowed && draftCount < room.getMaximumKillerCount();
         hintText.text = room == null ? (NetworkBootstrap.isGameplayScene(SceneManager.GetActiveScene().name) ? $"현재 살인마 {draftCount}명\n게임 진행 중에는 규칙을 변경할 수 없습니다." : "방에 참가하면 규칙을 확인할 수 있습니다.") :
-            allowed ? $"4~12인 맵 · 살인마 1~{room.getMaximumKillerCount()}명\n맵과 살인마 수는 적용 후 반영됩니다." :
+            allowed ? $"최소 2명 · 권장 4명 이상 · 살인마 1~{room.getMaximumKillerCount()}명\n맵과 살인마 수는 적용 후 반영됩니다." :
             $"현재 살인마 {room.KillerCount}명\n방장만 게임 시작 전에 변경할 수 있습니다.";
     }
 
