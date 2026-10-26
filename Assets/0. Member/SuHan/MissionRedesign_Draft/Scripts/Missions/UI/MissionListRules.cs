@@ -83,17 +83,24 @@ namespace TrustNoOne.Missions
                 ? string.Empty
                 : string.IsNullOrEmpty(view.Definition.DisplayName) ? view.Definition.Id : view.Definition.DisplayName;
 
+            //완료된 줄은 "완료" 글자 없이 줄 전체를 초록색으로 표시
             string status = view.Status switch
             {
-                ObjectiveStatus.Completed => $"<color={CompletedColor}>완료</color>",
+                ObjectiveStatus.Completed => string.Empty,
                 ObjectiveStatus.Failed => $"<color={FailedColor}>실패</color>",
                 _ => "진행 중",
             };
 
-            string line = $"{Indent}{name}{Gap}{view.Progress}/{view.Required}{Gap}{status}";
+            string line = $"{Indent}{name}{Gap}{view.Progress}/{view.Required}";
+
+            if (status.Length > 0)
+                line += $"{Gap}{status}";
 
             if (HasTimer(view))
                 line += $"{Gap}<color={TimerColor}>남은 시간 {FormatTime(view.Deadline - now)}</color>";
+
+            if (view.Status == ObjectiveStatus.Completed)
+                line = $"<color={CompletedColor}>{line}</color>";
 
             return line;
         }

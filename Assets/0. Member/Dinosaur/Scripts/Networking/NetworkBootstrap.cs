@@ -74,6 +74,7 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
     public static event Action<NetworkRunner, PlayerRef> OnPlayerJoinedEvent;
     public static event Action<NetworkRunner, PlayerRef> OnPlayerLeftEvent;
     public static event Action<NetworkRunner> OnSceneLoadDoneEvent;
+    public static event Action<NetworkRunner> OnSceneLoadStartEvent; //모든 접속자에게 씬 로드 시작을 알림 (로딩 화면용)
 
     private void Awake()
     {
@@ -105,7 +106,48 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
     public async Task<StartGameResult> JoinRoom(string inviteCode)
     {
         string code = (inviteCode ?? string.Empty).Trim().ToLowerInvariant();
-        return await StartSession(GameMode.Client, code, 0);
+
+        // 방장 이탈 직후에는 새 방장이 방을 다시 여는 몇 초 동안 방이 안 보이거나 닫혀 있을 수 있어 짧게 재시도한다
+        StartGameResult result = default;
+        for (int attempt = 0; attempt < 3; attempt++)
+        {
+            result = await StartSessionWithTimeout(code, 15);
+            if (result.Ok) break;
+
+            Debug.LogWarning($"[NetworkBootstrap] JoinRoom 실패 ({attempt + 1}/3): {result.ShutdownReason} / {result.ErrorMessage}");
+            if (result.ShutdownReason != ShutdownReason.GameNotFound && result.ShutdownReason != ShutdownReason.GameClosed)
+                break;
+            await Task.Delay(1500);
+        }
+        return result;
+    }
+
+    private async Task<StartGameResult> StartSessionWithTimeout(string code, int seconds) //입장이 끝나지 않고 멈추는 경우 대비
+    {
+        Task<StartGameResult> task = StartSession(GameMode.Client, code, 0);
+        if (await Task.WhenAny(task, Task.Delay(seconds * 1000)) == task)
+        {
+            StartGameResult joined = await task;
+            if (!joined.Ok) return joined;
+
+            // 입장은 됐는데 씬이 안 넘어오는 경우를 감지 (최대 10초)
+            for (int i = 0; i < 100 && !disconnected; i++)
+            {
+                if (SceneManager.GetActiveScene().name == roomSceneName) return joined;
+                await Task.Delay(100);
+            }
+            if (disconnected) return joined;
+
+            Debug.LogError($"[NetworkBootstrap] 입장은 됐지만 '{roomSceneName}' 씬으로 넘어오지 않았습니다. 현재 씬: '{SceneManager.GetActiveScene().name}'");
+            try { if (_runner != null) _ = _runner.Shutdown(); }
+            catch (Exception exception) { Debug.LogException(exception); }
+            throw new TimeoutException("대기실로 이동하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        }
+
+        Debug.LogError($"[NetworkBootstrap] JoinRoom이 {seconds}초 안에 끝나지 않아 중단합니다. (방은 찾았지만 씬/세션 동기화가 끝나지 않은 상태)");
+        try { if (_runner != null) _ = _runner.Shutdown(); }
+        catch (Exception exception) { Debug.LogException(exception); }
+        throw new TimeoutException("입장 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.");
     }
 
     private const string InviteCodeChars = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -457,6 +499,7 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
             return;
 
         _isMigrating = true;
+        string migratedSessionName = runner.SessionInfo != null ? runner.SessionInfo.Name : null; //마이그레이션 후에도 같은 초대 코드를 유지
         try
         {
             // 이 오브젝트(NetworkBootstrap)가 같이 파괴되지 않도록 destroyGameObject: false
@@ -467,17 +510,35 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
 
             PrepareRunner(); // 옛 Runner 오브젝트를 지우고 새 Runner + FusionVoiceClient 생성
 
-            StartGameResult result = await _runner.StartGame(new StartGameArgs
+            var args = new StartGameArgs
             {
                 HostMigrationToken = hostMigrationToken,
                 HostMigrationResume = HostMigrationResume,
                 SceneManager = _runnerObject.GetComponent<NetworkSceneManagerDefault>()
-            });
+            };
+            // 새 방장이 되는 쪽은 정원을 다시 예약해 둔다 (빠지면 마이그레이션 뒤 방에 다시 들어올 수 없는 경우가 있음)
+            if (hostMigrationToken.GameMode == GameMode.Host)
+            {
+                args.PlayerCount = RoomManager.AbsoluteMaxPlayers;
+                if (!string.IsNullOrEmpty(migratedSessionName)) args.SessionName = migratedSessionName;
+            }
+
+            StartGameResult result = await _runner.StartGame(args);
 
             if (!result.Ok)
             {
+                Debug.LogError($"[NetworkBootstrap] 호스트 마이그레이션 StartGame 실패: {result.ShutdownReason} / {result.ErrorMessage}");
                 _isMigrating = false;
                 showDisconnect("방장이 퇴장하여 방이 종료되었습니다.\n로비로 돌아가 다시 참가해 주세요.");
+            }
+            else if (_runner.IsServer)
+            {
+                SessionInfo info = _runner.SessionInfo;
+                Debug.Log($"[NetworkBootstrap] 마이그레이션 완료: 세션 '{info.Name}', 열림 {info.IsOpen}, 공개 {info.IsVisible}, 최대 {info.MaxPlayers}, 현재 {info.PlayerCount}, 씬 '{_runner.SceneManager?.MainRunnerScene.name}'");
+                RoomManager room = RoomManager.Instance; //마이그레이션 직후 방을 다시 입장 가능 상태로
+                if (room != null && room.Object != null && room.Object.IsValid && room.Runner == _runner)
+                    room.SetRoomState(RoomManager.RoomState.Waiting);
+                await reloadRoomSceneAfterMigration();
             }
         }
         catch (Exception exception)
@@ -490,6 +551,35 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
         {
             _isMigrating = false;
         }
+    }
+
+    /// <summary>
+    /// 마이그레이션 직후 새 방장이 대기실(StandBy)을 다시 로드해 "현재 네트워크 씬" 정보를 새로 만든다.
+    /// 이걸 안 하면 이후 입장하는 사람이 씬 정보를 못 받아 로비에서 "입장 중"으로 멈춘다.
+    /// 옛 플레이어 오브젝트는 복구되지 않으므로 먼저 정리하고, 씬 로드 뒤 LobbyPlayerSpawner가 다시 스폰한다.
+    /// </summary>
+    private async Task reloadRoomSceneAfterMigration()
+    {
+        try
+        {
+            foreach (LobbyPlayerController lobbyPlayer in FindObjectsByType<LobbyPlayerController>(FindObjectsSortMode.None))
+                despawnIfOwned(lobbyPlayer.Object);
+            foreach (PlayerHealth gamePlayer in FindObjectsByType<PlayerHealth>(FindObjectsSortMode.None))
+                despawnIfOwned(gamePlayer.Object);
+
+            await _runner.LoadScene(GetSceneRefByName(roomSceneName), LoadSceneMode.Single);
+            Debug.Log($"[NetworkBootstrap] 마이그레이션 후 대기실 씬 재설정 완료 (씬 '{_runner.SceneManager?.MainRunnerScene.name}')");
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception);
+        }
+    }
+
+    private void despawnIfOwned(NetworkObject networkObject)
+    {
+        if (networkObject != null && networkObject.IsValid && networkObject.Runner == _runner)
+            _runner.Despawn(networkObject);
     }
 
     /// <summary>새 Host에서만, 시뮬레이션 재개 직전에 불린다. 방 싱글턴(RoomManager 프리팹)만 복구한다.
@@ -554,6 +644,7 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
     public void OnSceneLoadStart(NetworkRunner runner) //각 클라이언트가 씬 제거 전에 확정 규칙 보관
     {
         if (runner == _runner) retainRoomSettings(RoomManager.Instance);
+        if (runner == _runner) OnSceneLoadStartEvent?.Invoke(runner);
     }
     public void OnObjectExitAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
     public void OnObjectEnterAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }

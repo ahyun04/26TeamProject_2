@@ -44,6 +44,7 @@ namespace LockdownProtocol.Lobby
             {
                 ShutdownReason.GameIsFull => JoinRoomResult.RoomFull,
                 ShutdownReason.GameNotFound => JoinRoomResult.NotFound,
+                ShutdownReason.GameClosed => JoinRoomResult.GameStarted, //방이 닫혀 있음 (게임 중이거나 아직 다시 열리지 않음)
                 _ => JoinRoomResult.ConnectionError
             };
         }

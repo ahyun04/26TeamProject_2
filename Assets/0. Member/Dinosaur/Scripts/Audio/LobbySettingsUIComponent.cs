@@ -47,6 +47,7 @@ public class LobbySettingsUIComponent : MonoBehaviour
     private float nextRefresh; //목록 갱신 간격
     private float responseDeadline; //서버 응답 대기 종료 시각
     private float feedbackDeadline; //거절 안내 종료 시각
+    private bool inGameSession; //게임 씬에서 유효한 세션에 접속 중인지 (나가기 버튼 활성화용)
 
     internal bool hasPendingChange => dirty && room != null; //공용 적용 버튼이 처리할 방 설정
 
@@ -149,6 +150,7 @@ public class LobbySettingsUIComponent : MonoBehaviour
         PlayerRef gameHost = PlayerRef.None; //보존된 방장
         bool inGame = NetworkBootstrap.isGameplayScene(SceneManager.GetActiveScene().name) && bootstrap != null &&
             bootstrap.tryGetRoomSession(out gameRunner, out gameRoomName, out gameMaximum, out gameHost); //대기실 객체 없이 조회 가능한 게임 세션
+        inGameSession = inGame;
         if (inGame)
         {
             foreach (PlayerRef player in gameRunner.ActivePlayers) gamePlayers.Add(player);
@@ -240,7 +242,7 @@ public class LobbySettingsUIComponent : MonoBehaviour
         bool connected = room != null && localPlayer != null && applyCompleted == null; //연결된 본인의 보조 기능
         copyInviteButton.interactable = connected && room.IsInviteEnabled;
         inviteButton.interactable = connected && canUseRoom() && LobbyRoomUI.Instance != null;
-        leaveButton.interactable = connected && LobbyRoomUI.Instance != null;
+        leaveButton.interactable = inGame || (connected && LobbyRoomUI.Instance != null); //게임 중에는 방 객체가 없어도 나갈 수 있어야 함
     }
 
     private void decreaseMaximum() //임시 정원 감소
@@ -367,7 +369,9 @@ public class LobbySettingsUIComponent : MonoBehaviour
 
     private void openLeaveConfirmation() //편집 상태를 보존한 기존 나가기 확인창 호출
     {
-        if (leaveButton.interactable) GameAudio.showLobbyModal(false);
+        if (!leaveButton.interactable) return;
+        if (inGameSession && bootstrap != null) bootstrap.LeaveRoom(); //게임 중에는 대기실 전용 확인창이 없으므로 바로 퇴장
+        else GameAudio.showLobbyModal(false);
     }
 
     private void OnDestroy() //UI 입력과 방 이벤트 구독 정리
