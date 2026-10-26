@@ -89,6 +89,9 @@ namespace TrustNoOne.Missions
         private readonly int[] shownKey = { int.MinValue, int.MinValue };
         private readonly string[] shownText = new string[FireDoorRules.PanelCount];
 
+        /// <summary>대형 방화문은 미션 완료음을 내지 않는다 — 레버 끼우기 · 문 열림 모두 (11c 명세 CS5, 요청 "대형문 레바 제외").</summary>
+        protected override bool PlaysCompletionSound => false;
+
         protected override void OnStationSpawned()
         {
             base.OnStationSpawned();

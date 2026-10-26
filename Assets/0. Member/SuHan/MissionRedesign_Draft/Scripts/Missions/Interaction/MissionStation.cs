@@ -22,6 +22,7 @@ namespace TrustNoOne.Missions
     ///  - 초기화: 제한 시간 실패(MissionManager.OnMissionReset)와 ResetForNext 가 같은 경로(ResetStation)를 쓴다
     ///  - 배정: 미션 배정이 끝난 순간 OnMissionsAssignedHost (호스트) — 아이템 장치가 이번 판에 뽑혔을 때만 아이템을 놓는다 (7a 명세 TC12)
     ///  - 눌림 보여 주기: 호스트가 받은 부품 눌림을 모든 PC 에 알려 같은 부품이 눌리는 모습이 보이게 한다 (7b — 누른 본인은 건너뜀)
+    ///  - 완료음: 완료를 확정하면 완료시킨 사람의 PC 에서만 미션 완료음(팀원 GameAudio)을 튼다. 방화문은 끈다 (11c 명세 CS1 ~ CS5)
     ///
     /// [근거] stage1 명세 S2(조작은 그대로, 규칙만 공통), S3(개인용은 완료 후 초기화), S4(공통 베이스 + 하위 클래스),
     ///  S6(제한 시간 판정은 Core, 오브젝트는 알림에 반응만). 옛 MissionMiniGameBase 에서 미니게임마다 흩어져 있던
@@ -322,6 +323,35 @@ namespace TrustNoOne.Missions
             {
                 ResetStation();
             }
+
+            // 11c: 장치 하나가 끝날 때마다 완료시킨 사람에게만 (CS1 · CS2). 진행만 알리는 PublishProgress 에서는 울리지 않는다 (CS6)
+            if (PlaysCompletionSound)
+                SendCompletionSound(actor);
+        }
+
+        /// <summary>
+        /// 완료음을 낼 장치인가 (11c 명세 CS5). 기본 켬 — 방화문만 끈다 ("대형문 레버 제외").
+        /// </summary>
+        protected virtual bool PlaysCompletionSound => true;
+
+        /// <summary>
+        /// 호스트: 완료시킨 사람의 PC 에서만 완료음을 튼다 (11c 명세 CS1 · CS4 — 옛 미니게임과 같은 "수행자에게만").
+        /// 호스트 본인이면 RPC 를 거치지 않고 바로 튼다 — [RpcTarget] 이 호스트 자신에게 오는지 환경마다 불확실해서
+        /// 미션 관리자(MissionManager.SendPrivate)와 같은 길을 택했다.
+        /// </summary>
+        private void SendCompletionSound(PlayerRef actor)
+        {
+            if (actor == Runner.LocalPlayer)
+                GameAudio.playMissionResult(true);
+            else
+                RPC_PlayCompletionSound(actor);
+        }
+
+        /// <summary>대상 한 명의 PC: 팀원 사운드 코드로 미션 완료음 재생 (효과음 음량 설정을 따르는 2D 소리).</summary>
+        [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+        private void RPC_PlayCompletionSound([RpcTarget] PlayerRef target)
+        {
+            GameAudio.playMissionResult(true);
         }
 
         /// <summary>
