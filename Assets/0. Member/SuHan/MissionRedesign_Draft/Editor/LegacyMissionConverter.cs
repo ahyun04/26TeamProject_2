@@ -12,6 +12,7 @@ using UnityEngine;
 /// [방식] 모델·월드 UI·NetworkObject 는 그대로 두고 스크립트만 교체한다. 옛 값은 SerializedObject 로 읽어 옮긴다.
 ///  옛 타입은 "이름(문자열)"으로 찾는다 → 교체 단계에서 옛 코드를 지워도 이 파일은 그대로 컴파일된다.
 /// [공통 틀 — Convert] 원본 로드 → 복사본 생성 → 미니게임별 Build → 검증 2가지 → 저장 → 복사본 파괴.
+///  (11a) Build 뒤 아이템 손 설정 되돌리기(ItemHandSettings — 팀원이 맞춘 값 유지) · 방화문을 뺀 장치에 막는 몸체(MissionBodyBuilder).
 ///  검증: ① 옛 스크립트 · Missing Script 가 남지 않았는가 ② 모든 콜라이더를 조준하면 입력을 받는 대상이 잡히는가.
 ///  하나라도 실패하면 저장하지 않는다.
 ///  공통 후처리: 조준 문구(MissionPrompt.promptObject)가 있으면 PromptBillboard 를 붙여 항상 보는 사람 쪽을 향하게 한다
@@ -378,16 +379,35 @@ public static class LegacyMissionConverter
         return FinishPrefab(what, new GameObject(outputName), outputPath, build, verifyTargets);
     }
 
-    /// <summary>공통 뒷부분: 조립 → 안내 빌보드 → 검증 2가지 → 저장 → 복사본 파괴. 하나라도 실패하면 저장하지 않는다.</summary>
+    /// <summary>
+    /// 공통 뒷부분: 조립 → 아이템 손 설정 되돌리기 → 안내 빌보드 → (장치) 막는 몸체 → 검증 2가지 → 저장 → 복사본 파괴. 하나라도 실패하면 저장하지 않는다.
+    /// [11a] 손 설정: 저장 경로의 기존 프리팹에서 읽어 두었다가 되돌린다 — 팀원이 맞춘 값이 메뉴를 돌려도 남는다 (BC13 · BC14).
+    ///  막는 몸체: 루트에 장치(MissionStation)가 있고 방화문이 아니면 붙인다 — 방화문은 열리면 지나가야 해서 BuildFireDoor 가 부품별로 막는다 (BC5 · BC11 · BC18).
+    /// </summary>
     private static GameObject FinishPrefab(string what, GameObject copy, string outputPath,
         System.Func<GameObject, bool> build, bool verifyTargets)
     {
+        // 덮어쓰기 전에 읽는다 (기존 프리팹이 없거나 아이템 표시가 없으면 null — 도구 기본값)
+        ItemHandSettings hand = ItemHandSettings.Capture(outputPath);
+
         try
         {
             if (!build(copy))
                 return null;
 
+            if (hand != null)
+            {
+                hand.Apply(copy);
+                Debug.Log($"[LegacyMissionConverter] {what}: 손 설정 유지 — {hand.Describe()}");
+            }
+
             AddPromptBillboards(copy);
+
+            if (copy.GetComponent<MissionStation>() != null && copy.GetComponent<FireDoorStation>() == null)
+            {
+                int boxes = MissionBodyBuilder.Attach(copy);
+                Debug.Log($"[LegacyMissionConverter] {what}: 몸체 상자 {boxes}개 — {MissionBodyBuilder.Describe(copy)}");
+            }
 
             if (!VerifyNoLegacyScripts(copy) || (verifyTargets && !VerifyTargetResolution(copy)))
                 return null;
@@ -2084,6 +2104,7 @@ public static class LegacyMissionConverter
     /// <summary>
     /// 방화문 (3d 명세 4장): 문 복사본(루트)에 문짝 충돌 · 기둥 충돌 · 양쪽 패널(중첩 NetworkObject · 받침 벽 · 화면 · 꽂힌 레버 · 떨어질 자리) · 장치 · 연출.
     /// 정면 맞춤은 하지 않는다 — 모델 앞이 +Z (명세 1장).
+    /// (11a BC18) 공통 막는 몸체(문틀 전체 상자)는 출입구를 막아 쓰지 않고, 문짝 · 기둥 충돌을 가로 0.35m 넓히고 양쪽 패널 묶음에만 막는 몸체를 붙인다.
     /// </summary>
     private static bool BuildFireDoor(GameObject copy, NetworkObject leverPrefab)
     {
@@ -2113,6 +2134,11 @@ public static class LegacyMissionConverter
         BoxCollider upperCollider = AddMeshBoxCollider(upper.gameObject);
         BoxCollider lowerCollider = AddMeshBoxCollider(lower.gameObject);
 
+        // 11a BC18 (테스트 후 추가): 문짝 충돌을 가로로 0.35m 넓힌다 — 닫혀 있을 때 얼굴을 대도 안이 안 보이게.
+        // 같은 콜라이더라 다 열리면 지금처럼 꺼진다 (출입구 통과 유지)
+        MissionBodyBuilder.PadHorizontal(upperCollider, root);
+        MissionBodyBuilder.PadHorizontal(lowerCollider, root);
+
         // 문틀은 양쪽 기둥만 충돌 (문틀 전체 상자면 출입구가 막힌다). 복사본은 원점 · 회전 0 이라 월드 경계를 루트 기준으로 쓴다
         Bounds gateBounds = gate.GetComponent<Renderer>().bounds;
         Bounds doorBounds = lower.GetComponent<Renderer>().bounds;
@@ -2126,6 +2152,9 @@ public static class LegacyMissionConverter
             post.transform.localPosition = new Vector3(gateCenter.x + side * (gateBounds.extents.x - postWidth * 0.5f), gateCenter.y, gateCenter.z);
             BoxCollider postCollider = post.AddComponent<BoxCollider>();
             postCollider.size = new Vector3(postWidth, gateBounds.size.y, gateBounds.size.z);
+
+            // 11a BC18: 기둥도 가로로 0.35m 넓힌다 (출입구 폭은 약 0.7m 줄어도 통과에 충분)
+            MissionBodyBuilder.PadHorizontal(postCollider, root);
         }
 
         float front = root.InverseTransformPoint(gateBounds.center + Vector3.forward * gateBounds.extents.z).z;
@@ -2225,6 +2254,13 @@ public static class LegacyMissionConverter
             panels[i] = panel;
         }
 
+        // 11a BC18: 양쪽 레버 패널 묶음(패널 모델 · 받침 벽 · 화면)에 막는 몸체 — 패널 모델은 조준 콜라이더뿐이라 뚫렸다.
+        // 꽂힌 레버 · 외곽선은 꺼져 있어 범위에서 빠지고, 화면 글자도 빠진다. 문틀 전체는 출입구까지 막으므로 쓰지 않는다
+        int panelBoxes = 0;
+
+        foreach (FireDoorPanel panel in panels)
+            panelBoxes += MissionBodyBuilder.Attach(panel.gameObject);
+
         SerializedObject visualSO = new SerializedObject(visual);
         visualSO.FindProperty("upperDoor").objectReferenceValue = upper;
         visualSO.FindProperty("lowerDoor").objectReferenceValue = lower;
@@ -2244,7 +2280,8 @@ public static class LegacyMissionConverter
 
         so.ApplyModifiedPropertiesWithoutUndo();
 
-        Debug.Log($"[LegacyMissionConverter] 방화문: 문짝 위 · 아래, 패널 2개 (x ±{FireDoorPanelOffsetX}m, 앞면 z {front:0.00}), 기둥 충돌 2 (폭 {postWidth:0.00}m), 레버 프리팹 {leverPrefab.name}");
+        Debug.Log($"[LegacyMissionConverter] 방화문: 문짝 위 · 아래, 패널 2개 (x ±{FireDoorPanelOffsetX}m, 앞면 z {front:0.00}), 기둥 충돌 2 (폭 {postWidth:0.00}m), 레버 프리팹 {leverPrefab.name}, " +
+                  $"문짝 · 기둥 충돌 가로 {BodyBoxRules.CameraClearance}m 넓힘 · 패널 몸체 상자 {panelBoxes}개 ({MissionBodyBuilder.Describe(panels[0].gameObject)})");
         return true;
     }
 

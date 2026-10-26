@@ -12,7 +12,7 @@ using Object = UnityEngine.Object;
 /// [하는 일] 옛 개인 미션 6종을 단체로 옮기기(7a — 한 번) → 실제 게임 데이터 준비(없을 때만) · 풀 숫자 7a 값(옛 기본값일 때만) → 옛 미션 프리팹 제거 → 옛 MissionSystem 컴포넌트만 제거 →
 ///  `Missions (새 미션)` 아래에 MissionManager · PlayerHealthActorGate · 새 장치(없을 때만) → 옛 아이템 자리 후보 묶음 제거 →
 ///  팀원 스크립트의 미션 시스템 칸 연결 → 미션 목록 패널의 옛 MissionUI 를 MissionListUI 로 바꿔 끼우기(6c) → 1층 아이템 NavMesh 굽기(6b 보강 — 매번) → 새 5종 겹침 경고 →
-///  미션 목록을 왼쪽 위 글자 칸으로 설정(10 — 공통 단계, 글자 칸이 없을 때만) → 저장.
+///  미션 목록을 왼쪽 위 글자 칸으로 설정(10 — 공통 단계, 글자 칸이 없을 때만) → 저장. (11a) NavMesh 굽기 전에 선반 막기(공통 단계 — 이 씬은 보통 0개).
 /// [다시 실행해도 안전 — SW7] 이름으로 찾아 이미 있으면 건드리지 않는다 → 기획자가 옮긴 배치 · 바꾼 데이터 숫자가 남는다.
 ///  지운 것만 다시 만든다. 처음 배치로 되돌리려면 `Missions (새 미션)` 을 지우고 다시 실행한다.
 /// [MissionSystem 오브젝트 — SW8] 옛 MissionSystem 과 같은 오브젝트에 RoleAssignment · GameTimer · GameEndSystem 이 붙어 있어
@@ -153,6 +153,8 @@ public static class GamePlayMissionInstaller
         int spotGroupsRemoved = RemoveOldItemSpots(root);
         int wired = WireTeamScripts(scene, manager);
         int listSwapped = SwapMissionListUI(scene, manager);
+        // 선반 막기 (11a 명세 BC12 — 공통 단계, 이 씬에는 선반이 없어 보통 0개). NavMesh 굽기 전에
+        int shelvesBlocked = MissionBodyBuilder.AddShelfBodies(scene);
         // 장치를 다 놓은 뒤 굽는다 — 장치 몸체도 길을 막는 것으로 들어간다 (6b 보강 NS2 · NS4: 매번 다시 굽기)
         bool navMeshBaked = MissionMapInstaller.BakeNavMesh(Spec, root);
         int overlaps = MissionMapInstaller.CheckOverlaps(Spec, placedNow, root);
@@ -165,7 +167,7 @@ public static class GamePlayMissionInstaller
         Debug.Log($"[GamePlayMissionInstaller] 완료 — 개인 → 단체 {movedToTeam}개 옮김, 풀 숫자 {(poolUpdated ? $"단체 {TeamCount} · 개인 {PersonalCount} 으로 바꿈" : "그대로")}, 옛 미션 {removedOld}개 · 옛 MissionSystem 컴포넌트 {removedSystems}개 제거, " +
                   $"새 장치 {placedNow.Count}개 놓음 · {skipped}개 이미 있어 건너뜀, MissionManager {(managerCreated ? "새로 만듦" : "있음")}, " +
                   $"PlayerHealthActorGate {(gateCreated ? "새로 만듦" : "있음")}, 옛 자리 후보 묶음 {spotGroupsRemoved}개 제거, NavMesh {(navMeshBaked ? "구움" : "실패")}, " +
-                  $"미션 시스템 칸 {wired}개 연결, 미션 목록 UI {listSwapped}개 교체 · {listsSetUp}개 설정, 겹침 경고 {overlaps}개. 멀티 테스트 전에는 SuHan/Build Full Game (Windows) 로 다시 빌드하세요.");
+                  $"미션 시스템 칸 {wired}개 연결, 미션 목록 UI {listSwapped}개 교체 · {listsSetUp}개 설정, 선반 {shelvesBlocked}개 막음, 겹침 경고 {overlaps}개. 멀티 테스트 전에는 SuHan/Build Full Game (Windows) 로 다시 빌드하세요.");
     }
 
     /// <summary>테스트 동안만 메인 씬에 디버그 패널(단체 · 개인 미션 표시, 호스트 F8 ~ F10)을 넣는다 (SW12 — 미션 목록 UI 는 6c). 커밋 전에 끄기.</summary>
