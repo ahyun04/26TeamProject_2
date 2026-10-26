@@ -19,10 +19,13 @@ public class PlayerLookVisualComponent : NetworkBehaviour, IAfterTick
 
     private SimpleKCC kcc; //기존 네트워크 시선과 이동 상태
     private PlayerHealth health; //사망과 탈출 등 표시 종료 상태
+    private PlayerCameraController cameraController; //본인에게 활성화된 1인칭 카메라
     private NetworkBehaviour.PropertyReader<float> bodyYawReader; //다른 참가자에게 복제된 몸 방향 보간
     private Quaternion bodyLocalRotation; //프리팹의 기본 모델 회전
     private Vector3 bodyLocalPosition; //시선을 돌려도 모델이 카메라 주위를 돌지 않도록 유지할 위치
     private Quaternion headAnimationRotation; //시선을 덧붙이기 전 애니메이션의 머리 회전
+    private Vector3 headAnimationScale; //본인 시점에서 숨기기 전 머리 본의 크기
+    private bool headHidden; //현재 프레임에서 본인 머리만 숨겼는지 여부
     private bool headApplied; //이전 프레임의 시선 회전 적용 여부
     private bool spawned; //네트워크 상태 접근 가능 여부
 
@@ -30,6 +33,7 @@ public class PlayerLookVisualComponent : NetworkBehaviour, IAfterTick
     {
         kcc = GetComponent<SimpleKCC>();
         health = GetComponent<PlayerHealth>();
+        cameraController = GetComponent<PlayerCameraController>();
         if (bodyPivot != null)
         {
             bodyLocalRotation = bodyPivot.localRotation;
@@ -96,9 +100,16 @@ public class PlayerLookVisualComponent : NetworkBehaviour, IAfterTick
 
     private void restoreHead() //시선 회전이 누적되지 않도록 애니메이션 기준 자세 복원
     {
+        restoreLocalHead();
         if (!headApplied || headBone == null) return;
         headBone.localRotation = headAnimationRotation;
         headApplied = false;
+    }
+
+    internal void restoreLocalHead() //사망·관전·카메라 종료 시 머리와 귀의 원래 크기 복원
+    {
+        if (headHidden && headBone != null) headBone.localScale = headAnimationScale;
+        headHidden = false;
     }
 
     private void Update() //Animator가 평가되기 전에 이전 프레임의 시선 보정 제거
@@ -121,6 +132,12 @@ public class PlayerLookVisualComponent : NetworkBehaviour, IAfterTick
         Quaternion vertical = Quaternion.AngleAxis(view.x, bodyPivot.right); //위아래 시선을 몸의 오른쪽 축에 반영
         headBone.rotation = horizontal * vertical * headBone.rotation;
         headApplied = true;
+        if (cameraController != null && cameraController.isLocalCameraActive)
+        {
+            if (!headHidden) headAnimationScale = headBone.localScale;
+            headBone.localScale = Vector3.zero;
+            headHidden = true;
+        }
     }
 
     public override void Despawned(NetworkRunner runner, bool hasState) //씬 전환과 관전자 전환 시 표시 상태 정리
