@@ -33,6 +33,23 @@ Transform:
   - {fileID: 2333346202418949849}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8888200001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2937163692001791352}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 263e7a7efe1b8e342982f5667472f293, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  renderers:
+  - {fileID: 1641672982682326535}
+  colliders: []
+  heldPositionOffset: {x: -0.020297734, y: -0.012855986, z: 0.097070746}
+  heldRotationOffset: {x: 0, y: 0, z: 0}
 --- !u!1 &5861425512092121837
 GameObject:
   m_ObjectHideFlags: 0
@@ -116,20 +133,3 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!114 &8888200001
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2937163692001791352}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 263e7a7efe1b8e342982f5667472f293, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
-  renderers:
-  - {fileID: 1641672982682326535}
-  colliders: []
-  heldPositionOffset: {x: -0.020297734, y: -0.012855986, z: 0.097070746}
-  heldRotationOffset: {x: 0, y: 0, z: 0}
