@@ -74,6 +74,7 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
     public static event Action<NetworkRunner, PlayerRef> OnPlayerJoinedEvent;
     public static event Action<NetworkRunner, PlayerRef> OnPlayerLeftEvent;
     public static event Action<NetworkRunner> OnSceneLoadDoneEvent;
+    public static event Action<NetworkRunner> OnSceneLoadStartEvent; //모든 접속자에게 씬 로드 시작을 알림 (로딩 화면용)
 
     private void Awake()
     {
@@ -643,6 +644,7 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
     public void OnSceneLoadStart(NetworkRunner runner) //각 클라이언트가 씬 제거 전에 확정 규칙 보관
     {
         if (runner == _runner) retainRoomSettings(RoomManager.Instance);
+        if (runner == _runner) OnSceneLoadStartEvent?.Invoke(runner);
     }
     public void OnObjectExitAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
     public void OnObjectEnterAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }

@@ -1,5 +1,6 @@
 using LockdownProtocol.Lobby;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 /// <summary>
 /// 게임 시작 후 게임 씬으로 넘어가는 동안 화면 전체를 덮는 로딩 화면 (기획서: 하단에 "Tab 키를 눌러 키를 확인하세요").
@@ -34,15 +35,28 @@ public class LoadingScreenUI : MonoBehaviour
         }
 
         Instance = this;
+        if (panel == null) Debug.LogError("[LoadingScreenUI] Panel 슬롯이 비어 있어 로딩 화면을 표시할 수 없습니다.", this);
         if (transform.parent != null) transform.SetParent(null); //DontDestroyOnLoad는 루트 오브젝트만 가능
         DontDestroyOnLoad(gameObject);
+        NetworkBootstrap.OnSceneLoadStartEvent += handleSceneLoadStart;
 
         if (panel != null) panel.SetActive(false);
     }
 
     private void OnDestroy()
     {
+        NetworkBootstrap.OnSceneLoadStartEvent -= handleSceneLoadStart;
         if (Instance == this) Instance = null;
+    }
+
+    // 대기실에서 다른 씬으로 넘어가는 로드가 시작되면(= 게임 시작) 모든 접속자에게 로딩 화면 표시
+    private void handleSceneLoadStart(Fusion.NetworkRunner runner)
+    {
+        if (sessionActive || IsVisible) return;
+        if (SceneManager.GetActiveScene().name != standbySceneName) return; //게임 → 대기실 복귀는 제외
+        sessionActive = true;
+        Debug.Log("[LoadingScreenUI] 씬 로드 시작 감지 → 로딩 화면 표시");
+        Show();
     }
 
     private void Update()
@@ -54,9 +68,10 @@ public class LoadingScreenUI : MonoBehaviour
             if (playing && !sessionActive)
             {
                 sessionActive = true;
+                Debug.Log("[LoadingScreenUI] 게임 시작 감지 → 로딩 화면 표시");
                 Show();
             }
-            else if (!playing)
+            else if (!playing && room.CurrentRoomState != RoomManager.RoomState.Starting)
             {
                 sessionActive = false; //게임이 끝났거나 대기실로 돌아오면 다음 게임을 위해 초기화
                 if (IsVisible) Hide();
@@ -72,19 +87,26 @@ public class LoadingScreenUI : MonoBehaviour
 
         if (shownTime >= maxDisplaySeconds)
         {
-            Debug.LogWarning("[LoadingScreenUI] 준비 확인이 오래 걸려 로딩 화면을 강제로 닫습니다.");
+            Debug.LogWarning($"[LoadingScreenUI] 준비 확인이 {shownTime:F0}초 걸려 강제로 닫습니다. (현재 씬 '{SceneManager.GetActiveScene().name}', 내 플레이어 {(FindLocalPlayer() ? "있음" : "없음")})");
             Hide();
             return;
         }
 
         if (shownTime >= minDisplaySeconds && isGameSceneReady())
+        {
+            Debug.Log($"[LoadingScreenUI] 게임 씬 준비 완료 → 로딩 화면 종료 ({shownTime:F1}초)");
             Hide();
+        }
     }
 
     public static void Show()
     {
         LoadingScreenUI loading = Instance;
-        if (loading == null || loading.panel == null) return;
+        if (loading == null || loading.panel == null)
+        {
+            Debug.LogError("[LoadingScreenUI] Show 실패: " + (loading == null ? "씬에 LoadingScreenUI가 없습니다 (StandBy 씬 루트에 배치 필요)" : "Panel 슬롯이 비어 있습니다"));
+            return;
+        }
 
         loading.shownTime = 0f;
         loading.panel.SetActive(true);
@@ -98,16 +120,17 @@ public class LoadingScreenUI : MonoBehaviour
         loading.panel.SetActive(false);
     }
 
-    // 게임 씬이 실제로 로드됐고(대기실이 아니고) 내 캐릭터가 생성됐으면 준비 완료
+    // 게임 씬이 실제로 로드됐고(대기실이 아니고) 내 캐릭터가 생성됐으면 준비 완료.
+    // 게임 씬에서는 RoomManager가 사라지므로 방 정보에 의존하지 않고 현재 씬과 내 캐릭터만 본다.
     private bool isGameSceneReady()
     {
-        RoomManager room = RoomManager.Instance;
-        if (room == null || room.Object == null || !room.Object.IsValid || room.Runner == null) return false;
+        if (SceneManager.GetActiveScene().name == standbySceneName) return false;
+        return FindLocalPlayer();
+    }
 
-        var sceneManager = room.Runner.SceneManager;
-        if (sceneManager == null || sceneManager.MainRunnerScene.name == standbySceneName) return false;
-
-        foreach (PlayerItemController player in FindObjectsByType<PlayerItemController>(FindObjectsSortMode.None))
+    private static bool FindLocalPlayer() //내 캐릭터(입력 권한)가 생성됐는지
+    {
+        foreach (PlayerHealth player in FindObjectsByType<PlayerHealth>(FindObjectsSortMode.None))
         {
             if (player.Object != null && player.Object.IsValid && player.HasInputAuthority)
                 return true;
