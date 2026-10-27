@@ -23,10 +23,10 @@ public class PlayerCameraController : NetworkBehaviour
     private Vector3 aimOffset; //카메라의 플레이어 기준 조준 위치
     private PlayerFeedback playerFeedback; //로컬 피격 화면 연출
     private Quaternion cameraLocalRotation; //흔들림을 누적하지 않을 카메라 기본 회전
-    private PlayerLookVisualComponent lookVisual; //카메라 종료 시 본인 머리 표시 복원
+    private PlayerLookVisualComponent lookVisual; //본인 카메라에 맞춘 머리와 몸 표시
 
     internal bool isLocalCameraActive => Object != null && Object.IsValid && HasInputAuthority &&
-        isActiveAndEnabled && playerCamera != null && playerCamera.isActiveAndEnabled; //본인 머리를 숨길 실제 1인칭 시점
+        isActiveAndEnabled && playerCamera != null && playerCamera.isActiveAndEnabled; //본인 모델 표시를 제어할 실제 1인칭 시점
 
     internal bool tryGetSimulationAimRay(out Ray ray) //호스트가 처리한 시점으로 공격 방향 계산
     {
@@ -75,11 +75,12 @@ public class PlayerCameraController : NetworkBehaviour
             Cursor.visible = isMenuOpen;
             LocalListenerTransform = playerCamera.transform;
         }
+        lookVisual?.refreshLocalBody();
     }
 
     public override void Despawned(NetworkRunner runner, bool hasState)
     {
-        lookVisual?.restoreLocalHead();
+        lookVisual?.restoreLocalView();
         if (Object != null && Object.HasInputAuthority && LocalListenerTransform == playerCamera.transform)
         {
             LocalListenerTransform = null;
@@ -90,7 +91,8 @@ public class PlayerCameraController : NetworkBehaviour
     {
         playerCamera.gameObject.SetActive(active);
         if (audioListener != null) audioListener.enabled = active;
-        if (!active) lookVisual?.restoreLocalHead();
+        if (active) lookVisual?.refreshLocalBody();
+        else lookVisual?.restoreLocalView();
         if (active && Object != null && Object.IsValid && HasInputAuthority)
             LocalListenerTransform = playerCamera.transform;
         else if (!active && LocalListenerTransform == playerCamera.transform)
@@ -111,8 +113,8 @@ public class PlayerCameraController : NetworkBehaviour
             (playerFeedback != null ? playerFeedback.getDamageShakeRotation() : Quaternion.identity);
     }
 
-    private void OnDisable() //카메라 제어 종료 시 머리의 로컬 숨김 해제
+    private void OnDisable() //카메라 제어 종료 시 머리와 몸의 로컬 숨김 해제
     {
-        lookVisual?.restoreLocalHead();
+        lookVisual?.restoreLocalView();
     }
 }

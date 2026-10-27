@@ -3,6 +3,7 @@ using Fusion.Addons.SimpleKCC;
 using LockdownProtocol.Networking;
 using LockdownProtocol.Lobby;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 [RequireComponent(typeof(SimpleKCC))]
 public class PlayerMovement : NetworkBehaviour
@@ -10,7 +11,7 @@ public class PlayerMovement : NetworkBehaviour
     [Header("이동 속도")]
     [SerializeField] private float walkSpeed = 4f;
     [SerializeField] private float sprintSpeed = 6f;
-    [SerializeField] private float crouchSpeed = 2f;
+    [SerializeField, FormerlySerializedAs("crouchSpeed")] private float slowWalkSpeed = 2f; //Ctrl을 누르는 동안의 느린 걷기 속도
 
     [Header("점프")]
     [SerializeField] private float jumpImpulseForce = 5f;
@@ -23,6 +24,9 @@ public class PlayerMovement : NetworkBehaviour
     private PlayerStamina stamina;
     private PlayerHealth health;
     private GameEndSystem gameEndSystem; //능력치 없는 관전자의 게임 종료 중 이동 차단
+
+    [Networked] private NetworkBool walking { get; set; } //호스트가 복제하고 본인이 예측하는 걷기 모드
+    internal bool isWalking => walking; //다른 화면에서도 발소리를 생략할 걷기 상태
 
     public bool IsGrounded => simpleKCC != null && simpleKCC.IsGrounded;
 
@@ -43,6 +47,7 @@ public class PlayerMovement : NetworkBehaviour
         simpleKCC = GetComponent<SimpleKCC>();
         stamina = GetComponent<PlayerStamina>();
         health = GetComponent<PlayerHealth>();
+        if (HasStateAuthority) walking = false;
         if (health == null) gameEndSystem = FindFirstObjectByType<GameEndSystem>();
     }
 
@@ -51,7 +56,11 @@ public class PlayerMovement : NetworkBehaviour
         if (health != null && health.IsDead)
         {
             stamina?.updateStamina(default, false);
-            if (HasStateAuthority || HasInputAuthority) simpleKCC.SetActive(false);
+            if (HasStateAuthority || HasInputAuthority)
+            {
+                walking = false;
+                simpleKCC.SetActive(false);
+            }
             return;
         }
 
@@ -63,7 +72,11 @@ public class PlayerMovement : NetworkBehaviour
         if (isStarting || isGameEnded || (health != null && !health.CanAct))
         {
             stamina?.updateStamina(default, false);
-            if (HasStateAuthority || HasInputAuthority) simpleKCC.Move();
+            if (HasStateAuthority || HasInputAuthority)
+            {
+                walking = false;
+                simpleKCC.Move();
+            }
             return;
         }
         if (!GetInput(out NetworkInputData input))
@@ -71,6 +84,7 @@ public class PlayerMovement : NetworkBehaviour
             stamina?.updateStamina(default, false);
             // Host가 특정 틱의 입력을 받지 못한 경우에도 중력과 접지를 처리한다.
             // 다른 플레이어를 보는 일반 프록시에서는 Move를 호출하지 않는다.
+            // 입력이 누락되면 마지막 걷기 모드를 유지해 원격 발소리 재생을 막는다.
             if (Object.HasStateAuthority)
                 simpleKCC.Move();
 
@@ -88,12 +102,17 @@ public class PlayerMovement : NetworkBehaviour
         bool isMoving = moveInput.sqrMagnitude > 0.0001f;
         bool isSprinting = stamina != null
             ? stamina.updateStamina(input, true)
-            : input.IsPressed(InputButton.Sprint) && isMoving; //이번 틱에 허용된 달리기
+            : input.IsPressed(InputButton.Sprint) && !input.IsPressed(InputButton.Walk) && isMoving; //이번 틱에 허용된 달리기
         if (health != null && health.IsDead)
         {
-            if (HasStateAuthority || HasInputAuthority) simpleKCC.SetActive(false);
+            if (HasStateAuthority || HasInputAuthority)
+            {
+                walking = false;
+                simpleKCC.SetActive(false);
+            }
             return;
         }
+        walking = input.IsPressed(InputButton.Walk);
         float moveSpeed = DetermineSpeed(input, isSprinting);
 
         Vector3 localDirection = new Vector3(moveInput.x, 0f, moveInput.y);
@@ -115,8 +134,8 @@ public class PlayerMovement : NetworkBehaviour
 
     private float DetermineSpeed(NetworkInputData input, bool isSprinting)
     {
-        if (input.IsPressed(InputButton.Crouch))
-            return crouchSpeed;
+        if (input.IsPressed(InputButton.Walk))
+            return slowWalkSpeed;
 
         return isSprinting ? sprintSpeed : walkSpeed;
     }

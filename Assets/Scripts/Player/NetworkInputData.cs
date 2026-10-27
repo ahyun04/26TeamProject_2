@@ -7,7 +7,7 @@ public enum InputButton
 {
     Jump,
     Sprint,
-    Crouch
+    Walk
 }
 
 
@@ -20,7 +20,7 @@ public struct NetworkInputData : INetworkInput
     // 마우스 시점 회전값
     public Vector2 LookRotation;
 
-    // 점프, 달리기, 앉기 등의 버튼 입력
+    // 점프, 달리기, 걷기 등의 버튼 입력
     public NetworkButtons Buttons;
 
 

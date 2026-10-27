@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Rendering;
 
 [DefaultExecutionOrder(-25)]
 public class PlayerFirstPersonArmsComponent : MonoBehaviour
@@ -11,11 +10,9 @@ public class PlayerFirstPersonArmsComponent : MonoBehaviour
 
     private readonly List<Transform> sourceBones = new List<Transform>(); //기존 애니메이션이 움직이는 본
     private readonly List<Transform> viewBones = new List<Transform>(); //본인 시점에 복사할 본
-    private SkinnedMeshRenderer sourceRenderer; //본인 캐릭터의 색상과 그림자 표시
+    private SkinnedMeshRenderer sourceRenderer; //본인 캐릭터의 색상 복사 원본
     private PlayerHealth health; //사망과 탈출 시 표시 해제
     private MaterialPropertyBlock properties; //선택한 캐릭터 색상 복사
-    private ShadowCastingMode originalShadows; //장착 전 본인 모델의 그림자 설정
-    private bool hidingBody; //본인 모델의 중복 표시를 숨겼는지 여부
     private int materialCount; //팔 재질 슬롯 수
 
     internal bool initialize(Animator sourceAnimator) //기존 애니메이션 본과 팔 전용 본 연결
@@ -65,18 +62,11 @@ public class PlayerFirstPersonArmsComponent : MonoBehaviour
     {
         gameObject.SetActive(true);
         copyPose();
-        if (sourceRenderer != null && !hidingBody)
-        {
-            originalShadows = sourceRenderer.shadowCastingMode;
-            sourceRenderer.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
-            hidingBody = true;
-        }
     }
 
     internal void hide() //빈손과 사망 시 팔 표시 해제
     {
         gameObject.SetActive(false);
-        restoreBody();
     }
 
     private void LateUpdate() //Animator 평가 후 같은 Hold와 공격 자세 복사
@@ -104,20 +94,4 @@ public class PlayerFirstPersonArmsComponent : MonoBehaviour
         }
     }
 
-    private void restoreBody() //본인 모델의 원래 표시와 그림자 설정 복원
-    {
-        if (hidingBody && sourceRenderer != null)
-            sourceRenderer.shadowCastingMode = originalShadows;
-        hidingBody = false;
-    }
-
-    private void OnDisable() //카메라 비활성화와 관전 전환 처리
-    {
-        restoreBody();
-    }
-
-    private void OnDestroy() //씬 종료 시 남은 표시 상태 정리
-    {
-        restoreBody();
-    }
 }

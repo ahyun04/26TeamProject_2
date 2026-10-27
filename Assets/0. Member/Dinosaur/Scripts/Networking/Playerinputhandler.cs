@@ -8,7 +8,7 @@ using UnityEngine;
 /// 이 클래스는 순수 로컬 로직이다. State Authority 여부, 네트워크 상태를 전혀 신경 쓰지 않는다.
 /// Runner.ProvideInput = true인 클라이언트에서만 이 값이 실제로 소비된다.
 ///
-/// InputButton은 팀원이 정의한 enum(Jump, Sprint, Crouch)을 그대로 따른다.
+/// InputButton은 팀원이 정의한 enum(Jump, Sprint, Walk)을 그대로 따른다.
 /// NetworkButtons.Set()은 int를 받으므로, enum 값은 (int)로 형변환해서 넘긴다.
 /// </summary>
 public class PlayerInputHandler : MonoBehaviour
@@ -50,7 +50,7 @@ public class PlayerInputHandler : MonoBehaviour
 
         // Held 상태(누르는 동안 계속 true)는 매 틱 새로 읽어도 유실 위험이 없다.
         data.Buttons.Set((int)InputButton.Sprint, Input.GetKey(KeyCode.LeftShift));
-        data.Buttons.Set((int)InputButton.Crouch, Input.GetKey(KeyCode.LeftControl));
+        data.Buttons.Set((int)InputButton.Walk, Input.GetKey(KeyCode.LeftControl));
 
         // 누적값 소비 완료 - 다음 틱을 위해 초기화
         _accumulatedLookDelta = Vector2.zero;

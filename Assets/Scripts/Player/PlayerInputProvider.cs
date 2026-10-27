@@ -64,9 +64,9 @@ public class PlayerInputProvider : MonoBehaviour, INetworkRunnerCallbacks
             Input.GetKey(KeyCode.LeftShift)
         );
 
-        // 앉기
+        // 걷기
         data.Buttons.Set(
-            InputButton.Crouch,
+            InputButton.Walk,
             Input.GetKey(KeyCode.LeftControl)
         );
 

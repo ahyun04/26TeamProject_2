@@ -100,8 +100,8 @@ namespace LockdownProtocol.Networking
         private void RPC_RequestAttack() //장착 무기로 일반 피해 적용
         {
             if (!canRequestAttack() || items == null || !items.tryGetEquippedWeapon(out ItemData weapon)) return;
-            if (!beginAttack(weapon.AttackInterval)) return;
-            if (tryGetAttackTarget(out PlayerHealth target))
+            if (!beginAttack(weapon.AttackInterval, weapon)) return;
+            if (tryGetAttackTarget(weapon.AttackRange, out PlayerHealth target))
                 target.ApplyDamage(weapon.AttackDamage, Object.InputAuthority);
         }
 
@@ -115,26 +115,30 @@ namespace LockdownProtocol.Networking
         {
             if (!canRequestAttack() || !hasKillerRole() || !hasCompletedKillerMissions() ||
                 !CooldownTimer.ExpiredOrNotRunning(Runner)) return;
-            if (!tryGetAttackTarget(out PlayerHealth target) || target.Object.Id != targetId) return;
+            if (!tryGetAttackTarget(killRange, out PlayerHealth target) || target.Object.Id != targetId) return;
 
-            float duration = items != null && items.tryGetEquippedWeapon(out ItemData weapon)
+            ItemData weapon = null; //장착 도구가 없는 즉사 기술의 기본 공격 설정
+            float duration = items != null && items.tryGetEquippedWeapon(out weapon)
                 ? weapon.AttackInterval : 1f;
-            if (!beginAttack(duration)) return;
+            if (!beginAttack(duration, weapon)) return;
             CanKill = false;
             CooldownTimer = TickTimer.CreateFromSeconds(Runner, killCooldownSeconds);
             target.Kill(Object.InputAuthority);
         }
 
-        private bool beginAttack(float duration) //공격 자원 소모와 일반 공격·즉사 모션의 중복 실행 방지
+        private bool beginAttack(float duration, ItemData weapon) //공격 자원 소모와 일반 공격·즉사 모션의 중복 실행 방지
         {
-            if (stamina == null || !stamina.tryConsumeAttackStamina()) return false;
+            if (stamina == null) return false;
+            bool survivesAttack = weapon != null ? stamina.tryConsumeAttackStamina(weapon.AttackStaminaCost) :
+                stamina.tryConsumeAttackStamina(); //맨손 즉사 기술은 기존 공통 소모량 유지
+            if (!survivesAttack) return false;
             attackDuration = duration;
             attackTimer = TickTimer.CreateFromSeconds(Runner, duration);
             attackSequence++;
             return true;
         }
 
-        private bool tryGetAttackTarget(out PlayerHealth target) //시점과 벽을 포함한 호스트 근접 판정
+        private bool tryGetAttackTarget(float range, out PlayerHealth target) //시점과 벽을 포함한 호스트 근접 판정
         {
             target = null;
             if (cameraController == null || !cameraController.tryGetSimulationAimRay(out Ray ray)) return false;
@@ -142,11 +146,11 @@ namespace LockdownProtocol.Networking
             Vector3 cameraOffset = ray.origin - eye;
             if (cameraOffset.sqrMagnitude > 0.0001f &&
                 tryGetFirstHit(new Ray(eye, cameraOffset.normalized), cameraOffset.magnitude, out _)) return false;
-            if (!tryGetFirstHit(ray, killRange, out RaycastHit hit) || hit.collider == null) return false;
+            if (!tryGetFirstHit(ray, range, out RaycastHit hit) || hit.collider == null) return false;
             target = hit.collider.GetComponentInParent<PlayerHealth>();
             return target != null && target != _health && target.Object != null && target.Object.IsValid &&
                    target.Runner == Runner && target.CanAct &&
-                   Vector3.Distance(transform.position, target.transform.position) <= killRange;
+                   Vector3.Distance(transform.position, target.transform.position) <= range;
         }
 
         private bool tryGetFirstHit(Ray ray, float distance, out RaycastHit closest) //가장 가까운 벽이나 플레이어 선택
@@ -182,7 +186,7 @@ namespace LockdownProtocol.Networking
 
             if (instantKillKey != KeyCode.None && Input.GetKeyDown(instantKillKey) && CanKill)
             {
-                if (tryGetAttackTarget(out PlayerHealth target)) RPC_RequestKill(target.Object.Id);
+                if (tryGetAttackTarget(killRange, out PlayerHealth target)) RPC_RequestKill(target.Object.Id);
                 return;
             }
         }
