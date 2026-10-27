@@ -1,6 +1,7 @@
 using Fusion;
 using Fusion.Addons.SimpleKCC;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 [DefaultExecutionOrder(-50)]
 [RequireComponent(typeof(SimpleKCC), typeof(PlayerHealth))]
@@ -20,6 +21,9 @@ public class PlayerLookVisualComponent : NetworkBehaviour, IAfterTick
     private SimpleKCC kcc; //기존 네트워크 시선과 이동 상태
     private PlayerHealth health; //사망과 탈출 등 표시 종료 상태
     private PlayerCameraController cameraController; //본인에게 활성화된 1인칭 카메라
+    private SkinnedMeshRenderer characterRenderer; //1인칭 팔과 분리된 원래 캐릭터 메시
+    private ShadowCastingMode originalShadows; //본인 카메라 종료 시 복원할 그림자 설정
+    private bool bodyHidden; //본인 화면에서 원래 몸을 숨겼는지 여부
     private NetworkBehaviour.PropertyReader<float> bodyYawReader; //다른 참가자에게 복제된 몸 방향 보간
     private Quaternion bodyLocalRotation; //프리팹의 기본 모델 회전
     private Vector3 bodyLocalPosition; //시선을 돌려도 모델이 카메라 주위를 돌지 않도록 유지할 위치
@@ -38,6 +42,7 @@ public class PlayerLookVisualComponent : NetworkBehaviour, IAfterTick
         {
             bodyLocalRotation = bodyPivot.localRotation;
             bodyLocalPosition = bodyPivot.localPosition;
+            characterRenderer = bodyPivot.GetComponentInChildren<SkinnedMeshRenderer>(true);
         }
     }
 
@@ -50,6 +55,7 @@ public class PlayerLookVisualComponent : NetworkBehaviour, IAfterTick
             bodyTurning = false;
         }
         spawned = true;
+        refreshLocalBody();
     }
 
     public void AfterTick() //이동과 시선 입력 처리가 끝난 뒤 호스트만 몸 방향 결정
@@ -112,6 +118,30 @@ public class PlayerLookVisualComponent : NetworkBehaviour, IAfterTick
         headHidden = false;
     }
 
+    internal void refreshLocalBody() //본인 1인칭에서는 몸의 그림자만 유지하고 다른 화면에서는 원래 표시
+    {
+        bool hidden = spawned && isActiveAndEnabled && cameraController != null && cameraController.isLocalCameraActive;
+        setBodyHidden(hidden);
+    }
+
+    private void setBodyHidden(bool hidden) //팔 장착과 무관하게 원래 몸의 로컬 표시만 변경
+    {
+        if (characterRenderer == null || bodyHidden == hidden) return;
+        if (hidden)
+        {
+            originalShadows = characterRenderer.shadowCastingMode;
+            characterRenderer.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
+        }
+        else characterRenderer.shadowCastingMode = originalShadows;
+        bodyHidden = hidden;
+    }
+
+    internal void restoreLocalView() //관전·카메라 종료 시 머리와 몸의 원래 표시 복원
+    {
+        restoreLocalHead();
+        setBodyHidden(false);
+    }
+
     private void Update() //Animator가 평가되기 전에 이전 프레임의 시선 보정 제거
     {
         restoreHead();
@@ -120,6 +150,7 @@ public class PlayerLookVisualComponent : NetworkBehaviour, IAfterTick
     private void LateUpdate() //Animator 이후 머리와 몸을 표시하고 아이템의 손 추적보다 먼저 실행
     {
         if (!spawned || Object == null || !Object.IsValid || bodyPivot == null || headBone == null) return;
+        refreshLocalBody();
         float yaw = getRenderedBodyYaw(); //이번 화면에 표시할 몸 방향
         Quaternion bodyRotation = Quaternion.Euler(0f, yaw, 0f); //카메라 루트 회전과 분리된 모델의 수평 회전
         bodyPivot.SetPositionAndRotation(transform.position + bodyRotation * Vector3.Scale(bodyLocalPosition, transform.lossyScale), bodyRotation * bodyLocalRotation);
@@ -143,11 +174,13 @@ public class PlayerLookVisualComponent : NetworkBehaviour, IAfterTick
     public override void Despawned(NetworkRunner runner, bool hasState) //씬 전환과 관전자 전환 시 표시 상태 정리
     {
         restoreHead();
+        setBodyHidden(false);
         spawned = false;
     }
 
-    private void OnDisable() //비활성화 시 마지막 머리 보정 제거
+    private void OnDisable() //비활성화 시 머리 보정과 본인 몸 숨김 해제
     {
         restoreHead();
+        setBodyHidden(false);
     }
 }

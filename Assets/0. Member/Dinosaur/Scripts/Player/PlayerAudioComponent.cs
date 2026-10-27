@@ -44,7 +44,7 @@ public class PlayerAudioComponent : NetworkBehaviour
     public override void Render() //실제 접지 이동에 맞춰 본 PC에서 발소리 재생
     {
         applyVolume();
-        if (!health.CanAct || !movement.IsGrounded || movement.CurrentSpeed < 0.15f ||
+        if (!health.CanAct || movement.isWalking || !movement.IsGrounded || movement.CurrentSpeed < 0.15f ||
             (HasInputAuthority && GameAudio.blocksPlayerInput))
         {
             distanceToNextStep = 0f;

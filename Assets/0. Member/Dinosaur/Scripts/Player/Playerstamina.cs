@@ -11,10 +11,10 @@ public class PlayerStamina : NetworkBehaviour
 {
     [Header("Stamina Settings")]
     [SerializeField] private float maxStamina = 100f;
-    [SerializeField] private float drainPerSecond = 20f;
+    [SerializeField, Min(0f)] private float drainPerSecond = 3f; //달리기 중 초당 스태미나 소모량
     [SerializeField, Min(0f)] private float healthDrainPerSecond = 10f; //스태미나 소진 후 초당 체력 소모량
     [SerializeField, Min(0f)] private float jumpStaminaCost = 15f; //점프 한 번에 필요한 스태미나
-    [SerializeField, Min(0f)] private float attackStaminaCost = 25f; //공격 한 번에 필요한 스태미나
+    [SerializeField, Min(0f)] private float attackStaminaCost = 25f; //장착 도구가 없는 공격의 기본 스태미나
     [SerializeField] private float regenPerSecond = 15f;
     [SerializeField] private float regenDelaySeconds = 1.5f;
 
@@ -49,7 +49,7 @@ public class PlayerStamina : NetworkBehaviour
         bool isMoving = input.MoveDirection.sqrMagnitude > 0.0001f; //이동 입력 여부
         bool canSprint = HasStamina || (health != null && health.CurrentHealth > 0f); //체력이 남으면 달리기 지속
         bool isSprinting = canMove && isMoving && canSprint && (health == null || health.CanAct) &&
-                           input.IsPressed(InputButton.Sprint) && !input.IsPressed(InputButton.Crouch); //이번 틱의 달리기 여부
+                           input.IsPressed(InputButton.Sprint) && !input.IsPressed(InputButton.Walk); //이번 틱의 달리기 여부
 
         if (isSprinting)
         {
@@ -87,13 +87,19 @@ public class PlayerStamina : NetworkBehaviour
         return survivesJump && (health == null || !health.IsDead);
     }
 
-    internal bool tryConsumeAttackStamina() //호스트가 공격 자원을 소모하고 생존 여부를 반환
+    internal bool tryConsumeAttackStamina() //아이템 수치가 없는 공격의 기본 자원 소모
+    {
+        return tryConsumeAttackStamina(attackStaminaCost);
+    }
+
+    internal bool tryConsumeAttackStamina(float staminaCost) //장착 아이템의 공격 자원을 호스트가 소모
     {
         if (!HasStateAuthority || health == null || !health.CanAct)
             return false;
 
-        float healthCost = Mathf.Max(0f, attackStaminaCost - CurrentStamina); //스태미나로 감당하지 못한 공격 소모량
-        Drain(attackStaminaCost);
+        staminaCost = Mathf.Max(0f, staminaCost);
+        float healthCost = Mathf.Max(0f, staminaCost - CurrentStamina); //스태미나로 감당하지 못한 공격 소모량
+        Drain(staminaCost);
         RegenDelayTimer = regenDelaySeconds;
         if (healthCost > 0f)
             health.ApplyDamage(healthCost);
