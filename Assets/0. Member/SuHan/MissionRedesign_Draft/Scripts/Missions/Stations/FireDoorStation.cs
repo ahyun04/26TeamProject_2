@@ -276,7 +276,9 @@ namespace TrustNoOne.Missions
             foreach (FireDoorPanel panel in panels)
             {
                 Transform at = panel.Landing != null ? panel.Landing : panel.transform;
-                NetworkObject spawned = Runner.Spawn(leverPrefab, at.position, at.rotation);
+                // 떨어질 자리도 실제 바닥 높이로 (11b FL1)
+                Vector3 landing = NavMeshSpawnArea.ToSurface(Runner.GetPhysicsScene(), at.position);
+                NetworkObject spawned = Runner.Spawn(leverPrefab, landing, at.rotation);
                 FireDoorLever lever = spawned != null ? spawned.GetComponent<FireDoorLever>() : null;
 
                 if (lever != null)
@@ -287,7 +289,7 @@ namespace TrustNoOne.Missions
         /// <summary>호스트: 방화문 앞 반원(2 ~ 6m)의 1층 NavMesh 위 무작위 지점에 레버 2개를 놓는다 (FD6 → 6b 보강 NS8).</summary>
         private void PlaceLevers()
         {
-            if (!NavMeshSpawnArea.TryCreate(name, out NavMeshSpawnArea area))
+            if (!NavMeshSpawnArea.TryCreate(name, Runner.GetPhysicsScene(), out NavMeshSpawnArea area))
                 return;
 
             if (!area.TryGetOrigin(transform, out Vector3 origin))

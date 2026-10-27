@@ -52,10 +52,12 @@ public static class LegacyMissionConverter
     private const string CodeModelPath = SourceModelFolder + "/Match_code.fbx";
     private const float CodeInteractRange = 3f;
 
-    // 3a C13 화면: 패널 메시에서 화면 면을 찾는 아틀라스 칸 (TryFindCodeScreen 참고)과 글꼴
+    // 3a C13 화면: 패널 메시에서 화면 면을 찾는 아틀라스 칸 (TryFindScreen 참고)과 글꼴
     private static readonly Vector2 CodeScreenAtlasUv = new Vector2(0.3865f, 0.5745f);
     private const float CodeScreenUvTolerance = 0.004f;
     private const string TmpDefaultFontPath = "Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset";
+    // 한글 LCD (장비 화면 "부품 n / 4" · "정상 작동" — 기본 글꼴에는 한글이 없다). 팀원 UI 와 같은 글꼴
+    private const string KoreanFontPath = "Assets/TextMesh Pro/Resources/Fonts & Materials/NotoSansKR/NotoSansKR-Medium SDF.asset";
 
     // 3b 생명 유지 장치 · 산소통: 원본 본체 · 산소통 모델에서 조립한다 (3b 보강 명세 LM1 — 원본은 복사해서 쓰고 수정하지 않음)
     public const string LifeSupportStationPath = OutputFolder + "/LifeSupport_Station.prefab";
@@ -1245,7 +1247,7 @@ public static class LegacyMissionConverter
         MeshFilter panel = root.GetComponent<MeshFilter>();
 
         if (panel == null || panel.sharedMesh == null ||
-            !TryFindCodeScreen(panel, root.transform, out Vector3 center, out Vector3 normal, out Vector3 up, out Vector2 size))
+            !TryFindScreen(panel, root.transform, CodeScreenAtlasUv, out Vector3 center, out Vector3 normal, out Vector3 up, out Vector2 size))
         {
             Debug.LogWarning("[LegacyMissionConverter] 코드: 패널에서 화면(아틀라스 검은 칸 · 앞을 향한 면)을 찾지 못해 화면 글자 없이 동작합니다.");
             return null;
@@ -1266,9 +1268,11 @@ public static class LegacyMissionConverter
     /// 크기는 가장 긴 문구(longestText)가 영역(size)에 맞도록 한 번 재고 고정한다 (문구마다 글자 크기가 달라지지 않게).
     /// </summary>
     /// <param name="localRotation">글자 앞면(−Z)이 보는 쪽을 정하는 회전</param>
+    /// <param name="fontPath">비우면 TextMeshPro 기본 글꼴 (영문 LCD). 한글 문구는 KoreanFontPath</param>
     private static LcdDisplay CreateLcdText(Transform parent, Vector3 localPosition, Quaternion localRotation, Vector2 size,
-        string longestText, string initialText)
+        string longestText, string initialText, string fontPath = null)
     {
+        fontPath ??= TmpDefaultFontPath;
         GameObject textObject = new GameObject("Display (화면 글자)");
         textObject.transform.SetParent(parent, false);
 
@@ -1279,12 +1283,12 @@ public static class LegacyMissionConverter
         rect.localRotation = localRotation;
         rect.sizeDelta = size;
 
-        TMP_FontAsset font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(TmpDefaultFontPath);
+        TMP_FontAsset font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(fontPath);
 
         if (font != null)
             text.font = font;
         else
-            Debug.LogWarning($"[LegacyMissionConverter] 글꼴을 찾지 못해 TextMeshPro 기본값을 씁니다 ({TmpDefaultFontPath}).");
+            Debug.LogWarning($"[LegacyMissionConverter] 글꼴을 찾지 못해 TextMeshPro 기본값을 씁니다 ({fontPath}).");
 
         text.alignment = TextAlignmentOptions.Center;
         text.enableWordWrapping = false;
@@ -1313,11 +1317,12 @@ public static class LegacyMissionConverter
     }
 
     /// <summary>
-    /// 패널 메시에서 화면 면을 찾아 루트 기준 중심 · 바깥 방향(normal) · 화면의 위쪽 · 크기(가로, 세로)를 구한다.
-    /// [찾는 규칙 — FBX 분석] 화면은 아틀라스 128×128 의 완전한 검정 칸(UV ≈ 0.3865, 0.5745)을 쓰는 면들 중 앞(+Z)을 향한 면이다.
-    ///  가로 약 127cm · 세로 약 51cm, 뒤로 약 18° 기운 넓은 화면. 화면 둘레의 위아래 경사면도 같은 칸을 쓰지만 앞을 향하지 않아 걸러진다.
+    /// 모델 메시에서 화면 면을 찾아 루트 기준 중심 · 바깥 방향(normal) · 화면의 위쪽 · 크기(가로, 세로)를 구한다.
+    /// [찾는 규칙 — FBX 분석] 화면은 아틀라스 128×128 의 한 칸(atlasUv — 코드 · 장비는 완전한 검정 칸 UV ≈ 0.3865, 0.5745)을 쓰는 면들 중 앞(+Z)을 향한 면이다.
+    ///  코드: 가로 약 127cm · 세로 약 51cm, 뒤로 약 18° 기운 넓은 화면. 화면 둘레의 위아래 경사면도 같은 칸을 쓰지만 앞을 향하지 않아 걸러진다.
+    ///  (2026-10-27) 장비 조립 위쪽 검은 패널도 같은 규칙으로 찾는다 — 코드 전용 함수를 메시 · 칸을 받는 공통 함수로 넓혔다.
     /// </summary>
-    private static bool TryFindCodeScreen(MeshFilter panel, Transform root, out Vector3 center, out Vector3 normal, out Vector3 up, out Vector2 size)
+    private static bool TryFindScreen(MeshFilter panel, Transform root, Vector2 atlasUv, out Vector3 center, out Vector3 normal, out Vector3 up, out Vector2 size)
     {
         center = normal = up = Vector3.zero;
         size = Vector2.zero;
@@ -1338,8 +1343,8 @@ public static class LegacyMissionConverter
             int a = triangles[i], b = triangles[i + 1], c = triangles[i + 2];
             Vector2 uvCenter = (uvs[a] + uvs[b] + uvs[c]) / 3f;
 
-            if (Mathf.Abs(uvCenter.x - CodeScreenAtlasUv.x) > CodeScreenUvTolerance ||
-                Mathf.Abs(uvCenter.y - CodeScreenAtlasUv.y) > CodeScreenUvTolerance)
+            if (Mathf.Abs(uvCenter.x - atlasUv.x) > CodeScreenUvTolerance ||
+                Mathf.Abs(uvCenter.y - atlasUv.y) > CodeScreenUvTolerance)
                 continue;
 
             Vector3 pa = root.InverseTransformPoint(panel.transform.TransformPoint(vertices[a]));
@@ -1935,17 +1940,14 @@ public static class LegacyMissionConverter
         if (copy.GetComponent<NetworkObject>() == null)
             copy.AddComponent<NetworkObject>();
 
-        Material done = AssetDatabase.LoadAssetAtPath<Material>($"{SourceMaterialFolder}/Neon_green.mat");
-
-        if (done == null)
-            Debug.LogWarning("[LegacyMissionConverter] 장비: Neon_green 재질을 찾지 못해 완료 발광이 보이지 않습니다.");
-
+        // 완료 표시 = 검은 패널 글자 (2026-10-27 — 붙은 부품 초록 발광 대신, 3c EA6 바뀜)
         AssemblyVisual visual = copy.AddComponent<AssemblyVisual>();
         SerializedObject visualSO = new SerializedObject(visual);
         SetObjectArray(visualSO.FindProperty("attachedParts"), attached);
         visualSO.FindProperty("flyStart").objectReferenceValue = flyStart.transform;
-        visualSO.FindProperty("doneMaterial").objectReferenceValue = done;
         visualSO.ApplyModifiedPropertiesWithoutUndo();
+
+        LcdDisplay display = BuildAssemblyDisplay(copy);
 
         // 범위 = 장비 루트에서 4m (7c AR6 — 기준점 비움). 자리 4개를 장치에 연결하고, 각 자리에 장치를 알려 준다
         AssemblyStation station = copy.AddComponent<AssemblyStation>();
@@ -1960,10 +1962,35 @@ public static class LegacyMissionConverter
             slotSO.ApplyModifiedPropertiesWithoutUndo();
         }
         so.FindProperty("visual").objectReferenceValue = visual;
+        so.FindProperty("display").objectReferenceValue = display;
         so.ApplyModifiedPropertiesWithoutUndo();
 
         Debug.Log($"[LegacyMissionConverter] 장비: 자리 4개 찾음 (평균 z {slotZ:0.00} > 몸체 중심 z {centerZ:0.00}), 앞면 z {front:0.00}, 자리 4개 조준 주소 · 날아오기 시작 {flyStart.transform.localPosition} · 범위 {AssemblyInteractRange}m, 부품 프리팹 4종");
         return true;
+    }
+
+    /// <summary>
+    /// 장비 화면 글자 (2026-10-27 — 3c EA6 바뀜): 장비 모델 위쪽 검은 패널(코드 화면과 같은 검정 칸 · 앞을 향한 면)에 LCD 글자를 올린다.
+    /// "부품 n / 4" → "정상 작동" (AssemblyRules.ScreenText) — 한글이라 NotoSansKR. 화면을 못 찾으면 경고 후 null — 장비는 글자 없이 동작한다.
+    /// </summary>
+    private static LcdDisplay BuildAssemblyDisplay(GameObject root)
+    {
+        MeshFilter body = root.GetComponent<MeshFilter>();
+
+        if (body == null || body.sharedMesh == null ||
+            !TryFindScreen(body, root.transform, CodeScreenAtlasUv, out Vector3 center, out Vector3 normal, out Vector3 up, out Vector2 size))
+        {
+            Debug.LogWarning("[LegacyMissionConverter] 장비: 몸체 모델에서 검은 패널(아틀라스 검은 칸 · 앞을 향한 면)을 찾지 못해 화면 글자 없이 동작합니다.");
+            return null;
+        }
+
+        // 화면 3mm 앞, 글자 앞면이 화면 밖을 보게, 테두리 여백 10% (코드 화면과 같음). 크기는 가장 긴 "부품 4 / 4" 로 고정
+        LcdDisplay display = CreateLcdText(root.transform, center + normal * 0.003f, Quaternion.LookRotation(-normal, up), size * 0.9f,
+            AssemblyRules.ScreenText(AssemblyRules.PartCount, false), AssemblyRules.ScreenText(0, false), KoreanFontPath);
+
+        TMP_Text text = display.GetComponent<TMP_Text>();
+        Debug.Log($"[LegacyMissionConverter] 장비: 화면 찾음 — 크기 {size.x:0.00} × {size.y:0.00}m, 중심 {center}, 글자 크기 {text.fontSize:0.00}");
+        return display;
     }
 
     /// <summary>

@@ -26,6 +26,22 @@ namespace TrustNoOne.Missions
             return slotEmpty && partColor == slotColor && partColor >= 0 && partColor < PartCount;
         }
 
+        /// <summary>장비 화면(검은 패널) 글자 — 완료 (3c EA6 바뀜, 2026-10-27 사용자 결정 A: 초록 발광 대신 글자).</summary>
+        public const string ScreenDoneText = "정상 작동";
+
+        /// <summary>
+        /// 장비 화면 글자 (T38): 완료면 "정상 작동", 아니면 "부품 n / 4" (n = 붙은 수, 0 ~ 4 로 자름).
+        /// 완료를 먼저 본다 — 초기화 · 늦은 동기화로 개수와 완료가 잠깐 어긋나도 완료 화면이 우선.
+        /// </summary>
+        public static string ScreenText(int attached, bool completed)
+        {
+            if (completed)
+                return ScreenDoneText;
+
+            int shown = attached < 0 ? 0 : (attached > PartCount ? PartCount : attached);
+            return $"부품 {shown} / {PartCount}";
+        }
+
         /// <summary>날아가기 진행 0 ~ 1. 빈 자리면 −1, 붙은 시각 이전 · 같음 0, duration 뒤 1 (duration ≤ 0 이면 바로 1).</summary>
         public static float FlyProgress(float t, float attachTime, float duration)
         {

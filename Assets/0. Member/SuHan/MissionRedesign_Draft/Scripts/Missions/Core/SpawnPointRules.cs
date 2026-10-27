@@ -10,11 +10,34 @@ namespace TrustNoOne.Missions
     ///  - 삼각형 안 · 고리 안 고른 분포 무작위 점
     ///  - 거리 조건: 간격(다른 점들에서 떨어짐) · 고리(중심에서 거리 범위) · 앞쪽(바라보는 방향으로 앞)
     ///  거리는 모두 가로면(x, z) — 단상 높이 차이로 간격 · 범위가 바뀌지 않게.
+    ///  - (11b) 놓을 면 고르기: 위에서 아래로 쏜 광선에 맞은 면 중 바닥으로 볼 것 (PickSurface)
     /// [이유] NavMesh(엔진)와 떼어 엔진 밖에서 테스트한다 (T27). NavMesh 읽기 · 경로 검사는 NavMeshSpawnArea.
-    /// [근거] 6b 보강 명세 NS6 ~ NS9 · NS11
+    /// [근거] 6b 보강 명세 NS6 ~ NS9 · NS11, 11b (11a 명세 7장 FL1 ~ FL6)
     /// </summary>
     public static class SpawnPointRules
     {
+        /// <summary>
+        /// 위에서 아래로 쏜 광선에 맞은 면 중 아이템을 놓을 면 (11b FL2): 무시 대상(플레이어 · 아이템 · 장치)이 아니고 위를 향한(법선 위쪽 성분 &gt; 0)
+        /// 면 중 가장 가까운 것. 아래를 향한 면(판 아랫면 · 천장)과 수직면(벽)은 바닥이 아니다. 없으면 −1 (원래 자리 그대로).
+        /// 팀원의 내려놓기(ItemBase.Unequip)와 같은 규칙이다.
+        /// </summary>
+        /// <param name="count">앞에서부터 쓸 결과 수 (광선 결과 배열이 더 길 수 있다)</param>
+        public static int PickSurface(float[] distances, float[] normalYs, bool[] ignored, int count)
+        {
+            int best = -1;
+
+            for (int i = 0; i < count; i++)
+            {
+                if (ignored[i] || normalYs[i] <= 0f)
+                    continue;
+
+                if (best < 0 || distances[i] < distances[best])
+                    best = i;
+            }
+
+            return best;
+        }
+
         /// <param name="cumulative">삼각형 수(indices.Count / 3) 길이. i 번째 = 0 ~ i 번째 삼각형 넓이 합</param>
         /// <returns>넓이 합 (m²)</returns>
         public static float BuildCumulativeAreas(IReadOnlyList<Vector3> vertices, IReadOnlyList<int> indices, float[] cumulative)

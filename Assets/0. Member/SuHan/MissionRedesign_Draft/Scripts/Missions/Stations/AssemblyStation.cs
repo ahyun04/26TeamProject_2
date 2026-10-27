@@ -8,7 +8,8 @@ namespace TrustNoOne.Missions
     /// <summary>
     /// [역할] 고장난 장비 (단체 미션 TG003 "고장난 장비 조립" · EquipmentAssembled). 신규. 3c 명세 3-3.
     ///  부품 4개(색마다 1개)를 맵에 놓고, 부품을 든 사람이 맞는 색 자리를 조준하고 우클릭하면 그 자리에 붙인다 (7c — 자동 배치 · 바닥 원 없앰).
-    ///  붙을 때마다 진행 1 (패널 TG003 n/4), 4번째에 완료(잠금) — 붙은 부품이 초록으로 빛난다.
+    ///  붙을 때마다 진행 1 (패널 TG003 n/4), 4번째에 완료(잠금). 장비의 검은 패널에 "부품 n / 4" → "정상 작동"
+    ///  (2026-10-27 바뀜 — 붙은 부품을 초록으로 빛내던 것 대신, 사용자 결정 A · AssemblyRules.ScreenText).
     ///
     /// [기획서] 단체 미션 기획서 · 전체 기획서 (2): "필요한 부품은 총 4개 / 조립 위치에 부품을 가져오면 해당 부품이 장비에 자동으로 배치 /
     ///  모든 부품이 모이면 장비가 자동으로 조립 / 잘못된 부품을 가져와도 인정되지 않음 / 제한 시간이 있는 경우 … 실패 시 초기화".
@@ -34,6 +35,9 @@ namespace TrustNoOne.Missions
 
         [Header("연출")]
         [SerializeField] private AssemblyVisual visual;
+
+        [Tooltip("장비 검은 패널 위 LCD 글자 (변환 도구가 모델의 화면 면을 찾아 만든다). 비어 있으면 글자 없이 동작")]
+        [SerializeField] private LcdDisplay display;
 
         [Tooltip("부품이 자리로 날아가는 시간 (초, EA6)")]
         [Min(0f)]
@@ -156,7 +160,9 @@ namespace TrustNoOne.Missions
             for (int c = 0; c < AssemblyRules.PartCount; c++)
                 slots[c].SetColliderEnabled(LocalInteractionAllowed && AttachTime[c] < 0f);
 
-            visual.ShowDone(Completed);
+            // 검은 패널 글자: 붙은 수 · 완료 (LcdDisplay 는 글자가 바뀔 때만 다시 그린다)
+            if (display != null)
+                display.Show(AssemblyRules.ScreenText(CountAttached(), Completed));
         }
 
         /// <summary>호스트: 부품을 자리에 붙인다 — 손에서 지우고, 진행 1 (4번째면 완료).</summary>
@@ -178,7 +184,7 @@ namespace TrustNoOne.Missions
         /// <summary>호스트: 1층 NavMesh 위 무작위로 부품을 놓는다 — 무작위 1색은 장비 근처, 나머지는 멀리 (EA4 → 6b 보강 NS7).</summary>
         private void PlaceParts()
         {
-            if (!NavMeshSpawnArea.TryCreate(name, out NavMeshSpawnArea area))
+            if (!NavMeshSpawnArea.TryCreate(name, Runner.GetPhysicsScene(), out NavMeshSpawnArea area))
                 return;
 
             if (!area.TryGetOrigin(transform, out Vector3 origin))

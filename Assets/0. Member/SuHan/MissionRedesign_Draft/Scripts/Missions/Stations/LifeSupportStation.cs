@@ -288,7 +288,7 @@ namespace TrustNoOne.Missions
         {
             int wanted = safeCount + dangerousCount;
 
-            if (!NavMeshSpawnArea.TryCreate(name, out NavMeshSpawnArea area))
+            if (!NavMeshSpawnArea.TryCreate(name, Runner.GetPhysicsScene(), out NavMeshSpawnArea area))
                 return;
 
             if (!area.TryGetOrigin(transform, out Vector3 origin))

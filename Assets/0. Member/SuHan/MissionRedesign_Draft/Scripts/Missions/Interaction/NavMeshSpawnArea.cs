@@ -1,4 +1,5 @@
 using System;
+using Fusion;
 using UnityEngine;
 using UnityEngine.AI;
 using Random = UnityEngine.Random;
@@ -12,8 +13,10 @@ namespace TrustNoOne.Missions
     ///    장치 몸체가 길을 막아 바로 밑은 NavMesh 가 비고, 방화문 뒤는 벽과의 막힌 틈이라 거기서 경로를 재면 모두 실패할 수 있다
     ///  - "아무 곳": 넓이 비례 삼각형 → 그 안 무작위 점 / "근처": 고리 안 무작위 점 → 1m 안 가장 가까운 NavMesh 점
     ///  - 모든 자리는 기준점에서 경로가 끝까지 이어져야 한다 (장치에 갈 수 있으면 그 자리에도 갈 수 있다). 하나당 최대 40번
+    ///  - (11b) 고른 점은 돌려주기 직전에 실제 바닥 높이로 내린다 (ToSurface) — NavMesh 는 바닥을 약 0.17m 칸으로 근사해 0 ~ 0.17m 떠 있다.
+    ///    미션 아이템(산소통 · 부품 · 레버)은 모델 바닥이 기준점이라 그 높이에 두면 딱 붙는다
     /// [이유] 6b 의 자리 후보는 바닥 높이 · 걸어갈 수 있는지를 보지 않아 단상 속 · 울타리 너머에 아이템이 생겼다 (명세 1장).
-    /// [근거] 6b 보강 명세 NS1 · NS5 · NS9 · NS10 · NS11 (사용자 결정 A — 질문 1 · 2)
+    /// [근거] 6b 보강 명세 NS1 · NS5 · NS9 · NS10 · NS11 (사용자 결정 A — 질문 1 · 2), 11b (11a 명세 7장 FL1 ~ FL6)
     /// </summary>
     public sealed class NavMeshSpawnArea
     {
@@ -27,14 +30,25 @@ namespace TrustNoOne.Missions
         // "근처" 고르기: 고리 안 점에서 이 반경 안 가장 가까운 NavMesh 점을 쓴다 (NS9)
         private const float NearSnapRadius = 1f;
 
+        // 바닥 찾기 (11b FL2): 점의 1m 위에서 아래로 2m (팀원 내려놓기와 같은 시작 높이), Default 레이어(바닥 · 벽 · 소품)
+        private const float SurfaceRayHeight = 1f;
+        private const float SurfaceRayDepth = 1f;
+        private const int SurfaceLayers = 1 << 0;
+        private static readonly RaycastHit[] SurfaceHits = new RaycastHit[16];
+        private static readonly float[] SurfaceDistances = new float[16];
+        private static readonly float[] SurfaceNormalYs = new float[16];
+        private static readonly bool[] SurfaceIgnored = new bool[16];
+
         private readonly Vector3[] vertices;
         private readonly int[] indices;
         private readonly float[] cumulative;
         private readonly float total;
         private readonly NavMeshPath path = new NavMeshPath();
+        private readonly PhysicsScene physics;
 
-        private NavMeshSpawnArea()
+        private NavMeshSpawnArea(PhysicsScene physics)
         {
+            this.physics = physics;
             NavMeshTriangulation triangulation = NavMesh.CalculateTriangulation();
             vertices = triangulation.vertices;
             indices = triangulation.indices;
@@ -43,9 +57,10 @@ namespace TrustNoOne.Missions
         }
 
         /// <summary>씬의 NavMesh 를 읽는다. 비어 있으면(메뉴로 굽지 않음) 오류 로그를 남기고 false.</summary>
-        public static bool TryCreate(string owner, out NavMeshSpawnArea area)
+        /// <param name="physics">이 판의 물리 공간 (Runner.GetPhysicsScene()) — 고른 점을 바닥으로 내릴 때 쓴다 (11b)</param>
+        public static bool TryCreate(string owner, PhysicsScene physics, out NavMeshSpawnArea area)
         {
-            area = new NavMeshSpawnArea();
+            area = new NavMeshSpawnArea(physics);
 
             if (area.total > 0f)
                 return true;
@@ -82,7 +97,7 @@ namespace TrustNoOne.Missions
 
                 if (accept(candidate) && IsReachable(origin, candidate))
                 {
-                    point = candidate;
+                    point = ToSurface(physics, candidate);
                     return true;
                 }
             }
@@ -104,13 +119,40 @@ namespace TrustNoOne.Missions
                 // 붙이면서 고리 밖으로 밀렸을 수 있다 → 다시 확인
                 if (SpawnPointRules.InRing(candidate, center, minRadius, maxRadius) && accept(candidate) && IsReachable(origin, candidate))
                 {
-                    point = candidate;
+                    point = ToSurface(physics, candidate);
                     return true;
                 }
             }
 
             point = default;
             return false;
+        }
+
+        /// <summary>
+        /// 점을 실제 바닥 높이로 내린다 (11b FL1 ~ FL4). 점의 1m 위에서 아래로 2m 광선 (Default 레이어 · 트리거 무시) →
+        /// 위를 향한 가장 가까운 면 (SpawnPointRules.PickSurface). 네트워크 오브젝트에 달린 콜라이더(플레이어 · 아이템 · 장치 몸체)는 바닥이 아니다.
+        /// 못 찾으면 원래 점. 가로 위치는 바꾸지 않는다 (간격 · 범위 판정 그대로).
+        /// 팀원 타입(플레이어 이동 컴포넌트)으로 거르지 않는 이유: 엔진 밖 컴파일에 팀원 코드가 없고, 장치 몸체도 함께 걸러야 한다.
+        /// </summary>
+        public static Vector3 ToSurface(PhysicsScene physics, Vector3 point)
+        {
+            Vector3 start = point + Vector3.up * SurfaceRayHeight;
+            int count = physics.Raycast(start, Vector3.down, SurfaceHits, SurfaceRayHeight + SurfaceRayDepth, SurfaceLayers, QueryTriggerInteraction.Ignore);
+
+            for (int i = 0; i < count; i++)
+            {
+                RaycastHit hit = SurfaceHits[i];
+                SurfaceDistances[i] = hit.distance;
+                SurfaceNormalYs[i] = hit.normal.y;
+                SurfaceIgnored[i] = hit.collider == null || hit.collider.GetComponentInParent<NetworkObject>() != null;
+            }
+
+            int surface = SpawnPointRules.PickSurface(SurfaceDistances, SurfaceNormalYs, SurfaceIgnored, count);
+
+            if (surface >= 0)
+                point.y = SurfaceHits[surface].point.y;
+
+            return point;
         }
 
         /// <summary>세로축 무작위 회전 (NS10 — 놓인 아이템이 여러 방향을 보게).</summary>
