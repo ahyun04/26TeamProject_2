@@ -73,6 +73,9 @@ namespace TrustNoOne.Missions
         [Tooltip("폭발 뒤 화면에 DAMAGED 를 띄우는 시간 (초)")]
         [SerializeField] private float damagedScreenTime = 2f;
 
+        [Tooltip("폭발음 (본체 위치 3D 소리 — 변환 도구가 만든다). 비어 있으면 소리 없이 동작 (12a — 7d L3B15)")]
+        [SerializeField] private AudioSource explosionSound;
+
         [Header("산소통 배치 (1층 NavMesh 위 무작위 — 6b 보강 NS6)")]
         [Tooltip("산소통끼리 최소 거리 (m)")]
         [Min(0f)]
@@ -85,6 +88,12 @@ namespace TrustNoOne.Missions
         [Networked] private float InsertStart { get; set; }
         [Networked] private NetworkBool InsertedDangerous { get; set; }
         [Networked] private float ExplodeStart { get; set; }
+
+        // 폭발음: 폭발 시각에서 이만큼 안일 때만 튼다 (섬광 0.5초와 같음 — 늦게 들어온 사람에게 지난 폭발을 다시 들려주지 않게)
+        private const float BlastSoundWindow = 0.5f;
+
+        // 이 PC 가 마지막으로 튼 폭발 시각 (같은 폭발을 두 번 틀지 않게, 동기화하지 않음)
+        private float lastBlastSound = LifeSupportRules.NotStarted;
 
         // 호스트 전용 (동기화하지 않음 — LS14)
         private readonly List<OxygenTank> tanks = new List<OxygenTank>();
@@ -212,6 +221,15 @@ namespace TrustNoOne.Missions
             float flash = LifeSupportRules.FlashProgress(t, ExplodeStart, flashDuration);
             visual.ShowFlash(flash >= 0f ? flash * blastRadius * 2f : 0f);
 
+            // 폭발음 (12a): 섬광이 시작되는 순간 한 번, 본체 위치 3D 소리 · 효과음 음량 설정 (팀원 GameAudio)
+            if (LifeSupportRules.ShouldPlayBlast(t, ExplodeStart, lastBlastSound, BlastSoundWindow))
+            {
+                lastBlastSound = ExplodeStart;
+
+                if (explosionSound != null && explosionSound.clip != null)
+                    explosionSound.PlayOneShot(explosionSound.clip, GameAudio.getEffectsVolume());
+            }
+
             bool counting = LifeSupportRules.IsCounting(t, InsertStart, countdown);
             bool damaged = LifeSupportRules.IsShowing(t, ExplodeStart, damagedScreenTime);
 
@@ -281,13 +299,39 @@ namespace TrustNoOne.Missions
         }
 
         /// <summary>
-        /// 호스트: 1층 NavMesh 위 무작위 지점에 정상 safeCount 개 · 위험 dangerousCount 개를 새로 만든다 (6b 보강 NS6).
-        /// 판 시작엔 원래 구성 전부(7d L3B6), 시간 초과엔 모자란 만큼(7e RT3). 간격은 이 본체 통끼리만 — 남아 있는 통도 포함 (L3B11 · 7e RT3).
+        /// 호스트: 정상 safeCount 개 · 위험 dangerousCount 개를 새로 만든다. 판 시작엔 원래 구성 전부(7d L3B6), 시간 초과엔 모자란 만큼(7e RT3).
+        /// 자리: 씬에 자리 관리자가 있으면(4~12) 구역 바닥 · 선반 칸에서 받는다 (12b IS2 · IS16 — 선반에선 눕힘), 모자란 만큼 · 관리자가 없는 씬은
+        /// 지금 방식 — 1층 NavMesh 위 무작위 (6b 보강 NS6 — 간격은 이 본체 통끼리만, 남아 있는 통도 포함: L3B11 · 7e RT3).
         /// </summary>
         private void PlaceTanks(int safeCount, int dangerousCount)
         {
             int wanted = safeCount + dangerousCount;
+            List<Vector3> points = new List<Vector3>();
+            List<Quaternion> rotations = new List<Quaternion>();
+            List<string> places = new List<string>();
 
+            if (ItemSpotDirector.TryGet(out ItemSpotDirector director))
+            {
+                for (int i = 0; i < wanted; i++)
+                {
+                    if (!director.TryPlace(tankPrefab, out Vector3 spot, out Quaternion spotRotation, out string where))
+                        break;
+
+                    points.Add(spot);
+                    rotations.Add(spotRotation);
+                    places.Add(where);
+                }
+            }
+
+            if (points.Count < wanted)
+                PickTanksOnNavMesh(wanted - points.Count, points, rotations, places);
+
+            SpawnTanks(safeCount, wanted, points, rotations, places);
+        }
+
+        /// <summary>지금 방식 (관리자가 없거나 빈자리가 모자랄 때): 1층 NavMesh 위 무작위 — 본체에서 3m · 다른 산소통에서 4m 이상, 본체에서 걸어갈 수 있는 곳.</summary>
+        private void PickTanksOnNavMesh(int needed, List<Vector3> points, List<Quaternion> rotations, List<string> places)
+        {
             if (!NavMeshSpawnArea.TryCreate(name, Runner.GetPhysicsScene(), out NavMeshSpawnArea area))
                 return;
 
@@ -298,7 +342,6 @@ namespace TrustNoOne.Missions
             }
 
             Vector3[] stationOnly = { transform.position };
-            List<Vector3> points = new List<Vector3>();
 
             // 간격 기준: 이 본체의 남은 산소통 + 이번에 고른 자리 (7e — 채운 통이 남은 통 옆에 붙지 않게)
             List<Vector3> occupied = new List<Vector3>();
@@ -309,7 +352,9 @@ namespace TrustNoOne.Missions
                     occupied.Add(tank.transform.position);
             }
 
-            for (int i = 0; i < wanted; i++)
+            occupied.AddRange(points);
+
+            for (int i = 0; i < needed; i++)
             {
                 // 본체에서 3m · 다른 산소통에서 4m 이상, 본체에서 걸어갈 수 있는 곳 (NS5 · NS6)
                 if (area.TryPickAnywhere(origin,
@@ -317,10 +362,16 @@ namespace TrustNoOne.Missions
                         out Vector3 point))
                 {
                     points.Add(point);
+                    rotations.Add(NavMeshSpawnArea.RandomYaw());
+                    places.Add($"NavMesh {NavMeshSpawnArea.Describe(point)}");
                     occupied.Add(point);
                 }
             }
+        }
 
+        /// <summary>고른 자리에 산소통을 만든다 — 위험 여부는 만들기 직전에 정한다 (LS14).</summary>
+        private void SpawnTanks(int safeCount, int wanted, List<Vector3> points, List<Quaternion> rotations, List<string> places)
+        {
             int count = points.Count;
 
             if (count < wanted)
@@ -338,7 +389,7 @@ namespace TrustNoOne.Missions
             {
                 bool danger = dangerous[i];
 
-                NetworkObject spawned = Runner.Spawn(tankPrefab, points[i], NavMeshSpawnArea.RandomYaw(),
+                NetworkObject spawned = Runner.Spawn(tankPrefab, points[i], rotations[i],
                     onBeforeSpawned: (runner, obj) => obj.GetComponent<OxygenTank>().HostSetDangerous(danger));
 
                 OxygenTank tank = spawned != null ? spawned.GetComponent<OxygenTank>() : null;
@@ -346,7 +397,7 @@ namespace TrustNoOne.Missions
                 if (tank != null)
                     tanks.Add(tank);
 
-                log.Append(NavMeshSpawnArea.Describe(points[i])).Append(danger ? "(위험) " : "(정상) ");
+                log.Append(places[i]).Append(danger ? "(위험)  " : "(정상)  ");
             }
 
             Debug.Log($"[LifeSupportStation] {name}: 산소통 {count}개 배치 — {log}");

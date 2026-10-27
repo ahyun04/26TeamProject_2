@@ -113,6 +113,20 @@ namespace TrustNoOne.Missions
             return (t - start) / duration;
         }
 
+        /// <summary>
+        /// 폭발음을 지금 틀 것인가 (12a — 7d L3B15, T39). 각 PC 가 동기화된 폭발 시각으로 정한다:
+        /// 폭발이 있고(시작 ≥ 0) · 아직 이 폭발을 안 틀었고 · 화면 시각이 폭발 시각에 닿았고 · 그 뒤 window 초 안.
+        /// 닿기 전에는 기다린다 (섬광과 같은 순간). 창이 지난 폭발(늦게 들어온 사람)은 틀지 않는다.
+        /// </summary>
+        /// <param name="lastPlayed">이 PC 가 마지막으로 튼 폭발 시각 (없으면 NotStarted)</param>
+        public static bool ShouldPlayBlast(float t, float explodeStart, float lastPlayed, float window)
+        {
+            if (explodeStart < 0f || explodeStart == lastPlayed)
+                return false;
+
+            return t >= explodeStart && t - explodeStart <= window;
+        }
+
         /// <summary>폭발 반경 안인가 (경계 포함).</summary>
         public static bool InBlast(float distance, float radius)
         {

@@ -181,26 +181,65 @@ namespace TrustNoOne.Missions
                 PublishProgress(actor);
         }
 
-        /// <summary>호스트: 1층 NavMesh 위 무작위로 부품을 놓는다 — 무작위 1색은 장비 근처, 나머지는 멀리 (EA4 → 6b 보강 NS7).</summary>
+        /// <summary>
+        /// 호스트: 부품 4색을 놓는다. 씬에 자리 관리자가 있으면(4~12) 구역 바닥 · 선반 칸에서 받는다 (12b IS2 · IS16 — 장비 근처 규칙 없음, 선반에선 칸에 맞게 눕힘).
+        /// 관리자가 없는 씬 · 빈자리가 모자란 색은 지금 방식 — 1층 NavMesh 위 무작위, 1색은 장비 근처 · 나머지는 멀리 (EA4 → 6b 보강 NS7).
+        /// </summary>
         private void PlaceParts()
         {
+            StringBuilder log = new StringBuilder();
+            List<int> remaining = new List<int>();
+            int placedCount = 0;
+            ItemSpotDirector.TryGet(out ItemSpotDirector director);
+
+            for (int c = 0; c < AssemblyRules.PartCount; c++)
+            {
+                if (director != null && director.TryPlace(partPrefabs[c], out Vector3 spot, out Quaternion spotRotation, out string where))
+                {
+                    SpawnPart(c, spot, spotRotation);
+                    log.Append(ColorNames[c]).Append(": ").Append(where).Append("  ");
+                    placedCount++;
+                }
+                else
+                {
+                    remaining.Add(c);
+                }
+            }
+
+            if (remaining.Count > 0)
+                placedCount += PlacePartsOnNavMesh(remaining, log);
+
+            Debug.Log($"[AssemblyStation] {name}: 부품 {placedCount}개 배치 — {log}");
+        }
+
+        private void SpawnPart(int color, Vector3 position, Quaternion rotation)
+        {
+            NetworkObject spawned = Runner.Spawn(partPrefabs[color], position, rotation);
+            EquipmentPart part = spawned != null ? spawned.GetComponent<EquipmentPart>() : null;
+
+            if (part != null)
+                parts.Add(part);
+        }
+
+        /// <summary>지금 방식: 1층 NavMesh 위 무작위 — 남은 색 중 무작위 1색은 장비 근처, 나머지는 멀리 (EA4 → 6b 보강 NS7). 놓은 수를 돌려준다.</summary>
+        private int PlacePartsOnNavMesh(List<int> colors, StringBuilder log)
+        {
             if (!NavMeshSpawnArea.TryCreate(name, Runner.GetPhysicsScene(), out NavMeshSpawnArea area))
-                return;
+                return 0;
 
             if (!area.TryGetOrigin(transform, out Vector3 origin))
             {
                 Debug.LogError($"[AssemblyStation] {name}: 장비 근처(3m)에 1층 NavMesh 가 없어 부품을 놓지 못했습니다 (장비 위치 · NavMesh 범위 확인).");
-                return;
+                return 0;
             }
 
             Vector3 machine = transform.position;
             Vector3[] machineOnly = { machine };
             List<Vector3> placed = new List<Vector3>();
             // 장비에 오면 무엇을 찾을지 보이게 — 근처에 둘 색 하나는 판마다 무작위 (EA4 와 같은 뜻)
-            int nearColor = Random.Range(0, AssemblyRules.PartCount);
-            StringBuilder log = new StringBuilder();
+            int nearColor = colors[Random.Range(0, colors.Count)];
 
-            for (int c = 0; c < AssemblyRules.PartCount; c++)
+            foreach (int c in colors)
             {
                 bool near = c == nearColor;
                 Vector3 at;
@@ -222,17 +261,11 @@ namespace TrustNoOne.Missions
                 }
 
                 placed.Add(at);
-
-                NetworkObject spawned = Runner.Spawn(partPrefabs[c], at, NavMeshSpawnArea.RandomYaw());
-                EquipmentPart part = spawned != null ? spawned.GetComponent<EquipmentPart>() : null;
-
-                if (part != null)
-                    parts.Add(part);
-
+                SpawnPart(c, at, NavMeshSpawnArea.RandomYaw());
                 log.Append(ColorNames[c]).Append(near ? ": 근처 " : ": 멀리 ").Append(NavMeshSpawnArea.Describe(at)).Append("  ");
             }
 
-            Debug.Log($"[AssemblyStation] {name}: 부품 {placed.Count}개 배치 — {log}");
+            return placed.Count;
         }
 
         private void ClearAttached()

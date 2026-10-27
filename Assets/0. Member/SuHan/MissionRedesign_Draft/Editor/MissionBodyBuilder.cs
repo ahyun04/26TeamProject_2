@@ -125,23 +125,9 @@ public static class MissionBodyBuilder
     /// </summary>
     public static int AddShelfBodies(Scene scene)
     {
-        HashSet<GameObject> shelves = new HashSet<GameObject>();
-
-        foreach (GameObject sceneRoot in scene.GetRootGameObjects())
-        {
-            foreach (MeshFilter filter in sceneRoot.GetComponentsInChildren<MeshFilter>(true))
-            {
-                if (filter.sharedMesh == null || !IsShelfModel(AssetDatabase.GetAssetPath(filter.sharedMesh)))
-                    continue;
-
-                GameObject shelf = PrefabUtility.GetNearestPrefabInstanceRoot(filter.gameObject);
-                shelves.Add(shelf != null ? shelf : filter.gameObject);
-            }
-        }
-
         int blocked = 0;
 
-        foreach (GameObject shelf in shelves)
+        foreach (GameObject shelf in FindShelves(scene))
         {
             if (HasSolidDefaultCollider(shelf))
                 continue;
@@ -155,6 +141,32 @@ public static class MissionBodyBuilder
         }
 
         return blocked;
+    }
+
+    /// <summary>
+    /// 씬의 선반들: 메시가 모델 폴더의 Shelf*.fbx 에서 온 오브젝트 → 가장 가까운 프리팹(모델) 인스턴스 루트 단위 (BC12).
+    /// 12b 선반 칸(ItemSpotInstaller)도 같은 목록을 쓴다.
+    /// </summary>
+    public static List<GameObject> FindShelves(Scene scene)
+    {
+        List<GameObject> shelves = new List<GameObject>();
+
+        foreach (GameObject sceneRoot in scene.GetRootGameObjects())
+        {
+            foreach (MeshFilter filter in sceneRoot.GetComponentsInChildren<MeshFilter>(true))
+            {
+                if (filter.sharedMesh == null || !IsShelfModel(AssetDatabase.GetAssetPath(filter.sharedMesh)))
+                    continue;
+
+                GameObject shelf = PrefabUtility.GetNearestPrefabInstanceRoot(filter.gameObject);
+                shelf = shelf != null ? shelf : filter.gameObject;
+
+                if (!shelves.Contains(shelf))
+                    shelves.Add(shelf);
+            }
+        }
+
+        return shelves;
     }
 
     private static bool IsShelfModel(string assetPath)

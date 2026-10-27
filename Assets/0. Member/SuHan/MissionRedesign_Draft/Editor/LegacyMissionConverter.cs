@@ -66,6 +66,10 @@ public static class LegacyMissionConverter
     private const string OxygenTankDataPath = ItemDataFolder + "/OxygenTankData.asset";
     private const string LifeSupportModelPath = SourceModelFolder + "/Life_support_system.fbx";
     private const string OxygenTankModelPath = SourceModelFolder + "/Life_support_oxygen_tank.fbx";
+    // 12a 폭발음 (사운드 담당 e2024b6): 본체 위치 3D — 피해 반경(3m, LS5) 안 최대 크기, 25m 에서 0 (직선)
+    private const string LifeSupportExplosionSoundPath = "Assets/Sound/Mission Sound/Oxygen Tank Mission/Explosion.mp3";
+    private const float LifeSupportExplosionFullDistance = 3f;
+    private const float LifeSupportExplosionMaxDistance = 25f;
     // 본체 모델 안의 빈 노드 = 앞면 세로 홈의 바닥 = 산소통이 서는 자리 (보강 명세 1장 · LM3)
     private const string LifeSupportTankSeatNode = "Life_support_oxygen_tank_axes";
     private const string DraftMaterialFolder = "Assets/0. Member/SuHan/MissionRedesign_Draft/Materials";
@@ -1646,6 +1650,7 @@ public static class LegacyMissionConverter
         so.FindProperty("tankPrefab").objectReferenceValue = tankPrefab;
         so.FindProperty("visual").objectReferenceValue = visual;
         so.FindProperty("display").objectReferenceValue = display;
+        so.FindProperty("explosionSound").objectReferenceValue = BuildLifeSupportExplosionSound(copy.transform);
         // 본체 한 대 = 산소통 2개 · 정상 1 (7d L3B6 — 옛 프리팹 값이 남지 않게 직접 넣는다)
         so.FindProperty("tankCount").intValue = 2;
         so.FindProperty("safeTanks").intValue = 1;
@@ -1658,6 +1663,33 @@ public static class LegacyMissionConverter
         Debug.Log($"[LegacyMissionConverter] 생명 유지 장치: 모델 크기 {bounds.size}, 산소통 자리 {inserted.transform.localPosition}, " +
                   $"화면 중심 {screenCenter} (뒤로 {LifeSupportScreenTilt}°), 산소통 프리팹 {tankPrefab.name}");
         return true;
+    }
+
+    /// <summary>
+    /// 폭발음 (12a — 7d L3B15): 본체 자식 `Explosion Sound (폭발음)` 에 3D 소리 재생기. 자동 재생 끔 — 장치가 폭발 순간에 한 번 튼다.
+    /// 근처 모두가 듣고(사용자 결정 A) 멀수록 작게: 피해 반경 안 최대 크기 → 25m 에서 0 (직선). 소리 파일이 없으면 경고 후 소리 없이.
+    /// </summary>
+    private static AudioSource BuildLifeSupportExplosionSound(Transform root)
+    {
+        AudioClip clip = AssetDatabase.LoadAssetAtPath<AudioClip>(LifeSupportExplosionSoundPath);
+
+        if (clip == null)
+        {
+            Debug.LogWarning($"[LegacyMissionConverter] 생명 유지 장치: 폭발음 파일이 없어 소리 없이 동작합니다 ({LifeSupportExplosionSoundPath}).");
+            return null;
+        }
+
+        GameObject soundObject = new GameObject("Explosion Sound (폭발음)");
+        soundObject.transform.SetParent(root, false);
+
+        AudioSource source = soundObject.AddComponent<AudioSource>();
+        source.clip = clip;
+        source.playOnAwake = false;
+        source.spatialBlend = 1f;
+        source.rolloffMode = AudioRolloffMode.Linear;
+        source.minDistance = LifeSupportExplosionFullDistance;
+        source.maxDistance = LifeSupportExplosionMaxDistance;
+        return source;
     }
 
     /// <summary>

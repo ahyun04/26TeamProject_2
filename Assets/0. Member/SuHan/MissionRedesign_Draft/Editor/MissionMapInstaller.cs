@@ -33,7 +33,18 @@ public sealed class MissionPlacement
 }
 
 /// <summary>
-/// [역할] 맵 하나의 설정 묶음: 씬 · 배치표 · 1층 아이템 NavMesh (9a 명세 MP4).
+/// [역할] 아이템 구역 상자 하나의 처음 값 (12b 명세 IS4 · IS6) — 이름 · 가운데 · 크기(m). 메뉴가 씬에 구역 상자가 없을 때만 이 값으로 만든다.
+/// [근거] 12b 명세 1-4 (기획 그림의 빨간 박스를 방 안쪽 경계로 옮긴 좌표)
+/// </summary>
+public sealed class ItemZoneSpec
+{
+    public string Name;
+    public Vector3 Center;
+    public Vector3 Size;
+}
+
+/// <summary>
+/// [역할] 맵 하나의 설정 묶음: 씬 · 배치표 · 1층 아이템 NavMesh (9a 명세 MP4) · 아이템 구역 (12b).
 /// [이유] 공통 단계(MissionMapInstaller)가 맵마다 다른 값만 이 묶음에서 읽는다 → 다음 맵은 묶음 하나만 더하면 된다.
 /// [근거] 9a 명세 MP4 · MP8
 /// </summary>
@@ -52,6 +63,9 @@ public sealed class MissionMapSpec
 
     /// <summary>예전 기본 NavMesh 범위 — 오브젝트의 범위가 이 값 그대로면 새 범위로 바꾼다 (ItemNavMeshBaker, 6b 보강 NS4).</summary>
     public Bounds[] OutdatedNavMeshVolumes = new Bounds[0];
+
+    /// <summary>아이템 구역 상자 처음 값 (12b). 비어 있으면 그 맵은 구역 · 선반 칸 생성을 쓰지 않는다 (장치는 지금 방식).</summary>
+    public ItemZoneSpec[] ItemZones = new ItemZoneSpec[0];
 }
 
 /// <summary>

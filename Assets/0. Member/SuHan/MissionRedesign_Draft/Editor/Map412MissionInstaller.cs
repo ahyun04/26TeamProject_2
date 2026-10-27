@@ -14,7 +14,8 @@ using UnityEngine.SceneManagement;
 /// [공유 씬 — MP11] 4~12.unity 는 맵 담당이 만든 씬 — 이 메뉴로만 바꾼다 (미션 루트 하나 추가 · 선반 막기 · NavMesh · 미션 목록 설정 · 저장).
 /// [선반 — 11a 명세 BC12] 씬의 선반(모델 폴더 Shelf*.fbx)에 막는 몸체를 붙인다 (이미 막혀 있으면 건너뜀, 모델 파일은 그대로).
 /// [미션 목록 — 10 명세 ML12] 왼쪽 미션 목록 패널을 왼쪽 위 글자 칸 하나로 바꾼다 (공통 단계 SetupMissionList — 글자 칸이 없을 때만).
-/// [근거] 9a 명세 MP1 ~ MP11 (질문 1 · 2 · 3 사용자 결정, 접근 1), 10 명세 ML10 ~ ML12, 11a 명세 BC3 · BC12
+/// [아이템 자리 — 12b 명세] NavMesh 굽기 뒤 공통 단계 ItemSpotInstaller (자리 관리자 · 구역 상자 6개 · 선반 칸 · 크기표). 배치표의 고정 청소기는 빼고 씬에서도 지운다.
+/// [근거] 9a 명세 MP1 ~ MP11 (질문 1 · 2 · 3 사용자 결정, 접근 1), 10 명세 ML10 ~ ML12, 11a 명세 BC3 · BC12, 12b 명세 IS4 · IS18
 /// </summary>
 public static class Map412MissionInstaller
 {
@@ -44,8 +45,7 @@ public static class Map412MissionInstaller
         // 필터: 1.1 × 1.1m 얇은 판이고 기준점이 판 가운데라 벽걸이로 다룬다 — 스폰 방 남쪽 벽(남쪽 면 z −23.3)에 등을 대고, 아래 끝이 바닥 바로 위(0.05m)가 되게
         //  (9a 테스트 후: 바닥 높이 0.03 에 놓았더니 아래 절반이 바닥에 묻혔다 — 진단 로그로 모델 범위 확인, MP12)
         new MissionPlacement { Name = "Filter", PrefabPath = LegacyMissionConverter.FilterStationPath, Position = new Vector3(-5.6f, 0.6f, -23.38f), Yaw = 180f },
-        // 청소기: 필터 옆 바닥 (필터를 하려면 먼저 든다)
-        new MissionPlacement { Name = "Vacuum", PrefabPath = LegacyMissionConverter.VacuumToolPath, Position = new Vector3(-4f, 0.15f, -25.4f), Yaw = 0f, CheckOverlap = true },
+        // 청소기: 12b 부터 고정 자리 없음 — 자리 관리자가 필터 미션이 뽑힌 판에만 구역 · 선반에 만든다 (IS17 · IS18). 옛 고정 청소기는 Apply 가 지운다
         new MissionPlacement { Name = "Wiring", PrefabPath = LegacyMissionConverter.WiringStationPath, Position = new Vector3(-7.5f, 0f, -25.9f), Yaw = 0f, CheckOverlap = true },
 
         // ── 맵 곳곳 (기획서 "시설 곳곳에 있는 발전기 3대", 생명 유지 "본체는 총 3개" — MP1) ──
@@ -63,7 +63,28 @@ public static class Map412MissionInstaller
     private static readonly Bounds NavMeshVolume = new Bounds(new Vector3(0.35f, 0.75f, -20.8f), new Vector3(54f, 2.5f, 46f));
     private const string NavMeshPath = MissionMapInstaller.GameDataFolder + "/Map4to12_ItemNavMesh.asset";
 
-    // 배치표 · NavMesh 값보다 뒤에 둔다 — 정적 필드는 적힌 순서로 초기화된다
+    // 아이템 구역 처음 값 (12b 명세 1-4 · IS4): 기획 그림의 빨간 박스를 방 안쪽 경계(벽 좌표)로 옮긴 상자 — 높이는 바닥 0 ~ 2m.
+    //  기획 그림은 위 = −x · 오른쪽 = +z 로 돌아가 있다 (선반 3줄이 세로). 기획자가 씬에서 옮기거나 크기를 바꾼다
+    private static readonly ItemZoneSpec[] ItemZones =
+    {
+        // 1 선반 방 (그림 왼쪽 위 동그라미): 바닥 구역 없음 — 선반 칸에만 (테스트 후 추가 IS22 "선반에 있는 구역은 바닥에 스폰 말고 선반에만")
+        // 2 ㄱ자 방 (그림 가운데 오른쪽) — 상자 2개
+        new ItemZoneSpec { Name = "Zone 2a (구역 — ㄱ자 방)", Center = new Vector3(-6.3f, 1f, -17.8f), Size = new Vector3(5f, 2f, 9f) },
+        new ItemZoneSpec { Name = "Zone 2b (구역 — ㄱ자 방)", Center = new Vector3(-1.8f, 1f, -15.8f), Size = new Vector3(4f, 2f, 5f) },
+        // 3 아래 왼쪽 방 (그림 아래 왼쪽) — 상자 2개
+        new ItemZoneSpec { Name = "Zone 3a (구역 — 아래 왼쪽 방)", Center = new Vector3(12.35f, 1f, -38.15f), Size = new Vector3(10.9f, 2f, 8.3f) },
+        new ItemZoneSpec { Name = "Zone 3b (구역 — 아래 왼쪽 방)", Center = new Vector3(14.35f, 1f, -32.5f), Size = new Vector3(6.9f, 2f, 3f) },
+        // 4 아래 가운데 방 (그림 아래 가운데)
+        new ItemZoneSpec { Name = "Zone 4 (구역 — 아래 가운데 방)", Center = new Vector3(22.35f, 1f, -15.7f), Size = new Vector3(6.9f, 2f, 13.2f) },
+    };
+
+    // 옛 고정 청소기 이름 (9a 배치표 — 12b IS18 에서 지운다)
+    private const string OldVacuumName = "Vacuum";
+
+    // 처음 구현 때 만든 선반 방 바닥 구역 (12b IS22 에서 지운다 — 선반 방은 선반 칸에만)
+    private const string OldShelfRoomZoneName = "Zone 1 (구역 — 선반 방)";
+
+    // 배치표 · NavMesh · 구역 값보다 뒤에 둔다 — 정적 필드는 적힌 순서로 초기화된다
     private static readonly MissionMapSpec Spec = new MissionMapSpec
     {
         Label = "4~12",
@@ -72,6 +93,7 @@ public static class Map412MissionInstaller
         FaceFocus = MapCenter,
         NavMeshVolume = NavMeshVolume,
         NavMeshAssetPath = NavMeshPath,
+        ItemZones = ItemZones,
     };
 
     // ═════════════════════════════════════════════════════════════
@@ -99,9 +121,14 @@ public static class Map412MissionInstaller
         bool gateCreated = MissionMapInstaller.EnsureActorGate(root);
 
         List<GameObject> placedNow = MissionMapInstaller.PlaceMissing(Spec, root, out int skipped);
+        // 옛 고정 청소기 지우기 (12b IS18 — 이제 자리 관리자가 만든다. 남기면 청소기가 2개)
+        bool oldVacuumRemoved = RemoveOldVacuum(root);
         // 선반 막기 (11a 명세 BC12) — NavMesh 를 굽기 전에: 굽기가 선반 자리를 비워 아이템이 선반 속에 생기지 않는다
         int shelvesBlocked = MissionBodyBuilder.AddShelfBodies(scene);
         bool navMeshBaked = MissionMapInstaller.BakeNavMesh(Spec, root);
+        // 아이템 자리 (12b): 관리자 · 구역 상자 · 선반 칸 · 크기표 — 콜라이더가 없어 굽기 결과와 상관없다
+        bool shelfRoomZoneRemoved = RemoveShelfRoomZone(root);
+        string itemSpots = ItemSpotInstaller.Setup(scene, root, Spec);
         int overlaps = MissionMapInstaller.CheckOverlaps(Spec, placedNow, root);
         // 미션 목록: 왼쪽 위 글자 칸 하나 (10 명세 ML12 — 글자 칸이 없는 목록만)
         int listsSetUp = MissionMapInstaller.SetupMissionList(scene);
@@ -111,7 +138,34 @@ public static class Map412MissionInstaller
 
         Debug.Log($"[Map412MissionInstaller] 완료 — 새 장치 {placedNow.Count}개 놓음 · {skipped}개 이미 있어 건너뜀, " +
                   $"MissionManager {(managerCreated ? "새로 만듦" : "있음")}, PlayerHealthActorGate {(gateCreated ? "새로 만듦" : "있음")}, " +
-                  $"선반 {shelvesBlocked}개 막음, NavMesh {(navMeshBaked ? "구움" : "실패")}, 겹침 경고 {overlaps}개, 미션 목록 {listsSetUp}개 설정. 멀티 테스트 전에는 SuHan/Build Full Game (Windows) 로 다시 빌드하세요.");
+                  $"선반 {shelvesBlocked}개 막음, NavMesh {(navMeshBaked ? "구움" : "실패")}, 겹침 경고 {overlaps}개, 미션 목록 {listsSetUp}개 설정, 옛 고정 청소기 {(oldVacuumRemoved ? "지움" : "없음")}, 선반 방 바닥 구역 {(shelfRoomZoneRemoved ? "지움" : "없음")}, 아이템 자리: {itemSpots}. 멀티 테스트 전에는 SuHan/Build Full Game (Windows) 로 다시 빌드하세요.");
+    }
+
+    /// <summary>선반 방 바닥 구역 상자를 지운다 (12b IS22 — 선반 방은 선반 칸에만). 지웠으면 true.</summary>
+    private static bool RemoveShelfRoomZone(Transform root)
+    {
+        Transform director = root.Find(ItemSpotInstaller.DirectorName);
+        Transform zone = director != null ? director.Find(OldShelfRoomZoneName) : null;
+
+        if (zone == null)
+            return false;
+
+        Object.DestroyImmediate(zone.gameObject);
+        Debug.Log("[Map412MissionInstaller] 선반 방 바닥 구역을 지웠습니다 — 선반 방에서는 선반 칸에만 생깁니다 (12b IS22).");
+        return true;
+    }
+
+    /// <summary>9a 배치표의 고정 청소기를 지운다 (12b IS18). 지웠으면 true.</summary>
+    private static bool RemoveOldVacuum(Transform root)
+    {
+        Transform oldVacuum = root.Find(OldVacuumName);
+
+        if (oldVacuum == null)
+            return false;
+
+        Object.DestroyImmediate(oldVacuum.gameObject);
+        Debug.Log("[Map412MissionInstaller] 옛 고정 청소기(필터 옆)를 지웠습니다 — 이제 자리 관리자가 필터 미션이 뽑힌 판에만 만듭니다 (12b IS18).");
+        return true;
     }
 
     /// <summary>테스트 동안만 4~12 씬에 디버그 패널(호스트 F8 = 방화문 빼고 단체 미션 즉시 완료 등)을 넣는다 (MP9). 커밋 전에 끄기.</summary>
