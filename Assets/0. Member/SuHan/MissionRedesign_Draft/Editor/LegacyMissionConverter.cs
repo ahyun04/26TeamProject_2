@@ -411,7 +411,10 @@ public static class LegacyMissionConverter
 
             if (copy.GetComponent<MissionStation>() != null && copy.GetComponent<FireDoorStation>() == null)
             {
-                int boxes = MissionBodyBuilder.Attach(copy);
+                // 압력 장치는 둥근 콘솔 — 모델 범위 상자 하나면 오목한 가운데(노란 버튼)를 덮고 윗면에 올라선다 → 조각 상자 (11a BC19, 테스트 후 추가)
+                int boxes = copy.GetComponent<PressureStation>() != null
+                    ? MissionBodyBuilder.AttachSliced(copy, BodyBoxRules.TightPadding)
+                    : MissionBodyBuilder.Attach(copy);
                 Debug.Log($"[LegacyMissionConverter] {what}: 몸체 상자 {boxes}개 — {MissionBodyBuilder.Describe(copy)}");
             }
 

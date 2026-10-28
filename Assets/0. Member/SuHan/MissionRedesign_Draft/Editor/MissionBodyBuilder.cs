@@ -15,6 +15,8 @@ using UnityEngine.SceneManagement;
 ///  선반은 콜라이더가 없다. 모델보다 넓게 막아야 카메라(몸 앞면, Near 0.3)가 표면에 닿아도 안이 보이지 않는다 (BC2).
 ///  조준 감지는 조준 레이어만 보므로 Default 몸체는 조준을 가리지 않는다. 아이템 NavMesh 는 몸체를 장애물로 본다.
 /// [쓰는 곳] 변환 도구(LegacyMissionConverter.FinishPrefab — 방화문을 뺀 장치), 배치 도구(4~12 · GamePlay — NavMesh 굽기 전에 선반).
+/// [테스트 후 추가 — BC19 · BC20] 모든 몸체 상자는 최소 2.2m 높이 (올라서서 공중 부양하지 못하게).
+///  압력 장치(둥근 콘솔)는 AttachSliced — 렌더러마다 0.4m 조각 상자로 곡선을 따라가고 넓힘 0.05 (노란 버튼까지 다가가게).
 ///  방화문(BC18 — 테스트 후 추가): 변환 도구의 방화문 조립이 문짝 · 기둥 충돌을 PadHorizontal 로 넓히고 양쪽 패널 묶음에 Attach.
 /// [근거] 11a 명세 BC2 · BC5 ~ BC12 (사용자 결정 C · A, 접근 1), BC18 (사용자 결정 A — 방화문도 닫혀 있을 때 막기)
 /// </summary>
@@ -57,22 +59,66 @@ public static class MissionBodyBuilder
         }
 
         List<Bounds> merged = BodyBoxRules.Merge(boxes);
+        return CreateBody(rootTransform, merged);
+    }
 
-        if (merged.Count == 0)
+    /// <summary>
+    /// 휜 모양을 따라가는 몸체 (BC19 — 압력 장치의 둥근 콘솔): 렌더러마다 메시 삼각형을 루트 기준으로 옮겨 0.4m 조각 상자로 나누고(SliceTriangles),
+    /// 가로로 pad 만큼 넓힌 뒤, 합쳐도 빈 공간이 거의 늘지 않을 때만 합친다(MergeTight). 상자 수를 돌려준다.
+    /// 렌더러마다 따로 자르므로 멀리 떨어진 부품(피스톤)과 콘솔이 한 조각에 섞이지 않는다.
+    /// </summary>
+    public static int AttachSliced(GameObject root, float pad)
+    {
+        Transform rootTransform = root.transform;
+        Transform old = rootTransform.Find(BodyName);
+
+        if (old != null)
+            Object.DestroyImmediate(old.gameObject);
+
+        Vector3 scale = rootTransform.lossyScale;
+        float padX = pad / Mathf.Max(Mathf.Abs(scale.x), 0.0001f);
+        float padZ = pad / Mathf.Max(Mathf.Abs(scale.z), 0.0001f);
+        List<Bounds> boxes = new List<Bounds>();
+
+        foreach (Renderer renderer in root.GetComponentsInChildren<Renderer>(false))
+        {
+            if (!renderer.enabled || renderer.GetComponentInParent<TMP_Text>() != null || !TryGetMesh(renderer, out Mesh mesh))
+                continue;
+
+            Vector3[] vertices = mesh.vertices;
+            Vector3[] local = new Vector3[vertices.Length];
+
+            for (int v = 0; v < vertices.Length; v++)
+                local[v] = rootTransform.InverseTransformPoint(renderer.transform.TransformPoint(vertices[v]));
+
+            foreach (Bounds slice in BodyBoxRules.SliceTriangles(local, mesh.triangles, BodyBoxRules.SliceWidth))
+                boxes.Add(BodyBoxRules.PadHorizontal(slice, padX, padZ));
+        }
+
+        return CreateBody(rootTransform, BodyBoxRules.MergeTight(boxes, BodyBoxRules.MaxMergeWaste));
+    }
+
+    /// <summary>상자들을 최소 2.2m 높이로 올려(BC20) 루트 아래 `Body (막는 몸체)` 에 콜라이더로 만든다. 상자 수 (0 이면 자식을 만들지 않는다).</summary>
+    private static int CreateBody(Transform rootTransform, List<Bounds> boxes)
+    {
+        if (boxes.Count == 0)
             return 0;
 
+        // 높이는 루트 기준 — 장치 · 선반 루트는 크기 1 이다 (선반 인스턴스가 크기를 바꾸면 그만큼 비례)
+        float minHeight = BodyBoxRules.MinBodyHeight / Mathf.Max(Mathf.Abs(rootTransform.lossyScale.y), 0.0001f);
         GameObject body = new GameObject(BodyName);
         body.layer = DefaultLayer;
         body.transform.SetParent(rootTransform, false);
 
-        foreach (Bounds box in merged)
+        foreach (Bounds box in boxes)
         {
+            Bounds raised = BodyBoxRules.RaiseTop(box, minHeight);
             BoxCollider collider = body.AddComponent<BoxCollider>();
-            collider.center = box.center;
-            collider.size = box.size;
+            collider.center = raised.center;
+            collider.size = raised.size;
         }
 
-        return merged.Count;
+        return boxes.Count;
     }
 
     /// <summary>
