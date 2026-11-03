@@ -23,7 +23,7 @@ namespace TrustNoOne.Missions
     ///  CanBeginHoldPart 로 그 부품을 받을지 정한다. 장치 자신의 F(BeginHold)는 번호 −1 — 밸브 · 안테나는 지금과 똑같이 동작한다.
     ///  뗌은 지금 누르고 있는 부품의 것만 받는다 (다른 부품의 늦은 뗌 요청이 새 조작을 끊지 않게).
     /// </summary>
-    public class HoldStation : MissionStation, IHoldInteractable
+    public class HoldStation : MissionStation, IHoldInteractable, IHoldPartReceiver
     {
         [Header("F 홀드")]
         [Tooltip("F 를 유지해야 하는 시간(초).")]

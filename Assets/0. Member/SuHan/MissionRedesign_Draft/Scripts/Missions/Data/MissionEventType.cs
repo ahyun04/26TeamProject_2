@@ -54,5 +54,6 @@ namespace TrustNoOne.Missions
         LifeSupportRestored = 72,     // TG004 생명 유지 장치 복구
         FireDoorOpened = 73,          // TG005 대형 방화문 열기
         PipeLeakSealed = 74,          // TG012 배관 누수 차단 (13a — 배관 한 개의 새는 곳을 다 막음)
+        CoordinateSet = 75,           // TG013 좌표 설정 (13b — 두 사람이 조작 원을 목표에 맞춤)
     }
 }

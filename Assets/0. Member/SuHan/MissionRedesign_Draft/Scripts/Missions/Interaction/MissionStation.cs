@@ -23,6 +23,8 @@ namespace TrustNoOne.Missions
     ///  - 배정: 미션 배정이 끝난 순간 OnMissionsAssignedHost (호스트) — 아이템 장치가 이번 판에 뽑혔을 때만 아이템을 놓는다 (7a 명세 TC12)
     ///  - 눌림 보여 주기: 호스트가 받은 부품 눌림을 모든 PC 에 알려 같은 부품이 눌리는 모습이 보이게 한다 (7b — 누른 본인은 건너뜀)
     ///  - 완료음: 완료를 확정하면 완료시킨 사람의 PC 에서만 미션 완료음(팀원 GameAudio)을 튼다. 방화문은 끈다 (11c 명세 CS1 ~ CS5)
+    ///  - 담당 자리 (13b 명세 CO22): 여러 사람이 한 장치에서 각자 자리를 잡는 장치(좌표 설정 — 초록 · 노랑 담당)용 TryClaimSeat · CanKeepSeat · ReleaseSeat.
+    ///    조작자와 같은 자격 검사 · busy 를 쓰고 Operator 는 건드리지 않는다. 추가만 — 기존 장치는 쓰지 않으므로 그대로
     ///
     /// [근거] stage1 명세 S2(조작은 그대로, 규칙만 공통), S3(개인용은 완료 후 초기화), S4(공통 베이스 + 하위 클래스),
     ///  S6(제한 시간 판정은 Core, 오브젝트는 알림에 반응만). 옛 MissionMiniGameBase 에서 미니게임마다 흩어져 있던
@@ -132,6 +134,8 @@ namespace TrustNoOne.Missions
 
             if (hasState && !Operator.IsNone)
                 gate?.SetBusy(Operator, false);
+
+            OnStationDespawned(hasState);
         }
 
         /// <summary>
@@ -299,6 +303,45 @@ namespace TrustNoOne.Missions
             OnOperationCanceled(actor);
         }
 
+        // ═════════════════════════════════════════════════════════════
+        //  호스트: 담당 자리 (13b — 조작자 한 명 틀 밖에서 여러 사람이 각자 자리를 잡는 장치)
+        // ═════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// 담당 자리를 잡는다 (호스트 전용, 13b 명세 CO22). TryBeginOperation 과 같은 자격 검사(행동 가능 · 다른 행동 중 아님 · 범위 · 이번 판 내 미션 · 안 잠김)를
+        /// 하고 busy 로 표시한다. 조작자(Operator)는 건드리지 않는다 — 한 장치에 여러 사람이 자리를 잡을 수 있다 (좌표 설정: 초록 · 노랑 담당).
+        /// busy 라서 이미 자리를 잡은 사람은 다른 자리(다른 장치 포함)를 잡지 못한다 → "한 사람 한 색".
+        /// </summary>
+        protected bool TryClaimSeat(PlayerRef actor)
+        {
+            EnsureManager();
+
+            if (!HasStateAuthority || actor.IsNone || gate == null || manager == null || Completed)
+                return false;
+
+            if (!gate.CanStart(Runner, actor) || !IsInRange(actor))
+                return false;
+
+            if (!manager.HasActiveObjective(actor, completionEvent))
+                return false;
+
+            gate.SetBusy(actor, true);
+            return true;
+        }
+
+        /// <summary>담당 자리를 계속 가질 수 있나 (호스트 전용): 행동 가능 + 범위 안 — 조작자 매 틱 검사와 같은 기준 (CO21).</summary>
+        protected bool CanKeepSeat(PlayerRef actor)
+        {
+            return HasStateAuthority && !actor.IsNone && gate != null && gate.CanContinue(Runner, actor) && IsInRange(actor);
+        }
+
+        /// <summary>담당 자리를 푼다 (호스트 전용): busy 해제. 자리 값(누가 담당인지)은 하위 클래스가 지운다.</summary>
+        protected void ReleaseSeat(PlayerRef actor)
+        {
+            if (HasStateAuthority && !actor.IsNone)
+                gate?.SetBusy(actor, false);
+        }
+
         /// <summary>
         /// 완료 확정 (호스트 전용): 사실을 알리고 완료 후 동작을 적용한다.
         /// Lock → 모두에게 잠금 / ResetForNext → 바로 원래대로 (개인 미션, 명세 S3)
@@ -345,6 +388,15 @@ namespace TrustNoOne.Missions
                 GameAudio.playMissionResult(true);
             else
                 RPC_PlayCompletionSound(actor);
+        }
+
+        /// <summary>
+        /// 호스트: actor 의 PC 에서 완료음을 튼다 (13b CO23 — CompleteBy 는 한 명에게만 보내므로, 함께 완료시킨 다른 담당자에게 따로 보낼 때).
+        /// </summary>
+        protected void PlayCompletionSoundFor(PlayerRef actor)
+        {
+            if (HasStateAuthority && !actor.IsNone && PlaysCompletionSound)
+                SendCompletionSound(actor);
         }
 
         /// <summary>대상 한 명의 PC: 팀원 사운드 코드로 미션 완료음 재생 (효과음 음량 설정을 따르는 2D 소리).</summary>
@@ -576,5 +628,8 @@ namespace TrustNoOne.Missions
 
         /// <summary>모든 피어: 매 프레임 표시 갱신 (게이지·회전 등).</summary>
         protected virtual void OnStationRender() { }
+
+        /// <summary>모든 피어: 장치가 사라질 때 (13b — 담당 자리의 busy 를 풀 기회. 조작자의 busy 는 이 틀이 이미 풀었다). hasState 일 때만 [Networked] 를 읽을 수 있다.</summary>
+        protected virtual void OnStationDespawned(bool hasState) { }
     }
 }

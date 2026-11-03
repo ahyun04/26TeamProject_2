@@ -14,6 +14,8 @@ using UnityEngine.SceneManagement;
 ///  (13a PL10 — 바뀜) 없는 새 미션(TG012 배관)만 풀 끝에 추가한다 (GamePlayMissionInstaller.AddMissingDefinitions). 풀 숫자 · 기존 정의 값은 그대로.
 /// [배관 — 13a PL24] 배관 3개를 서로 다른 방 벽에 등을 대고 놓는다 (검사 스크립트로 고름). 테이프는 자리 관리자가 TG012 판에만 만든다 (PL23).
 /// [NavMesh 파일 — 13a PL26] 맵 담당이 씬 폴더로 옮긴 데이터 파일 자리를 그대로 쓴다 (KeepNavMeshAssetPath).
+/// [좌표 장치 — 13b CO11 · CO33] 1대를 가운데 홀에 놓는다 (스폰 방 남동쪽 벽에 등). 자리는 씬의 실제 위치로 검사 스크립트를 돌려 골랐다 (CO36 —
+///  맵 담당이 장치 대부분을 이 배치표의 처음 자리에서 옮겨 두었다. 이름이 있으면 건너뛰므로 배치표 숫자는 "처음 놓을 자리"일 뿐이다).
 /// [공유 씬 — MP11] 4~12.unity 는 맵 담당이 만든 씬 — 이 메뉴로만 바꾼다 (미션 루트 하나 추가 · 선반 막기 · NavMesh · 미션 목록 설정 · 저장).
 /// [선반 — 11a 명세 BC12] 씬의 선반(모델 폴더 Shelf*.fbx)에 막는 몸체를 붙인다 (이미 막혀 있으면 건너뜀, 모델 파일은 그대로).
 /// [미션 목록 — 10 명세 ML12] 왼쪽 미션 목록 패널을 왼쪽 위 글자 칸 하나로 바꾼다 (공통 단계 SetupMissionList — 글자 칸이 없을 때만).
@@ -66,6 +68,11 @@ public static class Map412MissionInstaller
         new MissionPlacement { Name = "Pipe_A", PrefabPath = LegacyMissionConverter.PipeLeakStationPath, Position = new Vector3(-3f, 0f, -7.72f), Yaw = 180f, CheckOverlap = true },
         new MissionPlacement { Name = "Pipe_B", PrefabPath = LegacyMissionConverter.PipeLeakStationPath, Position = new Vector3(-16.72f, 0f, -32.75f), Yaw = 90f, CheckOverlap = true },
         new MissionPlacement { Name = "Pipe_C", PrefabPath = LegacyMissionConverter.PipeLeakStationPath, Position = new Vector3(25.45f, 0f, -20f), Yaw = -90f, CheckOverlap = true },
+
+        // ── 13b 좌표 장치 1대 (CO11 · CO33) ──
+        // 스폰 방 남동쪽 벽(면 x −2.82)에 등을 대고 동쪽 가운데 홀을 본다 — 맵 중심에서 약 3m, 앞에 두 사람이 나란히 설 1.2m.
+        //  검사 스크립트(layout412.py — Coord 크기 추가, 장치 위치는 씬에서 읽은 실제 값)로 벽 · 바닥 · 스폰 3m · 장치 0.4m · 소품 · 아이템 구역 문제 없음
+        new MissionPlacement { Name = "Coordinate", PrefabPath = LegacyMissionConverter.CoordinateStationPath, Position = new Vector3(-2.25f, 0f, -22.5f), Yaw = 90f, CheckOverlap = true },
     };
 
     // 1층 아이템 NavMesh (MP8): 바닥 전체(x −25.65 ~ 26.35, z −42.8 ~ 1.2) + 여유, 높이 지면 −0.5 ~ +2.0m (6b 보강 NS2 — "1층").

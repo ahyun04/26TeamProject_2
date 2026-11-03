@@ -77,6 +77,8 @@ public static class GamePlayMissionInstaller
         new DefSpec { Id = "TG011", Name = "필터 청소하기", Category = MissionCategory.Team, Trigger = MissionEventType.FilterCleaned },
         // 13a: 배관 누수 차단 — 배관 3개, 다음 배관까지 2분 (발전기와 같은 사슬 — 기획서 "제한 시간은 2분")
         new DefSpec { Id = "TG012", Name = "배관 누수 차단", Category = MissionCategory.Team, Trigger = MissionEventType.PipeLeakSealed, Required = 3, TimeLimit = 120f },
+        // 13b: 좌표 설정 — 장치 1대, 두 사람이 맞추면 끝 (기획서 "별도의 실패 조건 없이" — 제한 시간 없음, CO34)
+        new DefSpec { Id = "TG013", Name = "좌표 설정", Category = MissionCategory.Team, Trigger = MissionEventType.CoordinateSet },
     };
 
     // 6b 명세 3장 배치표 — 옛 미션 자리(같은 위치 · 방향, 2026-10-11 씬에서 읽음)와 새 5종(시작 홀 빈 칸, 겹침 검사)
@@ -107,6 +109,8 @@ public static class GamePlayMissionInstaller
         new MissionPlacement { Name = "Pipe_C", PrefabPath = LegacyMissionConverter.PipeLeakStationPath, Position = new Vector3(-9f, 0f, 21f), FaceFocus = true, CheckOverlap = true },
         new MissionPlacement { Name = "Tape_A", PrefabPath = LegacyMissionConverter.TapeItemPath, Position = new Vector3(4f, 0f, 6.3f) },
         new MissionPlacement { Name = "Tape_B", PrefabPath = LegacyMissionConverter.TapeItemPath, Position = new Vector3(-7f, 0f, 9.2f) },
+        // 13b 좌표 장치 1대 (CO33): 씬 분석으로 고른 빈 바닥 (2m 안에 물건 없음 · 다른 장치에서 3m 이상). 4~12 가 실제 맵이라 여기는 임시 자리
+        new MissionPlacement { Name = "Coordinate", PrefabPath = LegacyMissionConverter.CoordinateStationPath, Position = new Vector3(2f, 0f, 9.5f), FaceFocus = true, CheckOverlap = true },
     };
 
     // 1층 아이템 NavMesh (6b 보강 NS2 · NS3): 높이 지면 −0.5 ~ +2.0m, 가로 · 세로 = 본게임 건물만 (x −20 ~ 30, z −34 ~ 27).

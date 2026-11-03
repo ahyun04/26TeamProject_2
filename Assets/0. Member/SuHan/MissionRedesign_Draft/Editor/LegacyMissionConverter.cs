@@ -18,7 +18,7 @@ using UnityEngine;
 ///  공통 후처리: 조준 문구(MissionPrompt.promptObject)가 있으면 PromptBillboard 를 붙여 항상 보는 사람 쪽을 향하게 한다
 ///  (옛 밸브 문구가 방향 고정이라 배치에 따라 뒤집혀 보였음 — 2b 테스트에서 발견).
 /// [조준 외곽선] MissionOutlineBuilder 로 붙인다 (1단계 사용자 요청). 부품마다 MissionPrompt 를 두면 조준한 부품만 켜진다 (2a 명세 P7).
-/// [변환 목록] 1단계 발전기 / 2a 밸브 · 안테나 · 차단기 / 2b 전선 / 2c 필터 · 청소기(아이템) / 2d 압력(신규 — 옛 프리팹이 없어 원본 패널 · 피스톤 모델에서 조립) / 3a 코드 자판(신규 — 원본 자판 모델에서 조립) / 3b 생명 유지 장치 · 산소통(신규 — 모델이 없어 기본 도형으로 조립) / 3c 장비 조립(신규 — 원본 본체 · 부품 모델에서 조립) / 3d 대형 방화문(신규 — 원본 문 · 패널 · 레버 모델에서 조립) / 13a 배관 누수 차단 · 테이프(신규 — 원본 배관 모델 + 기본 도형 임시 표시). 미니게임을 이식할 때마다 Build… 와 Convert… 를 하나씩 추가한다.
+/// [변환 목록] 1단계 발전기 / 2a 밸브 · 안테나 · 차단기 / 2b 전선 / 2c 필터 · 청소기(아이템) / 2d 압력(신규 — 옛 프리팹이 없어 원본 패널 · 피스톤 모델에서 조립) / 3a 코드 자판(신규 — 원본 자판 모델에서 조립) / 3b 생명 유지 장치 · 산소통(신규 — 모델이 없어 기본 도형으로 조립) / 3c 장비 조립(신규 — 원본 본체 · 부품 모델에서 조립) / 3d 대형 방화문(신규 — 원본 문 · 패널 · 레버 모델에서 조립) / 13a 배관 누수 차단 · 테이프(신규 — 원본 배관 모델 + 기본 도형 임시 표시) / 13b 좌표 설정(신규 — 모델이 없어 기본 도형으로 조립). 미니게임을 이식할 때마다 Build… 와 Convert… 를 하나씩 추가한다.
 /// </summary>
 public static class LegacyMissionConverter
 {
@@ -156,6 +156,45 @@ public static class LegacyMissionConverter
     private const string PipeGasTexturePath = DraftMaterialFolder + "/PipeGasPuff.png";
     private const string PipeGasMaterialPath = DraftMaterialFolder + "/PipeGas.mat";
 
+    // 13b: 좌표 설정 (TG013) — 명세 CO30 ~ CO32. 모델이 없어 기본 도형으로 조립 (CO9). 크기는 기획서 그림 비율 · 눈높이 약 1.6m 기준, 앞 = +Z
+    public const string CoordinateStationPath = OutputFolder + "/Coordinate_Station.prefab";
+    private const float CoordInteractRange = 3f;                                         // 장치 기준점(바닥 가운데)에서 — 두 사람이 나란히 서도 닿게
+    private static readonly Vector3 CoordBaseSize = new Vector3(0.95f, 0.85f, 0.55f);     // 아래 받침 (짙은 회색)
+    private const float CoordBaseOffsetZ = -0.05f;
+    private static readonly Vector3 CoordPanelSize = new Vector3(1.1f, 0.12f, 0.7f);      // 조작판 (흰색)
+    private static readonly Vector3 CoordPanelCenter = new Vector3(0f, 0.92f, 0.02f);
+    private const float CoordPanelTilt = 25f;                                            // 앞으로 기울임 — 앞 끝이 낮다
+    private static readonly Vector3 CoordFrameSize = new Vector3(1.0f, 0.46f, 0.14f);     // 화면 틀 (흰색)
+    private static readonly Vector3 CoordFrameCenter = new Vector3(0f, 1.25f, -0.22f);    // 위 끝 약 1.47m
+    private const float CoordFrameTilt = 15f;                                            // 뒤로 기울임 — 위 끝이 멀다
+    private static readonly Vector2 CoordScreenSize = new Vector2(0.92f, 0.38f);         // 검은 화면
+    private const float CoordAreaRadius = 0.16f;                                         // 탐색 영역 반지름 (화면 위 m) — 화면 세로 0.38 안에 들어가게
+    private const float CoordCursorRadius = 0.04f;                                       // 조작 원 고리 반지름
+    private const float CoordTargetSize = 0.07f;                                         // 목표 그림 한 변
+    private const float CoordLayerStep = 0.002f;                                         // 화면 그림을 보는 쪽으로 겹치는 간격 (깜빡임 방지)
+    private const float CoordAxisLabelX = 0.33f;                                         // 축 글자 · 막대: 화면 가운데에서 좌우
+    private static readonly Vector2 CoordBarSize = new Vector2(0.2f, 0.022f);
+    private const float CoordBarY = -0.14f;
+    private const float CoordButtonOffsetX = 0.28f;                                      // 버튼: 가운데에서 좌우 (그림의 숫자 자판을 뺀 만큼 가까이 — CO1)
+    private const float CoordButtonOffsetZ = 0.05f;                                      // 버튼: 조작판 가운데보다 조금 앞
+    private static readonly Vector3 CoordButtonSize = new Vector3(0.14f, 0.05f, 0.14f);
+    private static readonly Vector3 CoordBezelSize = new Vector3(0.18f, 0.02f, 0.18f);
+    private const float CoordBeepMinDistance = 1f;                                       // 신호음 3D 거리 (CO32)
+    private const float CoordBeepMaxDistance = 8f;
+    private static readonly Color CoordBodyColor = new Color(0.86f, 0.87f, 0.88f);
+    private static readonly Color CoordBaseColor = new Color(0.2f, 0.21f, 0.23f);
+    private static readonly Color CoordBezelColor = new Color(0.25f, 0.26f, 0.28f);
+    private static readonly Color CoordScreenColor = new Color(0.02f, 0.05f, 0.07f);
+    private static readonly Color CoordGreenColor = new Color(0.3f, 0.95f, 0.3f);       // 그림의 초록 버튼
+    private static readonly Color CoordYellowColor = new Color(1f, 0.8f, 0.15f);        // 그림의 노란 버튼
+    private static readonly Color CoordAreaColor = new Color(0.45f, 0.85f, 1f, 0.55f);  // 그림의 하늘색 원 (흐리게)
+    private static readonly Color CoordLineColor = new Color(0.45f, 0.85f, 1f, 0.3f);
+    private static readonly Color CoordTargetColor = new Color(1f, 0.86f, 0.3f, 1f);
+    private static readonly Color CoordIdleColor = new Color(0.55f, 0.65f, 0.7f);
+    private const string CoordRingTexturePath = DraftMaterialFolder + "/CoordRing.png";
+    private const string CoordDiscTexturePath = DraftMaterialFolder + "/CoordDisc.png";
+    private const string CoordTargetTexturePath = DraftMaterialFolder + "/CoordTarget.png";
+
     private const int InteractableLayer = 6;
 
     private static readonly string[] PressureLetters = { "A", "B", "C" };
@@ -197,6 +236,7 @@ public static class LegacyMissionConverter
         Report("방화문", CreateFireDoorStation());
         Report("테이프", CreateTapeItem());
         Report("배관", CreatePipeLeakStation());
+        Report("좌표 장치", CreateCoordinateStation());
         AssetDatabase.SaveAssets();
 
         // 새 NetworkObject 프리팹을 Fusion 네트워크 프리팹 목록에 즉시 반영 (안 하면 Runner.Spawn 이 실패한다)
@@ -385,6 +425,10 @@ public static class LegacyMissionConverter
     /// <summary>배관 (13a 명세 PL4 · PL16 ~ PL21): 원본 배관 모델(Pipe.fbx)을 복사해 새는 곳 6자리 · 「수리 완료」를 덧붙인다. 공통 틀의 저장 · 검증 · 빌보드 · 몸체를 그대로 쓴다.</summary>
     public static NetworkObject CreatePipeLeakStation() =>
         Convert("배관", PipeModelPath, "Pipe_Station", PipeLeakStationPath, BuildPipeLeak);
+
+    /// <summary>좌표 설정 장치 (13b 명세 CO9 · CO30 ~ CO32): 모델이 없어 빈 루트에서 기본 도형으로 조립한다. 공통 틀의 저장 · 검증 · 빌보드 · 몸체를 그대로 쓴다.</summary>
+    public static NetworkObject CreateCoordinateStation() =>
+        Assemble("좌표 장치", "Coordinate_Station", CoordinateStationPath, BuildCoordinate);
 
     // ═════════════════════════════════════════════════════════════
     //  공통 틀
@@ -2666,21 +2710,27 @@ public static class LegacyMissionConverter
         if (material.HasProperty("_BaseColor"))
             material.SetColor("_BaseColor", tint);
 
-        if (material.HasProperty("_Surface"))
-        {
-            material.SetFloat("_Surface", 1f);
-            material.SetFloat("_Blend", 0f);
-            material.SetOverrideTag("RenderType", "Transparent");
-            material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-            material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-            material.SetInt("_ZWrite", 0);
-            material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-            material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
-        }
+        ApplyTransparent(material);
 
         EnsureFolder(DraftMaterialFolder);
         AssetDatabase.CreateAsset(material, PipeGasMaterialPath);
         return material;
+    }
+
+    /// <summary>URP 재질을 투명(알파 섞기 · 깊이 안 씀)으로 바꾼다. URP 셰이더가 아니면(_Surface 없음) 그대로 — 배관 연기(13a) · 좌표 화면 그림(13b)이 같이 쓴다.</summary>
+    private static void ApplyTransparent(Material material)
+    {
+        if (!material.HasProperty("_Surface"))
+            return;
+
+        material.SetFloat("_Surface", 1f);
+        material.SetFloat("_Blend", 0f);
+        material.SetOverrideTag("RenderType", "Transparent");
+        material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+        material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        material.SetInt("_ZWrite", 0);
+        material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+        material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
     }
 
     /// <summary>부드러운 원 그림 (64 × 64): 가운데 불투명 → 가장자리 투명 (부드러운 계단 곡선). 이미 있으면 그대로.</summary>
@@ -2720,6 +2770,302 @@ public static class LegacyMissionConverter
         }
 
         return AssetDatabase.LoadAssetAtPath<Texture2D>(PipeGasTexturePath);
+    }
+
+    // ═════════════════════════════════════════════════════════════
+    //  13b: 좌표 설정
+    // ═════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// 좌표 장치 (13b 명세 CO30 ~ CO32): 받침 · 앞으로 기운 조작판(초록 · 노랑 버튼) · 뒤로 기운 화면 틀 + 검은 화면 · 화면 그림 · 신호음 자리.
+    /// 버튼은 보는 사람 기준 왼쪽 초록 · 오른쪽 노랑 (기획서 그림). 앞(+Z)에 선 사람의 왼쪽 = 장치 +X.
+    /// </summary>
+    private static bool BuildCoordinate(GameObject copy)
+    {
+        copy.AddComponent<NetworkObject>();
+        CoordinateStation station = copy.AddComponent<CoordinateStation>();
+        SerializedObject so = ConfigureStation(station, MissionEventType.CoordinateSet, CompletionPolicy.Lock, CoordInteractRange);
+
+        Material bodyMaterial = GetOrCreateColorMaterial("CoordBody", CoordBodyColor);
+        Material baseMaterial = GetOrCreateColorMaterial("CoordBase", CoordBaseColor);
+        Material bezelMaterial = GetOrCreateColorMaterial("CoordBezel", CoordBezelColor);
+        Material screenMaterial = GetOrCreateColorMaterial("CoordScreen", CoordScreenColor);
+        Material greenMaterial = GetOrCreateColorMaterial("CoordGreenButton", CoordGreenColor);
+        Material yellowMaterial = GetOrCreateColorMaterial("CoordYellowButton", CoordYellowColor);
+
+        CreateShape(PrimitiveType.Cube, "Base (받침)", copy.transform, new Vector3(0f, CoordBaseSize.y * 0.5f, CoordBaseOffsetZ), CoordBaseSize, baseMaterial, false);
+
+        // 조작판: 기운 기준(크기 1)에 판 · 버튼을 단다 — 크기를 바꾼 상자 아래에 두면 버튼까지 늘어나서
+        Transform panel = new GameObject("Panel (조작판)").transform;
+        panel.SetParent(copy.transform, false);
+        panel.localPosition = CoordPanelCenter;
+        panel.localRotation = Quaternion.Euler(CoordPanelTilt, 0f, 0f);
+        CreateShape(PrimitiveType.Cube, "Panel Body (판)", panel, Vector3.zero, CoordPanelSize, bodyMaterial, false);
+
+        TextMeshPro greenPrompt = BuildCoordButton(so, station, panel, CoordinateStation.GreenPart, CoordButtonOffsetX, greenMaterial, bezelMaterial, "Green Button (초록 — X)");
+        TextMeshPro yellowPrompt = BuildCoordButton(so, station, panel, CoordinateStation.YellowPart, -CoordButtonOffsetX, yellowMaterial, bezelMaterial, "Yellow Button (노랑 — Y)");
+
+        Transform frame = new GameObject("Screen Frame (화면 틀)").transform;
+        frame.SetParent(copy.transform, false);
+        frame.localPosition = CoordFrameCenter;
+        frame.localRotation = Quaternion.Euler(-CoordFrameTilt, 0f, 0f);
+        CreateShape(PrimitiveType.Cube, "Frame Body (틀)", frame, Vector3.zero, CoordFrameSize, bodyMaterial, false);
+
+        // 화면 기준: 틀 앞면 바로 앞. 로컬 −Z = 보는 사람 쪽 · +X = 보는 사람 오른쪽 (판 · 글자는 −Z 에서 보인다 — 코드 LCD 와 같은 LookRotation(뒤, 위))
+        Transform content = new GameObject("Screen (화면)").transform;
+        content.SetParent(frame, false);
+        content.localPosition = new Vector3(0f, 0f, CoordFrameSize.z * 0.5f + 0.001f);
+        content.localRotation = Quaternion.LookRotation(Vector3.back, Vector3.up);
+        CreateShape(PrimitiveType.Quad, "Plate (검은 화면)", content, Vector3.zero, new Vector3(CoordScreenSize.x, CoordScreenSize.y, 1f), screenMaterial, false);
+
+        CoordinateScreen screen = content.gameObject.AddComponent<CoordinateScreen>();
+        BuildCoordScreen(screen, content);
+
+        GameObject soundObject = new GameObject("Beep Sound (신호음 — 소리 칸은 비움)");
+        soundObject.transform.SetParent(frame, false);
+        AudioSource beep = soundObject.AddComponent<AudioSource>();
+        beep.playOnAwake = false;
+        beep.spatialBlend = 1f;
+        beep.rolloffMode = AudioRolloffMode.Linear;
+        beep.minDistance = CoordBeepMinDistance;
+        beep.maxDistance = CoordBeepMaxDistance;
+
+        so.FindProperty("screen").objectReferenceValue = screen;
+        so.FindProperty("greenPrompt").objectReferenceValue = greenPrompt;
+        so.FindProperty("yellowPrompt").objectReferenceValue = yellowPrompt;
+        so.FindProperty("beepSource").objectReferenceValue = beep;
+        so.ApplyModifiedPropertiesWithoutUndo();
+
+        Debug.Log($"[LegacyMissionConverter] 좌표 장치: 버튼 2개 (보는 사람 왼쪽 초록 X · 오른쪽 노랑 Y), 화면 {CoordScreenSize.x} × {CoordScreenSize.y}m · 탐색 영역 반지름 {CoordAreaRadius}m, 범위 {CoordInteractRange}m, 신호음 칸 비움 (CO5)");
+        return true;
+    }
+
+    /// <summary>버튼 하나: 테두리 · 누르는 머리(조준 레이어 상자 · StationHoldPart · 외곽선 · 장치 콜라이더 목록) · 조준 문구(PromptAndHighlight). 문구 글자를 돌려준다.</summary>
+    private static TextMeshPro BuildCoordButton(SerializedObject stationSO, CoordinateStation station, Transform panel, int part, float x,
+        Material capMaterial, Material bezelMaterial, string name)
+    {
+        float top = CoordPanelSize.y * 0.5f;
+        CreateShape(PrimitiveType.Cube, name + " Bezel (테두리)", panel, new Vector3(x, top + CoordBezelSize.y * 0.5f, CoordButtonOffsetZ), CoordBezelSize, bezelMaterial, false);
+
+        GameObject cap = CreateShape(PrimitiveType.Cube, name, panel, new Vector3(x, top + CoordBezelSize.y + CoordButtonSize.y * 0.5f, CoordButtonOffsetZ),
+            CoordButtonSize, capMaterial, true);
+        cap.layer = InteractableLayer;
+
+        StationHoldPart holdPart = cap.AddComponent<StationHoldPart>();
+        SerializedObject partSO = new SerializedObject(holdPart);
+        partSO.FindProperty("station").objectReferenceValue = station;
+        partSO.FindProperty("partIndex").intValue = part;
+        partSO.ApplyModifiedPropertiesWithoutUndo();
+
+        // 내 미션이 아니거나 잠기면 꺼지는 콜라이더 (공통 틀 — 연출)
+        AddCollider(stationSO, cap.GetComponent<Collider>());
+
+        MissionOutlineBuilder.Attach(cap, cap);
+        string initial = part == CoordinateStation.GreenPart ? CoordinateStation.MoveXText : CoordinateStation.MoveYText;
+        TextMeshPro prompt = CreateFittedText(panel, name + " Prompt (조준 문구)", new Vector3(x, top + 0.3f, CoordButtonOffsetZ), Quaternion.identity,
+            new Vector2(0.55f, 0.06f), CoordinateStation.LongestPromptText, initial, KoreanFontPath, Color.white);
+        prompt.gameObject.SetActive(false);
+
+        SerializedObject promptSO = new SerializedObject(cap.GetComponent<MissionPrompt>());
+        promptSO.FindProperty("mode").intValue = (int)MissionPromptMode.PromptAndHighlight;
+        promptSO.FindProperty("promptObject").objectReferenceValue = prompt.gameObject;
+        promptSO.ApplyModifiedPropertiesWithoutUndo();
+        return prompt;
+    }
+
+    /// <summary>
+    /// 화면 그림 (13b CO31): 검은 판 앞으로 0.002m 씩 — 탐색 영역 · 십자선 → 목표 · 축 글자 · 막대 → 조작 원 채움 → 고리.
+    /// 투명 재질의 그리는 순서는 renderQueue 로 고정한다 (투명은 거리로 정렬돼서 비스듬히 보면 앞뒤가 바뀔 수 있다).
+    /// </summary>
+    private static void BuildCoordScreen(CoordinateScreen screen, Transform content)
+    {
+        Texture2D ring = GetOrCreateShapeTexture(CoordRingTexturePath, RingAlpha);
+        Texture2D disc = GetOrCreateShapeTexture(CoordDiscTexturePath, DiscAlpha);
+        Texture2D targetTexture = GetOrCreateShapeTexture(CoordTargetTexturePath, TargetAlpha);
+
+        Material areaMaterial = GetOrCreateScreenMaterial("CoordArea", ring, CoordAreaColor, 0);
+        Material lineMaterial = GetOrCreateScreenMaterial("CoordLine", null, CoordLineColor, 0);
+        Material targetMaterial = GetOrCreateScreenMaterial("CoordTarget", targetTexture, CoordTargetColor, 1);
+        Material barMaterial = GetOrCreateScreenMaterial("CoordBar", null, Color.white, 1);
+        Material fillMaterial = GetOrCreateScreenMaterial("CoordCursorFill", disc, Color.white, 2);
+        Material cursorMaterial = GetOrCreateScreenMaterial("CoordCursorRing", ring, Color.white, 3);
+
+        float z1 = -CoordLayerStep;
+        float z2 = -CoordLayerStep * 2f;
+        float z3 = -CoordLayerStep * 3f;
+        float diameter = CoordAreaRadius * 2f;
+
+        Transform drawing = new GameObject("Drawing (켜진 화면)").transform;
+        drawing.SetParent(content, false);
+
+        CreateShape(PrimitiveType.Quad, "Search Area (탐색 영역)", drawing, new Vector3(0f, 0f, z1), new Vector3(diameter, diameter, 1f), areaMaterial, false);
+        CreateShape(PrimitiveType.Quad, "Cross X (십자선 가로)", drawing, new Vector3(0f, 0f, z1), new Vector3(diameter, 0.003f, 1f), lineMaterial, false);
+        CreateShape(PrimitiveType.Quad, "Cross Y (십자선 세로)", drawing, new Vector3(0f, 0f, z1), new Vector3(0.003f, diameter, 1f), lineMaterial, false);
+        GameObject target = CreateShape(PrimitiveType.Quad, "Target (목표)", drawing, new Vector3(0f, 0f, z2), new Vector3(CoordTargetSize, CoordTargetSize, 1f), targetMaterial, false);
+
+        Transform cursor = new GameObject("Cursor (조작 원)").transform;
+        cursor.SetParent(drawing, false);
+        cursor.localPosition = new Vector3(0f, 0f, z3);
+        float cursorDiameter = CoordCursorRadius * 2f;
+        GameObject fill = CreateShape(PrimitiveType.Quad, "Fill (안 채움)", cursor, Vector3.zero, new Vector3(cursorDiameter * 0.86f, cursorDiameter * 0.86f, 1f), fillMaterial, false);
+        GameObject cursorRing = CreateShape(PrimitiveType.Quad, "Ring (고리)", cursor, new Vector3(0f, 0f, -CoordLayerStep), new Vector3(cursorDiameter, cursorDiameter, 1f), cursorMaterial, false);
+
+        // 축 글자: 보는 사람 왼쪽 X(초록) · 오른쪽 Y(노랑) — 그림과 같은 자리. 기호는 한국어 글꼴에 있는 ◀ ▶ ▲ ▼
+        TextMeshPro xAxis = CreateFittedText(drawing, "X Axis (X 축)", new Vector3(-CoordAxisLabelX, 0.06f, z2), Quaternion.identity,
+            new Vector2(0.2f, 0.06f), "◀ X ▶", "◀ X ▶", KoreanFontPath, CoordGreenColor);
+        TextMeshPro yAxis = CreateFittedText(drawing, "Y Axis (Y 축)", new Vector3(CoordAxisLabelX, 0.03f, z2), Quaternion.identity,
+            new Vector2(0.08f, 0.2f), "▲\nY\n▼", "▲\nY\n▼", KoreanFontPath, CoordYellowColor);
+
+        GameObject greenBar = CreateShape(PrimitiveType.Quad, "Green Bar (초록 담당 막대)", drawing, new Vector3(-CoordAxisLabelX, CoordBarY, z2),
+            new Vector3(CoordBarSize.x, CoordBarSize.y, 1f), barMaterial, false);
+        GameObject yellowBar = CreateShape(PrimitiveType.Quad, "Yellow Bar (노랑 담당 막대)", drawing, new Vector3(CoordAxisLabelX, CoordBarY, z2),
+            new Vector3(CoordBarSize.x, CoordBarSize.y, 1f), barMaterial, false);
+        TextMeshPro greenLabel = CreateFittedText(drawing, "Green Bar Label (초록 담당 글자)", new Vector3(-CoordAxisLabelX, CoordBarY + 0.035f, z2), Quaternion.identity,
+            new Vector2(0.22f, 0.032f), "X 비어 있음", "X 비어 있음", KoreanFontPath, CoordGreenColor);
+        TextMeshPro yellowLabel = CreateFittedText(drawing, "Yellow Bar Label (노랑 담당 글자)", new Vector3(CoordAxisLabelX, CoordBarY + 0.035f, z2), Quaternion.identity,
+            new Vector2(0.22f, 0.032f), "Y 비어 있음", "Y 비어 있음", KoreanFontPath, CoordYellowColor);
+
+        drawing.gameObject.SetActive(false);
+
+        TextMeshPro idle = CreateFittedText(content, "Idle (꺼짐 안내)", new Vector3(0f, 0f, z1), Quaternion.identity,
+            new Vector2(0.7f, 0.06f), CoordinateScreen.IdleText, CoordinateScreen.IdleText, KoreanFontPath, CoordIdleColor);
+        TextMeshPro done = CreateFittedText(content, "Done (설정 완료)", new Vector3(0f, CoordBarY, z3), Quaternion.identity,
+            new Vector2(0.36f, 0.06f), CoordinateScreen.DoneText, CoordinateScreen.DoneText, KoreanFontPath, PipeDoneColor);
+        done.gameObject.SetActive(false);
+
+        // 맞았는데 한 색 담당이 비었을 때 안내 (CO38) — 「설정 완료」와 같은 자리, 노랑 글자
+        TextMeshPro hint = CreateFittedText(content, "Hint (담당 안내)", new Vector3(0f, CoordBarY, z3), Quaternion.identity,
+            new Vector2(0.36f, 0.04f), CoordinateScreen.NeedYellowText, CoordinateScreen.NeedYellowText, KoreanFontPath, CoordYellowColor);
+        hint.gameObject.SetActive(false);
+
+        SerializedObject screenSO = new SerializedObject(screen);
+        screenSO.FindProperty("areaRadius").floatValue = CoordAreaRadius;
+        screenSO.FindProperty("drawing").objectReferenceValue = drawing.gameObject;
+        screenSO.FindProperty("cursor").objectReferenceValue = cursor;
+        screenSO.FindProperty("cursorRing").objectReferenceValue = cursorRing.GetComponent<Renderer>();
+        screenSO.FindProperty("cursorFill").objectReferenceValue = fill.GetComponent<Renderer>();
+        screenSO.FindProperty("target").objectReferenceValue = target.transform;
+        screenSO.FindProperty("xAxisLabel").objectReferenceValue = xAxis;
+        screenSO.FindProperty("yAxisLabel").objectReferenceValue = yAxis;
+        screenSO.FindProperty("greenBar").objectReferenceValue = greenBar.GetComponent<Renderer>();
+        screenSO.FindProperty("yellowBar").objectReferenceValue = yellowBar.GetComponent<Renderer>();
+        screenSO.FindProperty("greenBarLabel").objectReferenceValue = greenLabel;
+        screenSO.FindProperty("yellowBarLabel").objectReferenceValue = yellowLabel;
+        screenSO.FindProperty("idleLabel").objectReferenceValue = idle.gameObject;
+        screenSO.FindProperty("doneLabel").objectReferenceValue = done.gameObject;
+        screenSO.FindProperty("hintLabel").objectReferenceValue = hint;
+        screenSO.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    /// <summary>화면 그림용 URP Unlit 투명 재질 (빛 · 그림자 영향 없음). 겹치는 순서 = 투명 줄 + queueOffset. 이미 있으면 그대로 (색은 장치가 판마다 따로 넣는다).</summary>
+    private static Material GetOrCreateScreenMaterial(string fileName, Texture2D texture, Color color, int queueOffset)
+    {
+        string path = $"{DraftMaterialFolder}/{fileName}.mat";
+        Material material = AssetDatabase.LoadAssetAtPath<Material>(path);
+
+        if (material != null)
+            return material;
+
+        Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
+
+        if (shader == null)
+            shader = Shader.Find("Sprites/Default");
+
+        material = new Material(shader) { name = fileName };
+        material.color = color;
+
+        if (texture != null)
+        {
+            material.mainTexture = texture;
+
+            if (material.HasProperty("_BaseMap"))
+                material.SetTexture("_BaseMap", texture);
+        }
+
+        if (material.HasProperty("_BaseColor"))
+            material.SetColor("_BaseColor", color);
+
+        ApplyTransparent(material);
+        material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent + queueOffset;
+
+        EnsureFolder(DraftMaterialFolder);
+        AssetDatabase.CreateAsset(material, path);
+        return material;
+    }
+
+    /// <summary>
+    /// 흰색 + 투명도 그림(128 × 128)을 그려 PNG 로 저장한다. alpha(x, y) 는 가운데 0 · 가장자리 ±1 좌표에서 0 또는 1.
+    /// 한 픽셀을 3 × 3 으로 나눠 평균을 내서 가장자리 계단을 줄인다. 이미 있으면 그대로.
+    /// </summary>
+    private static Texture2D GetOrCreateShapeTexture(string path, System.Func<float, float, float> alpha)
+    {
+        Texture2D existing = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+
+        if (existing != null)
+            return existing;
+
+        const int size = 128;
+        const int samples = 3;
+        Texture2D texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
+
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                float sum = 0f;
+
+                for (int sy = 0; sy < samples; sy++)
+                {
+                    for (int sx = 0; sx < samples; sx++)
+                    {
+                        float u = (x + (sx + 0.5f) / samples) / size * 2f - 1f;
+                        float v = (y + (sy + 0.5f) / samples) / size * 2f - 1f;
+                        sum += alpha(u, v);
+                    }
+                }
+
+                texture.SetPixel(x, y, new Color(1f, 1f, 1f, sum / (samples * samples)));
+            }
+        }
+
+        texture.Apply();
+        EnsureFolder(DraftMaterialFolder);
+        System.IO.File.WriteAllBytes(path, texture.EncodeToPNG());
+        Object.DestroyImmediate(texture);
+        AssetDatabase.ImportAsset(path);
+
+        if (AssetImporter.GetAtPath(path) is TextureImporter importer)
+        {
+            importer.alphaIsTransparency = true;
+            importer.wrapMode = TextureWrapMode.Clamp;
+            importer.SaveAndReimport();
+        }
+
+        return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+    }
+
+    // 고리: 반지름 0.84 ~ 0.98 의 띠 (탐색 영역 · 조작 원이 같이 쓴다)
+    private static float RingAlpha(float x, float y)
+    {
+        float d = Mathf.Sqrt(x * x + y * y);
+        return d >= 0.84f && d <= 0.98f ? 1f : 0f;
+    }
+
+    // 원판: 조작 원 안 채움
+    private static float DiscAlpha(float x, float y)
+    {
+        return Mathf.Sqrt(x * x + y * y) <= 0.96f ? 1f : 0f;
+    }
+
+    // 목표: 네 갈래 별(|x|^⅔ + |y|^⅔ ≤ 0.5^⅔) + 네 모서리 ㄱ자 괄호 — 기획서 그림의 노란 표시
+    private static float TargetAlpha(float x, float y)
+    {
+        float ax = Mathf.Abs(x);
+        float ay = Mathf.Abs(y);
+        const float twoThirds = 2f / 3f;
+        bool star = Mathf.Pow(ax, twoThirds) + Mathf.Pow(ay, twoThirds) <= Mathf.Pow(0.5f, twoThirds);
+        bool bracket = (ax >= 0.8f && ax <= 0.92f && ay >= 0.6f && ay <= 0.92f) || (ay >= 0.8f && ay <= 0.92f && ax >= 0.6f && ax <= 0.92f);
+        return star || bracket ? 1f : 0f;
     }
 
     // ═════════════════════════════════════════════════════════════

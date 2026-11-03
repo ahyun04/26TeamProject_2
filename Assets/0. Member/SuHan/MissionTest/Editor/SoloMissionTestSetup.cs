@@ -24,6 +24,7 @@ using Object = UnityEngine.Object;
 ///  - (6a) 네트워크 오브젝트(장치 · 청소기 · 미션 관리자)는 씬에 프리팹 인스턴스로 미리 놓는다 — 씬만 열어도 배치가 보인다. 플레이어만 실행 중에 스폰.
 ///      시작 방식(혼자 / 호스트 / 손님)은 MissionTestBootstrap 시작 화면, 멀티 배정(F5 · F6) · 판 다시 시작(F7)은 MissionTestAssignmentPanel (6a 명세 MT6 · MT7)
 ///  - (13a) 단체 TG012 배관 누수 차단: 진짜 PipeLeakStation 3개 (뒷줄 z −16, 원본 배관 모델 + 임시 표시) · 테이프 2개 (배관 앞)
+///  - (13b) 단체 TG013 좌표 설정: 진짜 CoordinateStation 1대 (배관 줄 서쪽 끝 (−12, −16), 기본 도형) — 혼자 테스트라 `혼자 허용` 을 켠다 (CO26)
 ///  - (6b 보강) 1층 아이템 NavMesh: 장치를 다 놓은 뒤 MissionTestLayout 아래 `NavMesh (1층 아이템 구역)` 을 굽는다 (바닥 ±40m) — 산소통 · 부품 · 레버는 그 위 무작위
 ///
 /// [이식이 진행되면] 자리 표시 큐브를 하나씩 진짜 스테이션으로 바꾼다 (PlaceholderStations 에서 빼고 변환 결과를 배치).
@@ -60,9 +61,9 @@ public static class SoloMissionTestSetup
     // 밸브 손잡이 중심 높이 (모델 피벗 = 손잡이 중심). 옛 게임 씬에서도 벽에 달려 있다.
     private const float ValveMountHeight = 1.2f;
 
-    // 단체 12개 전부 (13a 배관 추가 — 11 → 12) · 개인 0 (7a 명세 TC14 — 한 번 실행으로 모든 장치 확인. 무작위 7개는 메인 씬 · T28 에서 확인,
+    // 단체 13개 전부 (13a 배관 — 11 → 12, 13b 좌표 — 12 → 13) · 개인 0 (7a 명세 TC14 — 한 번 실행으로 모든 장치 확인. 무작위 7개는 메인 씬 · T28 에서 확인,
     //  테스트 씬에서 보려면 MissionPool_SoloTest 의 Team Mission Count 를 손으로 7 로)
-    private const int TeamCount = 12;
+    private const int TeamCount = 13;
     private const int PersonalCount = 0;
     private const int ActionGoalCount = 1;
 
@@ -103,6 +104,9 @@ public static class SoloMissionTestSetup
 
         // 13a: 배관 누수 차단 — 배관 3개, 다음 배관까지 2분. 실패를 빨리 보려면 TG012 에셋의 Time Limit Seconds 를 20 으로 줄여서 테스트한다
         new DefSpec { Id = "TG012", Name = "배관 누수 차단", Category = MissionCategory.Team, Kind = ObjectiveKind.Count, Trigger = MissionEventType.PipeLeakSealed, Required = 3, TimeLimit = PipeTimeLimit },
+
+        // 13b: 좌표 설정 — 장치 1대, 맞추면 끝 (제한 시간 없음 — 기획서 "별도의 실패 조건 없이")
+        new DefSpec { Id = "TG013", Name = "좌표 설정", Category = MissionCategory.Team, Kind = ObjectiveKind.Count, Trigger = MissionEventType.CoordinateSet },
 
         new DefSpec { Id = "AG101", Name = "뛰지 않는다", Category = MissionCategory.ActionGoal, Kind = ObjectiveKind.Avoid, Trigger = MissionEventType.PlayerRan },
     };
@@ -180,6 +184,9 @@ public static class SoloMissionTestSetup
         new Vector3(-3f, 0f, -14f), new Vector3(3f, 0f, -14f),
     };
 
+    // 13b 좌표 장치: 배관 줄 서쪽 끝 빈 바닥 (밸브 · 배관과 6m 이상), 가운데를 본다 (WireScene)
+    private static readonly Vector3 CoordinatePosition = new Vector3(-12f, 0f, -16f);
+
     // 필터 옆 바닥에 청소기 (필터 청소는 청소기를 들어야 한다 — 2c 명세 F1)
     private static readonly Vector3 VacuumToolPosition = new Vector3(10.5f, 0f, -6f);
 
@@ -199,6 +206,7 @@ public static class SoloMissionTestSetup
         "장비 조립(먼 앞줄 왼쪽): 부품 4개(1개는 장비 주변)를 찾아 들고 맞는 색 자리를 조준 → 우클릭(7c)\n" +
         "생명 유지 장치(먼 앞줄): 본체 3대(7d) · 산소통 6개(본체마다 정상 1 · 위험 1, 겉모습으로 구분 안 됨) — 들기 → 아무 본체에 우클릭 → 5초 뒤 SUCCESS 또는 폭발, 첫 성공부터 120초\n" +
         "배관(맨 뒷줄 3개 — 13a): 테이프(배관 앞)를 들고 연기 나는 곳을 조준 → F 2초 = 막기, 배관 하나를 다 막으면 다음 배관까지 2분\n" +
+        "좌표(맨 뒷줄 배관 옆 1대 — 13b): 초록 F = 가로 · 노랑 F = 세로 (떼면 멈춤, 다시 누르면 반대) → 노란 목표에 맞추고 둘 다 떼고 1초. 여기선 혼자 두 색 가능\n" +
         "Shift 달리기 = AG101 '뛰지 않는다' 위반   F9 내 행동 확정 / F10 전체 공개\n" +
         "멀티: 에디터 [호스트] + 빌드 [손님] → 호스트 F5 손님 = 시민 / F6 손님 1명 = 범인   F7 판 다시 시작";
 
@@ -278,6 +286,14 @@ public static class SoloMissionTestSetup
         {
             Debug.LogWarning("[SoloMissionTestSetup] 배관 · 테이프 변환에 실패해 두지 않습니다 (위의 LegacyMissionConverter 오류 확인).");
         }
+
+        // 13b 좌표 장치 1대 (변환에 실패하면 두지 않는다 — 자리 표시 없음). `혼자 허용` 은 WireScene 이 씬에 놓은 뒤 켠다
+        NetworkObject coordinateStation = LegacyMissionConverter.CreateCoordinateStation();
+
+        if (coordinateStation != null)
+            placements.Add((coordinateStation, CoordinatePosition));
+        else
+            Debug.LogWarning("[SoloMissionTestSetup] 좌표 장치 변환에 실패해 두지 않습니다 (위의 LegacyMissionConverter 오류 확인).");
 
         NetworkObject vacuumTool = LegacyMissionConverter.ConvertVacuumTool();
 
@@ -587,6 +603,14 @@ public static class SoloMissionTestSetup
             Vector3 toCenter = new Vector3(-position.x, 0f, -position.z);
             Quaternion rotation = toCenter.sqrMagnitude > 0.01f ? Quaternion.LookRotation(toCenter) : Quaternion.identity;
             PlaceSceneObject(placements[i].prefab, networkRoot, $"{placements[i].prefab.name}_{i:00}", position, rotation);
+        }
+
+        // 13b CO26: 혼자 테스트 씬의 좌표 장치는 한 사람이 두 색을 번갈아 맡을 수 있게 (프리팹 · 실제 게임 씬은 꺼짐 — 두 사람이 필요)
+        foreach (CoordinateStation coordinate in networkRoot.GetComponentsInChildren<CoordinateStation>(true))
+        {
+            SerializedObject coordinateSO = new SerializedObject(coordinate);
+            coordinateSO.FindProperty("allowSoloOperation").boolValue = true;
+            coordinateSO.ApplyModifiedPropertiesWithoutUndo();
         }
 
         CreateInfoLabel(layoutRoot.transform, "Info (조작 안내)", new Vector3(0f, 0.8f, 4f), InfoText);
