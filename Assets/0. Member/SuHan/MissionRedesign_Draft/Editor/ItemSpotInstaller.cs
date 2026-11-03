@@ -42,6 +42,7 @@ public static class ItemSpotInstaller
         ItemPrefabFolder + "/EquipmentPart_Red.prefab",
         ItemPrefabFolder + "/EquipmentPart_Yellow.prefab",
         LegacyMissionConverter.VacuumToolPath,
+        LegacyMissionConverter.TapeItemPath,   // 13a 테이프 — 선반 칸에도 (PL23)
     };
 
     // 선반 메시의 수평 면으로 볼 법선 위쪽 성분 (판 · 천장)
@@ -332,6 +333,7 @@ public static class ItemSpotInstaller
         }
 
         NetworkObject vacuumPrefab = LoadNetworkObject(LegacyMissionConverter.VacuumToolPath);
+        NetworkObject tapePrefab = LoadNetworkObject(LegacyMissionConverter.TapeItemPath);
 
         SerializedObject so = new SerializedObject(director);
         SerializedProperty table = so.FindProperty("itemSizes");
@@ -352,6 +354,7 @@ public static class ItemSpotInstaller
             weaponProperty.GetArrayElementAtIndex(i).objectReferenceValue = weaponList[i];
 
         so.FindProperty("vacuumPrefab").objectReferenceValue = vacuumPrefab;
+        so.FindProperty("tapePrefab").objectReferenceValue = tapePrefab;
         so.ApplyModifiedPropertiesWithoutUndo();
 
         weapons = weaponList.Count;

@@ -75,6 +75,8 @@ public static class GamePlayMissionInstaller
         new DefSpec { Id = "TG009", Name = "안테나 방향 맞추기", Category = MissionCategory.Team, Trigger = MissionEventType.AntennaAligned },
         new DefSpec { Id = "TG010", Name = "압력 수치 맞추기", Category = MissionCategory.Team, Trigger = MissionEventType.PressureStabilized },
         new DefSpec { Id = "TG011", Name = "필터 청소하기", Category = MissionCategory.Team, Trigger = MissionEventType.FilterCleaned },
+        // 13a: 배관 누수 차단 — 배관 3개, 다음 배관까지 2분 (발전기와 같은 사슬 — 기획서 "제한 시간은 2분")
+        new DefSpec { Id = "TG012", Name = "배관 누수 차단", Category = MissionCategory.Team, Trigger = MissionEventType.PipeLeakSealed, Required = 3, TimeLimit = 120f },
     };
 
     // 6b 명세 3장 배치표 — 옛 미션 자리(같은 위치 · 방향, 2026-10-11 씬에서 읽음)와 새 5종(시작 홀 빈 칸, 겹침 검사)
@@ -99,6 +101,12 @@ public static class GamePlayMissionInstaller
         new MissionPlacement { Name = "Assembly", PrefabPath = LegacyMissionConverter.AssemblyStationPath, Position = new Vector3(5f, 0f, 18f), FaceFocus = true, CheckOverlap = true },
         // 방화문: 북쪽 벽(z 26.5) 앞에서 남쪽(시작 홀)을 보게 — 벽과 나란히 180° 고정
         new MissionPlacement { Name = "FireDoor", PrefabPath = LegacyMissionConverter.FireDoorStationPath, Position = new Vector3(-1f, 0f, 24.5f), Yaw = 180f, CheckOverlap = true },
+        // 13a 배관 3개 · 테이프 2개 (PL24 · PL23): 씬 분석으로 고른 빈 바닥 (2m 안에 물건 없음 · 다른 장치에서 3.5m 이상). 4~12 가 실제 맵이라 여기는 임시 자리
+        new MissionPlacement { Name = "Pipe_A", PrefabPath = LegacyMissionConverter.PipeLeakStationPath, Position = new Vector3(5f, 0f, 7.5f), FaceFocus = true, CheckOverlap = true },
+        new MissionPlacement { Name = "Pipe_B", PrefabPath = LegacyMissionConverter.PipeLeakStationPath, Position = new Vector3(-6f, 0f, 8f), FaceFocus = true, CheckOverlap = true },
+        new MissionPlacement { Name = "Pipe_C", PrefabPath = LegacyMissionConverter.PipeLeakStationPath, Position = new Vector3(-9f, 0f, 21f), FaceFocus = true, CheckOverlap = true },
+        new MissionPlacement { Name = "Tape_A", PrefabPath = LegacyMissionConverter.TapeItemPath, Position = new Vector3(4f, 0f, 6.3f) },
+        new MissionPlacement { Name = "Tape_B", PrefabPath = LegacyMissionConverter.TapeItemPath, Position = new Vector3(-7f, 0f, 9.2f) },
     };
 
     // 1층 아이템 NavMesh (6b 보강 NS2 · NS3): 높이 지면 −0.5 ~ +2.0m, 가로 · 세로 = 본게임 건물만 (x −20 ~ 30, z −34 ~ 27).
@@ -141,6 +149,8 @@ public static class GamePlayMissionInstaller
             return;
 
         bool poolUpdated = UpdatePoolForTeamOnly(pool);
+        // 13a PL10: 풀이 이미 있으면 새 미션(TG012)이 들어가지 않는다 → 없는 정의만 끝에 추가
+        int poolAdded = AddMissingDefinitions(pool);
 
         int removedOld = RemoveOldMissionInstances(scene);
         int removedSystems = RemoveOldMissionSystems(scene);
@@ -164,7 +174,7 @@ public static class GamePlayMissionInstaller
         // 저장할 때 Fusion 이 씬 오브젝트의 정렬 키를 굽는다 (호스트 · 손님이 같은 오브젝트로 짝을 맞추는 번호)
         MissionMapInstaller.SaveScene(scene);
 
-        Debug.Log($"[GamePlayMissionInstaller] 완료 — 개인 → 단체 {movedToTeam}개 옮김, 풀 숫자 {(poolUpdated ? $"단체 {TeamCount} · 개인 {PersonalCount} 으로 바꿈" : "그대로")}, 옛 미션 {removedOld}개 · 옛 MissionSystem 컴포넌트 {removedSystems}개 제거, " +
+        Debug.Log($"[GamePlayMissionInstaller] 완료 — 개인 → 단체 {movedToTeam}개 옮김, 풀 숫자 {(poolUpdated ? $"단체 {TeamCount} · 개인 {PersonalCount} 으로 바꿈" : "그대로")}, 풀에 새 미션 {poolAdded}개 추가, 옛 미션 {removedOld}개 · 옛 MissionSystem 컴포넌트 {removedSystems}개 제거, " +
                   $"새 장치 {placedNow.Count}개 놓음 · {skipped}개 이미 있어 건너뜀, MissionManager {(managerCreated ? "새로 만듦" : "있음")}, " +
                   $"PlayerHealthActorGate {(gateCreated ? "새로 만듦" : "있음")}, 옛 자리 후보 묶음 {spotGroupsRemoved}개 제거, NavMesh {(navMeshBaked ? "구움" : "실패")}, " +
                   $"미션 시스템 칸 {wired}개 연결, 미션 목록 UI {listSwapped}개 교체 · {listsSetUp}개 설정, 선반 {shelvesBlocked}개 막음, 겹침 경고 {overlaps}개. 멀티 테스트 전에는 SuHan/Build Full Game (Windows) 로 다시 빌드하세요.");
@@ -308,6 +318,52 @@ public static class GamePlayMissionInstaller
         return true;
     }
 
+    /// <summary>
+    /// 없는 새 미션만 게임 풀에 추가한다 (13a 명세 PL10 — GamePlay · 4~12 메뉴가 같이 부른다): 정의 파일이 없으면 만들고, 풀 목록에 없으면 끝에 넣는다.
+    /// 풀의 숫자(개수 · 난이도별 배정)와 이미 있는 정의 값은 그대로 둔다 — 기획자가 바꾼 값이 남는다. 추가한 수를 돌려준다.
+    /// </summary>
+    public static int AddMissingDefinitions(MissionPool pool)
+    {
+        if (pool == null)
+            return 0;
+
+        EnsureFolder(DraftFolder, "Data");
+        EnsureFolder(DraftFolder + "/Data", "Game");
+
+        int created = 0;
+        int added = 0;
+        SerializedObject so = new SerializedObject(pool);
+        SerializedProperty list = so.FindProperty("definitions");
+
+        foreach (DefSpec spec in Definitions)
+        {
+            MissionDefinition definition = LoadOrCreateDefinition(spec, ref created);
+            bool present = false;
+
+            for (int i = 0; i < list.arraySize && !present; i++)
+                present = list.GetArrayElementAtIndex(i).objectReferenceValue == definition;
+
+            if (present)
+                continue;
+
+            list.InsertArrayElementAtIndex(list.arraySize);
+            list.GetArrayElementAtIndex(list.arraySize - 1).objectReferenceValue = definition;
+            added++;
+            Debug.Log($"[GamePlayMissionInstaller] 게임 풀에 새 미션 추가: {spec.Id} {spec.Name} (풀 숫자는 그대로)");
+        }
+
+        if (added > 0)
+        {
+            so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(pool);
+        }
+
+        if (added > 0 || created > 0)
+            AssetDatabase.SaveAssets();
+
+        return added;
+    }
+
     private static MissionDefinition LoadOrCreateDefinition(DefSpec spec, ref int created)
     {
         string path = $"{DataFolder}/{spec.Id}.asset";
@@ -328,6 +384,8 @@ public static class GamePlayMissionInstaller
         so.FindProperty("timeLimitSeconds").floatValue = spec.TimeLimit;
         so.FindProperty("timeLimitMode").intValue = (int)spec.Mode;
         so.FindProperty("alwaysInclude").boolValue = spec.AlwaysInclude;
+        // 새로 만드는 정의에는 난이도 표 값을 바로 넣는다 (13a — TG012 를 만든 뒤 난이도 메뉴를 따로 돌리지 않아도 되게. 이미 있는 정의는 건드리지 않음)
+        so.FindProperty("difficulty").intValue = (int)MissionDifficultySetup.For(spec.Id);
         so.ApplyModifiedPropertiesWithoutUndo();
 
         AssetDatabase.CreateAsset(asset, path);

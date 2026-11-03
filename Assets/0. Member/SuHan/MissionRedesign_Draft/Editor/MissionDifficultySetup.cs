@@ -6,7 +6,7 @@ using UnityEngine;
 /// <summary>
 /// [역할 · 에디터 전용, 1클릭 도구] 실제 게임 미션 데이터에 난이도를 넣고, 실제 게임 풀의 난이도별 배정을 켠다 (9b 명세 DF5 · DF8).
 ///  메뉴 `SuHan/Apply Mission Difficulty`:
-///  - 단체 미션 TG001 ~ TG011 중 난이도가 "없음"인 것에만 아래 표 값을 넣는다 (방화문 TG005 는 표에 없음 — "없음"이 맞다)
+///  - 단체 미션 TG001 ~ TG012 중 난이도가 "없음"인 것에만 아래 표 값을 넣는다 (방화문 TG005 는 표에 없음 — "없음"이 맞다). (13a) TG012 배관 누수 차단 = 보통
 ///  - 실제 게임 풀(4~12 맵이 쓰는 MissionPool_Game)은 한 번도 설정하지 않았을 때(체크 꺼짐 · 개수 모두 0)만 켜고 4 · 2 · 1
 /// [이유] 공유 데이터라 메뉴로만 바꾸고, 처음 한 번만 넣는다 — 기획자가 인스펙터에서 바꾼 값은 다시 실행해도 그대로 둔다 (6b SW7 · 7a TC13 과 같은 방식).
 ///  테스트 씬 데이터는 테스트 설정 메뉴(SoloMissionTestSetup)가 이 표(For)를 읽어 매번 넣는다.
@@ -24,6 +24,7 @@ public static class MissionDifficultySetup
         { "TG009", MissionDifficulty.Normal },  // 안테나 방향 맞추기
         { "TG001", MissionDifficulty.Normal },  // 발전기 작동시키기
         { "TG002", MissionDifficulty.Normal },  // 코드 순서 맞추기
+        { "TG012", MissionDifficulty.Normal },  // 배관 누수 차단 (13a PL6 — 사용자 결정 A: 2분은 첫 배관 뒤부터라 발전기와 비슷)
         { "TG010", MissionDifficulty.Hard },    // 압력 수치 맞추기
         { "TG003", MissionDifficulty.Hard },    // 고장난 장비 조립
         { "TG004", MissionDifficulty.Hard },    // 생명 유지 장치 복구
@@ -34,9 +35,9 @@ public static class MissionDifficultySetup
     public const int DefaultNormal = 2;
     public const int DefaultHard = 1;
 
-    // 단체 미션 정의 ID 들 (TG001 ~ TG011)
+    // 단체 미션 정의 ID 들 (TG001 ~ TG012 — 13a 배관 추가)
     private const int FirstTeamNumber = 1;
-    private const int LastTeamNumber = 11;
+    private const int LastTeamNumber = 12;
 
     /// <summary>표의 난이도. 표에 없는 ID(방화문 TG005 · 행동 목표 등)는 없음.</summary>
     public static MissionDifficulty For(string id)
