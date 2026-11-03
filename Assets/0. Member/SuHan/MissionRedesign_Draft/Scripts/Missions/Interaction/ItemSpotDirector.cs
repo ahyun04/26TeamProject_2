@@ -13,7 +13,8 @@ namespace TrustNoOne.Missions
     ///  - 자리 목록 (첫 요청 때 한 번): 자식 구역 상자(ItemZone) 바닥을 1.5m 격자로 훑은 아이템 NavMesh 점 + 씬의 모든 선반 칸(ShelfSlot)
     ///  - TryPlace(프리팹): 그 아이템이 들어갈 수 있는 빈자리 하나를 무작위로 고르고(ItemSpotRules.Pick) 쓴 자리로 기록 → 놓을 위치 · 회전
     ///    바닥 = 실제 바닥 높이(11b ToSurface) + 무작위 방향, 선반 = 칸에 맞는 자세(ItemPoseRules — 긴 축 → 칸 폭, 짧은 축 → 높이)
-    ///  - 무기 · 청소기: 맡은 장치가 없어 판마다 미션 배정이 끝난 순간 한 번 직접 만든다 — 무기 3종 각 1개 늘, 청소기는 필터 미션이 뽑힌 판만 (7a TC12)
+    ///  - 무기 · 청소기 · 테이프: 맡은 장치가 없어 판마다 미션 배정이 끝난 순간 한 번 직접 만든다 — 무기 3종 각 1개 늘, 청소기는 필터 미션이 뽑힌 판만 (7a TC12),
+    ///    테이프는 배관 미션(TG012)이 뽑힌 판만 tapeCount 개 (13a PL23)
     /// [장치와의 관계] 생명 유지(산소통) · 장비 조립(부품)은 이 관리자가 씬에 있으면 자리를 받아 가고, 없으면(GamePlay · 테스트 씬) 지금 방식 (IS16).
     ///  개수 · 위험 여부 · 7e 다시 생성 · 부품 다시 흩기 같은 규칙은 장치에 그대로 남는다 — 바뀌는 것은 "어디에"뿐 (접근 1).
     /// [쓴 자리 기록] 한 판 동안만 (씬이 새로 열리면 비워진다). 다시 생기는 아이템은 아직 안 쓴 자리에서 (IS15).
@@ -42,6 +43,13 @@ namespace TrustNoOne.Missions
 
         [Tooltip("필터 미션이 뽑힌 판에만 만드는 청소기")]
         [SerializeField] private NetworkObject vacuumPrefab;
+
+        [Tooltip("배관 누수 차단(TG012) 미션이 뽑힌 판에만 만드는 테이프 (13a PL23)")]
+        [SerializeField] private NetworkObject tapePrefab;
+
+        [Tooltip("테이프 개수 — 도구라 써도 없어지지 않는다 (13a PL3 · PL23)")]
+        [Min(0)]
+        [SerializeField] private int tapeCount = 2;
 
         [Tooltip("선반 무리를 고를 확률 0 ~ 1. −1 = 자리 수 비례 (대략 바닥 2 : 선반 1)")]
         [Range(-1f, 1f)]
@@ -145,7 +153,7 @@ namespace TrustNoOne.Missions
             SpawnExtras();
         }
 
-        /// <summary>무기 3종 각 1개 늘, 청소기는 필터 미션이 이번 판에 뽑혔을 때만 (IS17).</summary>
+        /// <summary>무기 3종 각 1개 늘, 청소기는 필터 미션이 이번 판에 뽑혔을 때만 (IS17), 테이프는 배관 미션이 뽑혔을 때만 (13a PL23).</summary>
         private void SpawnExtras()
         {
             StringBuilder log = new StringBuilder();
@@ -163,7 +171,18 @@ namespace TrustNoOne.Missions
             else
                 log.Append("청소기: 필터 미션이 없는 판 — 만들지 않음  ");
 
-            Debug.Log($"[ItemSpotDirector] 무기 · 청소기: {log}");
+            // 테이프: 배관 미션이 뽑힌 판만 (13a PL23)
+            if (tapePrefab == null)
+                log.Append("테이프 프리팹 없음  ");
+            else if (manager.IsEventInPlan(MissionEventType.PipeLeakSealed))
+            {
+                for (int i = 0; i < tapeCount; i++)
+                    SpawnOne(tapePrefab, log);
+            }
+            else
+                log.Append("테이프: 배관 미션이 없는 판 — 만들지 않음  ");
+
+            Debug.Log($"[ItemSpotDirector] 무기 · 청소기 · 테이프: {log}");
         }
 
         private void SpawnOne(NetworkObject prefab, StringBuilder log)

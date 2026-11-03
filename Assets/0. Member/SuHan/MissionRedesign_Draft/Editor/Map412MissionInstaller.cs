@@ -11,6 +11,9 @@ using UnityEngine.SceneManagement;
 ///  좌표는 씬의 바닥 · 벽 좌표를 분석해 정한 임시값이다 (벽에서 0.15m · 장치끼리 0.4m · 스폰에서 3m — 검사 스크립트 `MissionDesign/Verification~/Layout/`).
 ///  기획자가 옮긴다 → 같은 이름이 이미 있으면 건너뛴다 (MP3).
 /// [공유 데이터 — MP5] 미션 풀 · TG 데이터를 건드리지 않는다. 씬에 이미 있는 MissionManager(실제 게임 풀) · PlayerHealthActorGate 를 그대로 쓴다.
+///  (13a PL10 — 바뀜) 없는 새 미션(TG012 배관)만 풀 끝에 추가한다 (GamePlayMissionInstaller.AddMissingDefinitions). 풀 숫자 · 기존 정의 값은 그대로.
+/// [배관 — 13a PL24] 배관 3개를 서로 다른 방 벽에 등을 대고 놓는다 (검사 스크립트로 고름). 테이프는 자리 관리자가 TG012 판에만 만든다 (PL23).
+/// [NavMesh 파일 — 13a PL26] 맵 담당이 씬 폴더로 옮긴 데이터 파일 자리를 그대로 쓴다 (KeepNavMeshAssetPath).
 /// [공유 씬 — MP11] 4~12.unity 는 맵 담당이 만든 씬 — 이 메뉴로만 바꾼다 (미션 루트 하나 추가 · 선반 막기 · NavMesh · 미션 목록 설정 · 저장).
 /// [선반 — 11a 명세 BC12] 씬의 선반(모델 폴더 Shelf*.fbx)에 막는 몸체를 붙인다 (이미 막혀 있으면 건너뜀, 모델 파일은 그대로).
 /// [미션 목록 — 10 명세 ML12] 왼쪽 미션 목록 패널을 왼쪽 위 글자 칸 하나로 바꾼다 (공통 단계 SetupMissionList — 글자 칸이 없을 때만).
@@ -56,6 +59,13 @@ public static class Map412MissionInstaller
         new MissionPlacement { Name = "LifeSupport", PrefabPath = LegacyMissionConverter.LifeSupportStationPath, Position = new Vector3(23.5f, 0f, -27f), Yaw = -90f, CheckOverlap = true },
         new MissionPlacement { Name = "LifeSupport_B", PrefabPath = LegacyMissionConverter.LifeSupportStationPath, Position = new Vector3(-20.5f, 0f, -22f), Yaw = 90f, CheckOverlap = true },
         new MissionPlacement { Name = "LifeSupport_C", PrefabPath = LegacyMissionConverter.LifeSupportStationPath, Position = new Vector3(4f, 0f, -40f), Yaw = 0f, CheckOverlap = true },
+
+        // ── 13a 배관 3개 (기획서 "맵 곳곳에 배치된 누수 배관" — PL7 · PL24) ──
+        // 벽에 등을 대고 앞(+Z)이 방 쪽: 관 가운데가 벽 면에서 0.40m (위쪽 꺾인 관은 벽으로 들어감). 검사 스크립트(layout412.py — Pipe 크기 추가) 문제 없음 · 뒤 벽 있음
+        //  A 위쪽 통로 북쪽 벽(면 z −7.32) · B 선반 방 서쪽 벽(면 x −17.12, 선반 줄 사이 — 선반이 90° 돌아가 있어 끝 칸 앞을 피함) · C 오른쪽 방 동쪽 벽(면 x 25.85)
+        new MissionPlacement { Name = "Pipe_A", PrefabPath = LegacyMissionConverter.PipeLeakStationPath, Position = new Vector3(-3f, 0f, -7.72f), Yaw = 180f, CheckOverlap = true },
+        new MissionPlacement { Name = "Pipe_B", PrefabPath = LegacyMissionConverter.PipeLeakStationPath, Position = new Vector3(-16.72f, 0f, -32.75f), Yaw = 90f, CheckOverlap = true },
+        new MissionPlacement { Name = "Pipe_C", PrefabPath = LegacyMissionConverter.PipeLeakStationPath, Position = new Vector3(25.45f, 0f, -20f), Yaw = -90f, CheckOverlap = true },
     };
 
     // 1층 아이템 NavMesh (MP8): 바닥 전체(x −25.65 ~ 26.35, z −42.8 ~ 1.2) + 여유, 높이 지면 −0.5 ~ +2.0m (6b 보강 NS2 — "1층").
@@ -93,6 +103,8 @@ public static class Map412MissionInstaller
         FaceFocus = MapCenter,
         NavMeshVolume = NavMeshVolume,
         NavMeshAssetPath = NavMeshPath,
+        // 13a PL26: 맵 담당이 옮긴 씬 폴더 파일 자리를 그대로 (지우지 않음)
+        KeepNavMeshAssetPath = true,
         ItemZones = ItemZones,
     };
 
@@ -115,6 +127,9 @@ public static class Map412MissionInstaller
             return;
         }
 
+        // 13a PL10: 없는 새 미션(TG012)만 풀 끝에 추가 — 풀 숫자 · 기존 정의는 그대로
+        int poolAdded = GamePlayMissionInstaller.AddMissingDefinitions(pool);
+
         Transform root = MissionMapInstaller.FindOrCreateRoot(scene);
         MissionManager manager = MissionMapInstaller.EnsureMissionManager(root, pool, out bool managerCreated);
         MissionMapInstaller.WarnIfPoolDiffers(manager, pool, Spec.Label);
@@ -136,7 +151,7 @@ public static class Map412MissionInstaller
         // 저장할 때 Fusion 이 씬 오브젝트의 정렬 키를 굽는다 (호스트 · 손님이 같은 오브젝트로 짝을 맞추는 번호)
         MissionMapInstaller.SaveScene(scene);
 
-        Debug.Log($"[Map412MissionInstaller] 완료 — 새 장치 {placedNow.Count}개 놓음 · {skipped}개 이미 있어 건너뜀, " +
+        Debug.Log($"[Map412MissionInstaller] 완료 — 풀에 새 미션 {poolAdded}개 추가, 새 장치 {placedNow.Count}개 놓음 · {skipped}개 이미 있어 건너뜀, " +
                   $"MissionManager {(managerCreated ? "새로 만듦" : "있음")}, PlayerHealthActorGate {(gateCreated ? "새로 만듦" : "있음")}, " +
                   $"선반 {shelvesBlocked}개 막음, NavMesh {(navMeshBaked ? "구움" : "실패")}, 겹침 경고 {overlaps}개, 미션 목록 {listsSetUp}개 설정, 옛 고정 청소기 {(oldVacuumRemoved ? "지움" : "없음")}, 선반 방 바닥 구역 {(shelfRoomZoneRemoved ? "지움" : "없음")}, 아이템 자리: {itemSpots}. 멀티 테스트 전에는 SuHan/Build Full Game (Windows) 로 다시 빌드하세요.");
     }

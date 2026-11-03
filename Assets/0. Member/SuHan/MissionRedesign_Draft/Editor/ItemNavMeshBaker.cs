@@ -17,6 +17,8 @@ using UnityEngine.SceneManagement;
 ///  단, 범위가 예전 기본값(outdatedVolumes) 그대로면 새 범위로 바꾼다 (기본값을 고친 경우 — 미션 목록 칸 설정 UI4 와 같은 방식).
 /// [예전 데이터 파일 — NS15] 인스펙터의 Bake 버튼은 데이터를 씬 폴더(`Assets/Scenes/<씬 이름>/NavMesh-<오브젝트 이름>.asset`)에 저장한다.
 ///  다시 구울 때 예전 데이터가 assetPath 가 아닌 곳에 있었으면 그 파일을 지운다 (Unity 의 Bake 버튼도 예전 데이터 파일을 지운다) → 쓰이지 않는 파일이 남지 않는다.
+/// [자리 유지 — 13a PL26] keepExistingPath 를 켜면 예전 데이터가 있던 자리에 그대로 다시 저장한다 (4~12 — 맵 담당이 씬 폴더로 옮긴 파일).
+///  인스펙터 Bake 와 같이 파일을 새로 만들어 저장하므로 .meta 의 번호는 바뀔 수 있다. 위치는 그대로라 공유 폴더에 파일 삭제가 생기지 않는다.
 /// [씬 설정] 씬의 NavMesh 설정 칸(NavMeshSettings)은 쓰지 않는다 — NavMeshSurface 방식만.
 /// [근거] 6b 보강 명세 NS2 · NS3 · NS4 (사용자 결정 A — 질문 2), NS14 · NS15 (테스트 후 추가 — 사용자 승인)
 /// </summary>
@@ -34,6 +36,13 @@ public static class ItemNavMeshBaker
     /// <returns>굽기에 성공하면 true</returns>
     public static bool Bake(Transform parent, Bounds volume, string assetPath, params Bounds[] outdatedVolumes)
     {
+        return Bake(parent, volume, assetPath, false, outdatedVolumes);
+    }
+
+    /// <param name="keepExistingPath">true 면 예전 데이터 파일이 있던 자리에 다시 저장한다 (없으면 assetPath) — 13a PL26</param>
+    public static bool Bake(Transform parent, Bounds volume, string assetPath, bool keepExistingPath, Bounds[] outdatedVolumes)
+    {
+        outdatedVolumes ??= new Bounds[0];
         NavMeshSurface surface = FindInScene(parent.gameObject.scene);
 
         if (surface == null)
@@ -60,6 +69,15 @@ public static class ItemNavMeshBaker
 
         // 굽기 전에 예전 데이터 파일 위치를 기억한다 (굽고 나면 새 데이터로 바뀐다 — NS15)
         string previousPath = surface.navMeshData != null ? AssetDatabase.GetAssetPath(surface.navMeshData) : null;
+
+        // 자리 유지 (PL26): 예전 파일이 있던 곳에 다시 저장 → 아래의 "다른 곳 파일 지우기"도 일어나지 않는다
+        if (keepExistingPath && !string.IsNullOrEmpty(previousPath))
+        {
+            if (previousPath != assetPath)
+                Debug.Log($"[ItemNavMeshBaker] NavMesh 데이터 파일 자리를 그대로 둡니다: {previousPath} (기본 자리 {assetPath} 대신 — 13a PL26).");
+
+            assetPath = previousPath;
+        }
 
         surface.BuildNavMesh();
 

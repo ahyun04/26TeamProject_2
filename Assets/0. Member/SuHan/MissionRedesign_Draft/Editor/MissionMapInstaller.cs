@@ -64,6 +64,12 @@ public sealed class MissionMapSpec
     /// <summary>예전 기본 NavMesh 범위 — 오브젝트의 범위가 이 값 그대로면 새 범위로 바꾼다 (ItemNavMeshBaker, 6b 보강 NS4).</summary>
     public Bounds[] OutdatedNavMeshVolumes = new Bounds[0];
 
+    /// <summary>
+    /// 켜면 NavMesh 데이터 파일을 지금 씬이 가리키는 자리에 그대로 다시 저장한다 (13a 명세 PL26 — 4~12: 맵 담당이 씬 폴더로 옮겨 다시 구운 파일을 지우지 않게).
+    /// 끄면(기본) NavMeshAssetPath 에 저장하고 다른 자리의 예전 파일은 지운다 (6b NS15).
+    /// </summary>
+    public bool KeepNavMeshAssetPath;
+
     /// <summary>아이템 구역 상자 처음 값 (12b). 비어 있으면 그 맵은 구역 · 선반 칸 생성을 쓰지 않는다 (장치는 지금 방식).</summary>
     public ItemZoneSpec[] ItemZones = new ItemZoneSpec[0];
 }
@@ -252,7 +258,7 @@ public static class MissionMapInstaller
     /// <summary>장치를 다 놓은 뒤 굽는다 — 장치 몸체도 길을 막는 것으로 들어간다 (6b 보강 NS2 · NS4: 매번 다시 굽기).</summary>
     public static bool BakeNavMesh(MissionMapSpec spec, Transform root)
     {
-        return ItemNavMeshBaker.Bake(root, spec.NavMeshVolume, spec.NavMeshAssetPath, spec.OutdatedNavMeshVolumes);
+        return ItemNavMeshBaker.Bake(root, spec.NavMeshVolume, spec.NavMeshAssetPath, spec.KeepNavMeshAssetPath, spec.OutdatedNavMeshVolumes);
     }
 
     /// <summary>이번에 놓은 장치 중 CheckOverlap 인 것이 벽 · 소품 콜라이더와 겹치면 경고 (렌더러 범위 상자, 바닥에서 10cm 위부터 — 바닥은 빼려고).</summary>

@@ -18,7 +18,7 @@ using UnityEngine;
 ///  공통 후처리: 조준 문구(MissionPrompt.promptObject)가 있으면 PromptBillboard 를 붙여 항상 보는 사람 쪽을 향하게 한다
 ///  (옛 밸브 문구가 방향 고정이라 배치에 따라 뒤집혀 보였음 — 2b 테스트에서 발견).
 /// [조준 외곽선] MissionOutlineBuilder 로 붙인다 (1단계 사용자 요청). 부품마다 MissionPrompt 를 두면 조준한 부품만 켜진다 (2a 명세 P7).
-/// [변환 목록] 1단계 발전기 / 2a 밸브 · 안테나 · 차단기 / 2b 전선 / 2c 필터 · 청소기(아이템) / 2d 압력(신규 — 옛 프리팹이 없어 원본 패널 · 피스톤 모델에서 조립) / 3a 코드 자판(신규 — 원본 자판 모델에서 조립) / 3b 생명 유지 장치 · 산소통(신규 — 모델이 없어 기본 도형으로 조립) / 3c 장비 조립(신규 — 원본 본체 · 부품 모델에서 조립) / 3d 대형 방화문(신규 — 원본 문 · 패널 · 레버 모델에서 조립). 미니게임을 이식할 때마다 Build… 와 Convert… 를 하나씩 추가한다.
+/// [변환 목록] 1단계 발전기 / 2a 밸브 · 안테나 · 차단기 / 2b 전선 / 2c 필터 · 청소기(아이템) / 2d 압력(신규 — 옛 프리팹이 없어 원본 패널 · 피스톤 모델에서 조립) / 3a 코드 자판(신규 — 원본 자판 모델에서 조립) / 3b 생명 유지 장치 · 산소통(신규 — 모델이 없어 기본 도형으로 조립) / 3c 장비 조립(신규 — 원본 본체 · 부품 모델에서 조립) / 3d 대형 방화문(신규 — 원본 문 · 패널 · 레버 모델에서 조립) / 13a 배관 누수 차단 · 테이프(신규 — 원본 배관 모델 + 기본 도형 임시 표시). 미니게임을 이식할 때마다 Build… 와 Convert… 를 하나씩 추가한다.
 /// </summary>
 public static class LegacyMissionConverter
 {
@@ -130,6 +130,32 @@ public static class LegacyMissionConverter
     private static readonly Color FireDoorWallColor = new Color(0.3f, 0.32f, 0.35f);
 
     // 조준 감지 레이어 (ProjectSettings 의 Interactable). 원본 모델은 기본 레이어(0)로 들어와 있어 버튼을 이 레이어로 옮겨야 조준된다
+    // 13a: 배관 누수 차단 (TG012) · 테이프 — 명세 PL16 · PL17 · PL19 · PL20
+    public const string PipeLeakStationPath = OutputFolder + "/Pipe_Station.prefab";
+    private const string PipeModelPath = SourceModelFolder + "/Pipe.fbx";
+    public const string TapeItemPath = ItemPrefabFolder + "/Tape_Item.prefab";
+    private const string TapeFirstPersonPath = ItemPrefabFolder + "/Tape_Item_FP.prefab";
+    private const string TapeDataPath = ItemDataFolder + "/TapeData.asset";
+    private const int TapeItemId = 26;                    // 기존 10 ~ 13 · 20 ~ 25 와 겹치지 않게 (PL20)
+    private const float PipeInteractRange = 3f;           // 배관 기준점(바닥 · 관 가운데)에서 — 위 자리(1.97m)도 닿게
+    private const float PipeHoldSeconds = 2f;             // F 를 누르고 있는 시간 (PL13)
+    private const float PipeModelHeight = 2.995f;         // Pipe.fbx 높이 (FBX 분석 −0.008 ~ 2.986m) — 가져온 크기가 다르면 자리를 이 비율로 맞춘다
+    private const float PipeSurfaceRadius = 0.208f;       // 관 반지름 0.205m (FBX 분석 — 명세 1-3) + 3mm
+    // 후보 6자리 (높이 m, 정면 +Z 에서 잰 각도°) — 곧은 구간 아래 0.10 ~ 0.60 · 위 1.55 ~ 2.10, 높이 15cm 씩 · 방향을 엇갈려 테이프가 겹치지 않게 (PL16)
+    private static readonly Vector2[] PipeLeakSpots =
+    {
+        new Vector2(0.20f, -40f), new Vector2(0.35f, 35f), new Vector2(0.50f, -5f),
+        new Vector2(1.63f, 40f), new Vector2(1.80f, -35f), new Vector2(1.97f, 5f),
+    };
+    private const float PipeHoleDiameter = 0.06f;
+    private static readonly Vector2 PipeTapeStripSize = new Vector2(0.12f, 0.03f);   // 띠 한 장 — 관 둘레(반지름 0.21)에 평평하게 대도 끝이 1cm 안쪽으로만 뜨는 길이
+    private const float PipeTapeCrossAngle = 35f;
+    private static readonly Vector3 PipeTargetSize = new Vector3(0.14f, 0.14f, 0.06f);   // 조준 상자 — 구멍(6cm)보다 넉넉하게
+    private const float PipeDoneLabelHeight = 1.2f;       // 「수리 완료」 높이 — 눈높이, 볼록한 곳 앞 (PL19)
+    private static readonly Color PipeDoneColor = new Color(0.49f, 0.99f, 0.49f);    // 미션 목록 완료 색 #7CFC7C 와 같게
+    private const string PipeGasTexturePath = DraftMaterialFolder + "/PipeGasPuff.png";
+    private const string PipeGasMaterialPath = DraftMaterialFolder + "/PipeGas.mat";
+
     private const int InteractableLayer = 6;
 
     private static readonly string[] PressureLetters = { "A", "B", "C" };
@@ -169,6 +195,8 @@ public static class LegacyMissionConverter
         Report("생명 유지 장치", CreateLifeSupportStation());
         Report("장비 조립", CreateAssemblyStation());
         Report("방화문", CreateFireDoorStation());
+        Report("테이프", CreateTapeItem());
+        Report("배관", CreatePipeLeakStation());
         AssetDatabase.SaveAssets();
 
         // 새 NetworkObject 프리팹을 Fusion 네트워크 프리팹 목록에 즉시 반영 (안 하면 Runner.Spawn 이 실패한다)
@@ -338,6 +366,26 @@ public static class LegacyMissionConverter
         return Assemble("방화문 레버", "FireDoorLever_Item", $"{ItemPrefabFolder}/FireDoorLever_Item.prefab", copy => BuildFireDoorLever(copy, data), false);
     }
 
+    /// <summary>테이프 아이템 (13a 명세 PL20): 1인칭 모델 → 아이템 데이터(번호 26) → 월드 아이템 (레버 · 산소통과 같은 순서). 모델이 없어 기본 도형 롤로 조립한다.</summary>
+    public static NetworkObject CreateTapeItem()
+    {
+        GameObject firstPerson = AssemblePrefab("테이프 1인칭", "Tape_Item_FP", TapeFirstPersonPath, BuildTapeFirstPerson, false);
+
+        if (firstPerson == null)
+            return null;
+
+        ItemData data = CreateItemData(TapeDataPath, TapeItemId, "테이프", firstPerson);
+
+        if (data == null)
+            return null;
+
+        return Assemble("테이프", "Tape_Item", TapeItemPath, copy => BuildTapeItem(copy, data), false);
+    }
+
+    /// <summary>배관 (13a 명세 PL4 · PL16 ~ PL21): 원본 배관 모델(Pipe.fbx)을 복사해 새는 곳 6자리 · 「수리 완료」를 덧붙인다. 공통 틀의 저장 · 검증 · 빌보드 · 몸체를 그대로 쓴다.</summary>
+    public static NetworkObject CreatePipeLeakStation() =>
+        Convert("배관", PipeModelPath, "Pipe_Station", PipeLeakStationPath, BuildPipeLeak);
+
     // ═════════════════════════════════════════════════════════════
     //  공통 틀
     // ═════════════════════════════════════════════════════════════
@@ -412,7 +460,8 @@ public static class LegacyMissionConverter
             if (copy.GetComponent<MissionStation>() != null && copy.GetComponent<FireDoorStation>() == null)
             {
                 // 압력 장치는 둥근 콘솔 — 모델 범위 상자 하나면 오목한 가운데(노란 버튼)를 덮고 윗면에 올라선다 → 조각 상자 (11a BC19, 테스트 후 추가)
-                int boxes = copy.GetComponent<PressureStation>() != null
+                // 배관도 조각 상자 — 바짝 다가가 위 · 아래 새는 곳을 조준하게 (13a PL21)
+                int boxes = copy.GetComponent<PressureStation>() != null || copy.GetComponent<PipeLeakStation>() != null
                     ? MissionBodyBuilder.AttachSliced(copy, BodyBoxRules.TightPadding)
                     : MissionBodyBuilder.Attach(copy);
                 Debug.Log($"[LegacyMissionConverter] {what}: 몸체 상자 {boxes}개 — {MissionBodyBuilder.Describe(copy)}");
@@ -1280,7 +1329,24 @@ public static class LegacyMissionConverter
         string longestText, string initialText, string fontPath = null)
     {
         fontPath ??= TmpDefaultFontPath;
-        GameObject textObject = new GameObject("Display (화면 글자)");
+        TextMeshPro text = CreateFittedText(parent, "Display (화면 글자)", localPosition, localRotation, size, longestText, initialText, fontPath, Color.white);
+        GameObject textObject = text.gameObject;
+
+        LcdDisplay display = textObject.AddComponent<LcdDisplay>();
+        SerializedObject displaySO = new SerializedObject(display);
+        displaySO.FindProperty("text").objectReferenceValue = text;
+        displaySO.ApplyModifiedPropertiesWithoutUndo();
+        return display;
+    }
+
+    /// <summary>
+    /// 월드 글자(TextMeshPro)를 만든다 (13a 에서 화면 글자와 배관 문구 · 「수리 완료」가 같이 쓰려고 CreateLcdText 에서 떼어 냄 — 동작은 같다):
+    /// 칸 크기 · 가운데 정렬 · 줄바꿈 없음, 가장 긴 문구로 글자 크기를 한 번 재서 고정한 뒤 처음 문구를 넣는다. 글꼴이 없으면 경고 후 TMP 기본값.
+    /// </summary>
+    private static TextMeshPro CreateFittedText(Transform parent, string name, Vector3 localPosition, Quaternion localRotation, Vector2 size,
+        string longestText, string initialText, string fontPath, Color color)
+    {
+        GameObject textObject = new GameObject(name);
         textObject.transform.SetParent(parent, false);
 
         // TextMeshPro 를 붙이면 RectTransform 도 함께 생긴다
@@ -1299,6 +1365,7 @@ public static class LegacyMissionConverter
 
         text.alignment = TextAlignmentOptions.Center;
         text.enableWordWrapping = false;
+        text.color = color;
 
         // 가장 긴 문구로 크기를 한 번 재고 고정
         text.enableAutoSizing = true;
@@ -1315,12 +1382,7 @@ public static class LegacyMissionConverter
         }
 
         text.text = initialText;
-
-        LcdDisplay display = textObject.AddComponent<LcdDisplay>();
-        SerializedObject displaySO = new SerializedObject(display);
-        displaySO.FindProperty("text").objectReferenceValue = text;
-        displaySO.ApplyModifiedPropertiesWithoutUndo();
-        return display;
+        return text;
     }
 
     /// <summary>
@@ -2345,6 +2407,319 @@ public static class LegacyMissionConverter
         Debug.Log($"[LegacyMissionConverter] 방화문: 문짝 위 · 아래, 패널 2개 (x ±{FireDoorPanelOffsetX}m, 앞면 z {front:0.00}), 기둥 충돌 2 (폭 {postWidth:0.00}m), 레버 프리팹 {leverPrefab.name}, " +
                   $"문짝 · 기둥 충돌 가로 {BodyBoxRules.CameraClearance}m 넓힘 · 패널 몸체 상자 {panelBoxes}개 ({MissionBodyBuilder.Describe(panels[0].gameObject)})");
         return true;
+    }
+
+    // ═════════════════════════════════════════════════════════════
+    //  13a: 배관 누수 차단 · 테이프 (원본 배관 모델 + 기본 도형 임시 표시)
+    // ═════════════════════════════════════════════════════════════
+
+    /// <summary>테이프 롤 모양 (PL20 — 임시): 회색 롤(지름 10 · 높이 5cm) + 갈색 심 + 가운데 구멍. 바닥이 원점, 콜라이더 없음. 바깥 롤을 돌려준다 (외곽선 메시).</summary>
+    private static GameObject BuildTapeRoll(Transform parent)
+    {
+        Material roll = GetOrCreateColorMaterial("TapeRoll", new Color(0.72f, 0.74f, 0.78f));
+        Material core = GetOrCreateColorMaterial("TapeCore", new Color(0.62f, 0.45f, 0.28f));
+        Material hole = GetOrCreateColorMaterial("TapeHole", new Color(0.08f, 0.08f, 0.09f));
+
+        // 기본 원통은 지름 1 · 높이 2 → 크기 y 는 높이의 절반. 심 · 구멍을 조금씩 높게 해 윗면에 갈색 고리 · 검은 구멍이 보이게
+        GameObject outer = CreateShape(PrimitiveType.Cylinder, "Roll (롤)", parent, new Vector3(0f, 0.025f, 0f), new Vector3(0.10f, 0.025f, 0.10f), roll, false);
+        CreateShape(PrimitiveType.Cylinder, "Core (심)", parent, new Vector3(0f, 0.025f, 0f), new Vector3(0.05f, 0.0255f, 0.05f), core, false);
+        CreateShape(PrimitiveType.Cylinder, "Hole (구멍)", parent, new Vector3(0f, 0.025f, 0f), new Vector3(0.038f, 0.026f, 0.038f), hole, false);
+        return outer;
+    }
+
+    /// <summary>테이프 1인칭 모델: 빈 루트 + 롤을 화면 오른쪽 아래에, 구멍이 보이게 앞으로 눕힘. 위치는 에디터 확인 후 조정 (손 설정은 변환 도구가 지킨다 — 11a).</summary>
+    private static bool BuildTapeFirstPerson(GameObject copy)
+    {
+        GameObject view = new GameObject("Model (모델)");
+        view.transform.SetParent(copy.transform, false);
+        view.transform.localPosition = new Vector3(0.22f, -0.28f, 0.45f);
+        view.transform.localRotation = Quaternion.Euler(-60f, 0f, 0f);
+        BuildTapeRoll(view.transform);
+        return true;
+    }
+
+    /// <summary>
+    /// 테이프 아이템 (PL20): 빈 루트(바닥 원점) + 롤 모양. 루트에 NetworkObject · 조준 상자(레이어 6, 12 × 6cm — 작은 물건이라 넉넉히) · ItemWorldView · TapeTool,
+    /// 조준 외곽선 (미션 아이템 공통 — 3c EA16).
+    /// </summary>
+    private static bool BuildTapeItem(GameObject copy, ItemData data)
+    {
+        copy.layer = InteractableLayer;
+        copy.AddComponent<NetworkObject>();
+        GameObject outer = BuildTapeRoll(copy.transform);
+
+        BoxCollider box = copy.AddComponent<BoxCollider>();
+        box.center = new Vector3(0f, 0.03f, 0f);
+        box.size = new Vector3(0.12f, 0.06f, 0.12f);
+
+        ItemWorldView worldView = copy.AddComponent<ItemWorldView>();
+        SerializedObject viewSO = new SerializedObject(worldView);
+        SetObjectArray(viewSO.FindProperty("renderers"), copy.GetComponentsInChildren<Renderer>(true));
+        SetObjectArray(viewSO.FindProperty("colliders"), box);
+        viewSO.ApplyModifiedPropertiesWithoutUndo();
+
+        TapeTool tape = copy.AddComponent<TapeTool>();
+        SerializedObject so = new SerializedObject(tape);
+        so.FindProperty("data").objectReferenceValue = data;
+        so.ApplyModifiedPropertiesWithoutUndo();
+
+        MissionOutlineBuilder.Attach(copy, outer);
+
+        Debug.Log($"[LegacyMissionConverter] 테이프: 아이템 번호 {TapeItemId}, 롤 지름 0.10 · 높이 0.05m (임시 모양)");
+        return true;
+    }
+
+    /// <summary>
+    /// 배관 (13a 명세 PL4 · PL16 ~ PL19): 원본 배관 모델 복사(앞 +Z, 바닥이 원점) + NetworkObject + PipeLeakStation(TG012 · 잠금 · 범위 3 · F 2초).
+    /// 새는 곳 6자리마다 `Leak Spot n` (관 표면, 오브젝트 앞 +Z = 바깥): 조준 상자(조준 레이어) + StationHoldPart(번호) + 외곽선(구멍) + 조준 문구,
+    /// 자식 구멍 원판 · 가스 연기 · X자 테이프. 처음에는 모두 꺼 둔다 — 배정이 끝나야 샌다 (PipeLeakStation). 「수리 완료」 글자는 눈높이.
+    /// 몸체는 공통 뒷부분(FinishPrefab)이 조각 상자로 붙인다 — 꺼 둔 표시 · 연기 · 글자는 몸체에 들어가지 않는다.
+    /// [크기] 가져온 모델 높이를 재서 FBX 높이(2.995m)와 다르면 자리 · 반지름을 그 비율로 맞춘다 (가져오기 단위가 바뀌어도 표면에 붙게).
+    /// </summary>
+    private static bool BuildPipeLeak(GameObject copy)
+    {
+        Renderer[] modelRenderers = copy.GetComponentsInChildren<Renderer>();
+
+        if (modelRenderers.Length == 0)
+        {
+            Debug.LogError("[LegacyMissionConverter] 배관: 모델에 렌더러가 없습니다 (Pipe.fbx 가 바뀌었는지 확인).");
+            return false;
+        }
+
+        // 루트 기준 모델 높이 — 복사본은 원점에 있으므로 월드 범위를 루트 기준으로 옮겨 잰다
+        Bounds world = modelRenderers[0].bounds;
+
+        foreach (Renderer renderer in modelRenderers)
+            world.Encapsulate(renderer.bounds);
+
+        float height = copy.transform.InverseTransformVector(Vector3.up * world.size.y).magnitude;
+        float scale = height > 0.01f ? height / PipeModelHeight : 1f;
+
+        if (Mathf.Abs(scale - 1f) > 0.05f)
+            Debug.LogWarning($"[LegacyMissionConverter] 배관: 가져온 모델 높이 {height:0.00}m 가 FBX 분석값 {PipeModelHeight}m 와 달라 자리를 {scale:0.00}배로 맞춥니다.");
+
+        copy.AddComponent<NetworkObject>();
+        PipeLeakStation station = copy.AddComponent<PipeLeakStation>();
+        SerializedObject so = ConfigureStation(station, MissionEventType.PipeLeakSealed, CompletionPolicy.Lock, PipeInteractRange);
+        so.FindProperty("holdDuration").floatValue = PipeHoldSeconds;
+
+        Material holeMaterial = GetOrCreateColorMaterial("PipeLeakHole", new Color(0.05f, 0.05f, 0.06f));
+        Material tapeMaterial = GetOrCreateColorMaterial("PipeLeakTape", new Color(0.86f, 0.87f, 0.88f));
+        Material gasMaterial = GetOrCreatePipeGasMaterial();
+
+        SerializedProperty spotList = so.FindProperty("spots");
+        spotList.arraySize = PipeLeakSpots.Length;
+
+        for (int i = 0; i < PipeLeakSpots.Length; i++)
+        {
+            float angle = PipeLeakSpots[i].y * Mathf.Deg2Rad;
+            Vector3 outward = new Vector3(Mathf.Sin(angle), 0f, Mathf.Cos(angle));
+
+            GameObject spot = new GameObject($"Leak Spot {i + 1} (새는 곳 {i + 1})");
+            spot.layer = InteractableLayer;
+            spot.transform.SetParent(copy.transform, false);
+            spot.transform.localPosition = (outward * PipeSurfaceRadius + Vector3.up * PipeLeakSpots[i].x) * scale;
+            spot.transform.localRotation = Quaternion.LookRotation(outward, Vector3.up);
+
+            // 조준 상자: 표면에서 바깥쪽으로 4cm · 안쪽으로 2cm. 새는 중 · 내 미션일 때만 켠다 (PipeLeakStation)
+            BoxCollider target = spot.AddComponent<BoxCollider>();
+            target.center = new Vector3(0f, 0f, PipeTargetSize.z * 0.5f - 0.02f);
+            target.size = PipeTargetSize;
+            target.enabled = false;
+
+            StationHoldPart part = spot.AddComponent<StationHoldPart>();
+            SerializedObject partSO = new SerializedObject(part);
+            partSO.FindProperty("station").objectReferenceValue = station;
+            partSO.FindProperty("partIndex").intValue = i;
+            partSO.ApplyModifiedPropertiesWithoutUndo();
+
+            // 구멍: 원통을 눕혀 바깥(+Z)을 보는 얇은 원판 (두께 4mm — 원통 높이 2 × 0.002)
+            GameObject hole = CreateShape(PrimitiveType.Cylinder, "Hole (구멍)", spot.transform, new Vector3(0f, 0f, 0.002f),
+                new Vector3(PipeHoleDiameter, 0.002f, PipeHoleDiameter), holeMaterial, false);
+            hole.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            Renderer holeRenderer = hole.GetComponent<Renderer>();
+
+            ParticleSystem gas = BuildPipeGas(spot.transform, gasMaterial);
+
+            // X자 테이프: 띠 2장 (±35°). 두 장이 같은 면에서 깜빡이지 않게 1mm 어긋냄. 진행만큼 커진다 (PipeLeakStation)
+            Transform tape = new GameObject("Tape (테이프)").transform;
+            tape.SetParent(spot.transform, false);
+            tape.localPosition = new Vector3(0f, 0f, 0.004f);
+
+            for (int s = 0; s < 2; s++)
+            {
+                GameObject strip = CreateShape(PrimitiveType.Cube, $"Strip {s + 1} (띠)", tape, new Vector3(0f, 0f, s * 0.001f),
+                    new Vector3(PipeTapeStripSize.x, PipeTapeStripSize.y, 0.003f), tapeMaterial, false);
+                strip.transform.localRotation = Quaternion.Euler(0f, 0f, s == 0 ? PipeTapeCrossAngle : -PipeTapeCrossAngle);
+            }
+
+            tape.gameObject.SetActive(false);
+
+            // 조준 외곽선(구멍) + 문구 (PromptAndHighlight — 문구는 PipeLeakStation 이 내 손 상태로 바꾼다)
+            MissionOutlineBuilder.Attach(spot, hole);
+            TextMeshPro prompt = CreateFittedText(spot.transform, "Prompt (조준 문구)", new Vector3(0f, 0.11f, 0.08f), Quaternion.identity,
+                new Vector2(0.5f, 0.07f), PipeLeakStation.NeedTapeText, PipeLeakStation.NeedTapeText, KoreanFontPath, Color.white);
+            prompt.gameObject.SetActive(false);
+
+            SerializedObject promptSO = new SerializedObject(spot.GetComponent<MissionPrompt>());
+            promptSO.FindProperty("mode").intValue = (int)MissionPromptMode.PromptAndHighlight;
+            promptSO.FindProperty("promptObject").objectReferenceValue = prompt.gameObject;
+            promptSO.ApplyModifiedPropertiesWithoutUndo();
+
+            holeRenderer.enabled = false;
+
+            SerializedProperty element = spotList.GetArrayElementAtIndex(i);
+            element.FindPropertyRelative("Target").objectReferenceValue = target;
+            element.FindPropertyRelative("Hole").objectReferenceValue = holeRenderer;
+            element.FindPropertyRelative("Gas").objectReferenceValue = gas;
+            element.FindPropertyRelative("Tape").objectReferenceValue = tape;
+            element.FindPropertyRelative("Prompt").objectReferenceValue = prompt;
+        }
+
+        // 「수리 완료」 (PL19): 볼록한 곳 앞(밸브 받침판 z 0.36 보다 앞), 보는 사람 쪽을 향하는 글자
+        TextMeshPro done = CreateFittedText(copy.transform, "Done Label (수리 완료)", new Vector3(0f, PipeDoneLabelHeight * scale, 0.5f * scale), Quaternion.identity,
+            new Vector2(0.6f, 0.16f), PipeLeakStation.DoneText, PipeLeakStation.DoneText, KoreanFontPath, PipeDoneColor);
+        done.gameObject.AddComponent<PromptBillboard>();
+        done.gameObject.SetActive(false);
+        so.FindProperty("doneLabel").objectReferenceValue = done.gameObject;
+        so.ApplyModifiedPropertiesWithoutUndo();
+
+        Debug.Log($"[LegacyMissionConverter] 배관: 모델 높이 {height:0.00}m (비율 {scale:0.00}), 새는 곳 후보 {PipeLeakSpots.Length}자리 (아래 0.20 · 0.35 · 0.50 / 위 1.63 · 1.80 · 1.97m), F {PipeHoldSeconds}초, 범위 {PipeInteractRange}m");
+        return true;
+    }
+
+    /// <summary>가스 연기 (PL17 — 임시): 바깥(+Z)으로 퍼지며 커지고 옅어지는 회색 부드러운 원. 처음에는 멈춰 있다 (PipeLeakStation 이 켠다).</summary>
+    private static ParticleSystem BuildPipeGas(Transform spot, Material material)
+    {
+        GameObject gasObject = new GameObject("Gas (가스 연기)");
+        gasObject.transform.SetParent(spot, false);
+        gasObject.transform.localPosition = new Vector3(0f, 0f, 0.01f);
+
+        ParticleSystem gas = gasObject.AddComponent<ParticleSystem>();
+        gas.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+
+        ParticleSystem.MainModule main = gas.main;
+        main.playOnAwake = false;
+        main.loop = true;
+        main.duration = 1f;
+        main.startLifetime = new ParticleSystem.MinMaxCurve(0.7f, 1.1f);
+        main.startSpeed = new ParticleSystem.MinMaxCurve(0.35f, 0.7f);
+        main.startSize = new ParticleSystem.MinMaxCurve(0.05f, 0.1f);
+        main.startColor = new Color(0.9f, 0.92f, 0.95f, 0.55f);
+        main.gravityModifier = -0.03f;   // 살짝 떠오르게
+        main.simulationSpace = ParticleSystemSimulationSpace.World;
+        main.maxParticles = 60;
+
+        ParticleSystem.EmissionModule emission = gas.emission;
+        emission.rateOverTime = 20f;
+
+        // 원뿔은 오브젝트 앞(+Z)으로 뿜는다 — 자리 오브젝트의 앞 = 관 바깥
+        ParticleSystem.ShapeModule shape = gas.shape;
+        shape.shapeType = ParticleSystemShapeType.Cone;
+        shape.angle = 18f;
+        shape.radius = 0.01f;
+
+        ParticleSystem.SizeOverLifetimeModule size = gas.sizeOverLifetime;
+        size.enabled = true;
+        size.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 1f, 1f, 4f));
+
+        // 나오자마자 진해졌다가 끝으로 갈수록 투명
+        ParticleSystem.ColorOverLifetimeModule color = gas.colorOverLifetime;
+        color.enabled = true;
+        Gradient fade = new Gradient();
+        fade.SetKeys(
+            new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+            new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(1f, 0.15f), new GradientAlphaKey(0f, 1f) });
+        color.color = fade;
+
+        ParticleSystemRenderer renderer = gasObject.GetComponent<ParticleSystemRenderer>();
+        renderer.renderMode = ParticleSystemRenderMode.Billboard;
+        renderer.sharedMaterial = material;
+        return gas;
+    }
+
+    /// <summary>
+    /// 가스 연기 재질 (우리 폴더 MissionRedesign_Draft/Materials): 코드로 만든 부드러운 원 그림 + URP 파티클(Unlit · 반투명).
+    /// 인스펙터의 Surface Type = Transparent · Blending = Alpha 와 같은 값을 넣는다. URP 파티클 셰이더가 없으면 Sprites/Default.
+    /// </summary>
+    private static Material GetOrCreatePipeGasMaterial()
+    {
+        Material material = AssetDatabase.LoadAssetAtPath<Material>(PipeGasMaterialPath);
+
+        if (material != null)
+            return material;
+
+        Texture2D puff = GetOrCreatePuffTexture();
+        Shader shader = Shader.Find("Universal Render Pipeline/Particles/Unlit");
+
+        if (shader == null)
+            shader = Shader.Find("Sprites/Default");
+
+        material = new Material(shader) { name = "PipeGas" };
+        Color tint = new Color(0.92f, 0.93f, 0.95f, 1f);
+        material.mainTexture = puff;
+        material.color = tint;
+
+        if (material.HasProperty("_BaseMap"))
+            material.SetTexture("_BaseMap", puff);
+
+        if (material.HasProperty("_BaseColor"))
+            material.SetColor("_BaseColor", tint);
+
+        if (material.HasProperty("_Surface"))
+        {
+            material.SetFloat("_Surface", 1f);
+            material.SetFloat("_Blend", 0f);
+            material.SetOverrideTag("RenderType", "Transparent");
+            material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            material.SetInt("_ZWrite", 0);
+            material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+        }
+
+        EnsureFolder(DraftMaterialFolder);
+        AssetDatabase.CreateAsset(material, PipeGasMaterialPath);
+        return material;
+    }
+
+    /// <summary>부드러운 원 그림 (64 × 64): 가운데 불투명 → 가장자리 투명 (부드러운 계단 곡선). 이미 있으면 그대로.</summary>
+    private static Texture2D GetOrCreatePuffTexture()
+    {
+        Texture2D existing = AssetDatabase.LoadAssetAtPath<Texture2D>(PipeGasTexturePath);
+
+        if (existing != null)
+            return existing;
+
+        const int size = 64;
+        Texture2D texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
+
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                float dx = (x + 0.5f) / size * 2f - 1f;
+                float dy = (y + 0.5f) / size * 2f - 1f;
+                float a = Mathf.Clamp01(1f - Mathf.Sqrt(dx * dx + dy * dy));
+                texture.SetPixel(x, y, new Color(1f, 1f, 1f, a * a * (3f - 2f * a)));
+            }
+        }
+
+        texture.Apply();
+        EnsureFolder(DraftMaterialFolder);
+        System.IO.File.WriteAllBytes(PipeGasTexturePath, texture.EncodeToPNG());
+        Object.DestroyImmediate(texture);
+        AssetDatabase.ImportAsset(PipeGasTexturePath);
+
+        if (AssetImporter.GetAtPath(PipeGasTexturePath) is TextureImporter importer)
+        {
+            importer.alphaIsTransparency = true;
+            importer.wrapMode = TextureWrapMode.Clamp;
+            importer.mipmapEnabled = false;
+            importer.SaveAndReimport();
+        }
+
+        return AssetDatabase.LoadAssetAtPath<Texture2D>(PipeGasTexturePath);
     }
 
     // ═════════════════════════════════════════════════════════════
