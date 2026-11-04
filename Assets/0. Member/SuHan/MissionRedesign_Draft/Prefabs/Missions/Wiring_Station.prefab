@@ -1518,8 +1518,8 @@ GameObject:
   m_Component:
   - component: {fileID: 3285224868595878283}
   - component: {fileID: 7019319482675610871}
-  - component: {fileID: 4992720559070166629}
   - component: {fileID: 6794401565168966523}
+  - component: {fileID: 1813900145424534140}
   m_Layer: 0
   m_Name: Wiring_Station
   m_TagString: Untagged
@@ -1564,20 +1564,6 @@ MonoBehaviour:
   NetworkedBehaviours:
   - {fileID: 6794401565168966523}
   ForceRemoteRenderTimeframe: 0
---- !u!114 &4992720559070166629
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6395466328955929400}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 1541381998, guid: e725a070cec140c4caffb81624c8c787, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  Guid:
-    RawGuidValue: 5363a37894040764ea67ce75a66ae486
 --- !u!114 &6794401565168966523
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1620,6 +1606,21 @@ MonoBehaviour:
   - {fileID: 8988078928245253510}
   - {fileID: 5460161295797572433}
   endColors: 03000000000000000100000002000000
+--- !u!114 &1813900145424534140
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6395466328955929400}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ef4f3fa26b6a2fe409e34b943eaa7c70, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  kind: 0
+  missionId: TG008
+  label: 
 --- !u!1 &6521263401489848662
 GameObject:
   m_ObjectHideFlags: 0

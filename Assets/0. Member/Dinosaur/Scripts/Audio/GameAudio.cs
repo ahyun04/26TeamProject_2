@@ -10,7 +10,7 @@ public class GameAudio : MonoBehaviour
 
     private static GameAudio instance; //클라이언트 하나의 사운드 진입점
     internal static bool blocksPlayerInput => GameResultFeedbackComponent.blocksPlayerInput ||
-        (instance != null && instance.settingsUI.blocksPlayerInput); //설정창과 종료 화면 입력 차단
+        (instance != null && instance.settingsUI.blocksPlayerInput) || TrustNoOne.Minimap.MinimapController.IsFullMapOpen; //설정창과 종료 화면 입력 차단
     internal static bool isLobbySettingsOpen => instance != null && instance.settingsUI.isLobbyOpen; //통합 방 화면 열림 상태
     internal static bool hasPendingRuleSettings => instance != null && instance.settingsUI.hasPendingRules; //살인마 수 편집 중 시작 버튼 차단
 

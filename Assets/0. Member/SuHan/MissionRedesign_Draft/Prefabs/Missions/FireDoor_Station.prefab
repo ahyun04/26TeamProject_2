@@ -360,6 +360,7 @@ GameObject:
   - component: {fileID: 4765291667437399724}
   - component: {fileID: 75447240162218499}
   - component: {fileID: 3635820685655119370}
+  - component: {fileID: 6022509989632483954}
   m_Layer: 0
   m_Name: FireDoor_Station
   m_TagString: Untagged
@@ -375,7 +376,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1598237410962736422}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: -0, z: -0, w: 1}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: -0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -520,6 +521,21 @@ MonoBehaviour:
   doorColliders:
   - {fileID: 323579220823260362}
   - {fileID: 7109420396868118287}
+--- !u!114 &6022509989632483954
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1598237410962736422}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ef4f3fa26b6a2fe409e34b943eaa7c70, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  kind: 0
+  missionId: TG005
+  label: 
 --- !u!1 &2390495782535369544
 GameObject:
   m_ObjectHideFlags: 0
@@ -631,7 +647,7 @@ Transform:
   m_GameObject: {fileID: 2407493317658865599}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -3.2, y: 0, z: 0.96046025}
+  m_LocalPosition: {x: -3.2, y: 0, z: 0.28}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -1099,7 +1115,7 @@ Transform:
   m_GameObject: {fileID: 2916955062305397082}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 3.2, y: 0, z: 0.96046025}
+  m_LocalPosition: {x: 3.2, y: 0, z: 0.28}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
