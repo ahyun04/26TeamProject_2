@@ -835,6 +835,7 @@ GameObject:
   - component: {fileID: 4214310212306893519}
   - component: {fileID: 8562617024904413909}
   - component: {fileID: 2189335432912964091}
+  - component: {fileID: 1855051653514730137}
   m_Layer: 0
   m_Name: LifeSupport_Station
   m_TagString: Untagged
@@ -850,7 +851,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5568058911218936226}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: -0, z: -0, w: 1}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: -0.07581279, y: 0, z: -0.037927773}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -1022,6 +1023,21 @@ MonoBehaviour:
   mode: 0
   promptObject: {fileID: 0}
   highlightObject: {fileID: 5913014452886592706}
+--- !u!114 &1855051653514730137
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5568058911218936226}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ef4f3fa26b6a2fe409e34b943eaa7c70, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  kind: 0
+  missionId: TG004
+  label: 
 --- !u!1 &5913014452886592706
 GameObject:
   m_ObjectHideFlags: 0

@@ -964,8 +964,8 @@ GameObject:
   m_Component:
   - component: {fileID: 1835480636933639785}
   - component: {fileID: 5123492893114222703}
-  - component: {fileID: 5879011516799014734}
   - component: {fileID: 1467713474189849588}
+  - component: {fileID: 5960735743981636479}
   m_Layer: 0
   m_Name: Breaker_Station
   m_TagString: Untagged
@@ -1009,20 +1009,6 @@ MonoBehaviour:
   NetworkedBehaviours:
   - {fileID: 1467713474189849588}
   ForceRemoteRenderTimeframe: 0
---- !u!114 &5879011516799014734
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3030404490979983400}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 1541381998, guid: e725a070cec140c4caffb81624c8c787, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  Guid:
-    RawGuidValue: 1ab05e81d57bb344e97482c75f547591
 --- !u!114 &1467713474189849588
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1058,6 +1044,21 @@ MonoBehaviour:
   - {fileID: 6511056342079286132}
   - {fileID: 8371954001344537911}
   - {fileID: 6373437027953383605}
+--- !u!114 &5960735743981636479
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3030404490979983400}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ef4f3fa26b6a2fe409e34b943eaa7c70, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  kind: 0
+  missionId: TG007
+  label: 
 --- !u!1 &4111301908376665250
 GameObject:
   m_ObjectHideFlags: 0
