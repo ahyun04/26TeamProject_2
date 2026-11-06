@@ -61,7 +61,7 @@ public class PlayerLookVisualComponent : NetworkBehaviour, IAfterTick
     public void AfterTick() //이동과 시선 입력 처리가 끝난 뒤 호스트만 몸 방향 결정
     {
         if (!spawned || !HasStateAuthority) return;
-        if (!health.CanAct)
+        if (!health.canControlLook)
         {
             bodyTurning = false;
             return;
@@ -142,6 +142,18 @@ public class PlayerLookVisualComponent : NetworkBehaviour, IAfterTick
         setBodyHidden(false);
     }
 
+    internal void beginExternalView() //CCTV 렌더 중에는 본인의 몸과 머리도 다른 참가자처럼 표시
+    {
+        if (bodyHidden && characterRenderer != null) characterRenderer.shadowCastingMode = originalShadows;
+        if (headHidden && headBone != null) headBone.localScale = headAnimationScale;
+    }
+
+    internal void endExternalView() //기본 1인칭 카메라를 그리기 전에 본인 모델 숨김 복구
+    {
+        if (bodyHidden && characterRenderer != null) characterRenderer.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
+        if (headHidden && headBone != null) headBone.localScale = Vector3.zero;
+    }
+
     private void Update() //Animator가 평가되기 전에 이전 프레임의 시선 보정 제거
     {
         restoreHead();
@@ -154,7 +166,7 @@ public class PlayerLookVisualComponent : NetworkBehaviour, IAfterTick
         float yaw = getRenderedBodyYaw(); //이번 화면에 표시할 몸 방향
         Quaternion bodyRotation = Quaternion.Euler(0f, yaw, 0f); //카메라 루트 회전과 분리된 모델의 수평 회전
         bodyPivot.SetPositionAndRotation(transform.position + bodyRotation * Vector3.Scale(bodyLocalPosition, transform.lossyScale), bodyRotation * bodyLocalRotation);
-        if (!health.CanAct) return;
+        if (!health.canControlLook) return;
 
         Vector2 view = kcc.GetLookRotation(); //피격 흔들림을 제외한 기존 네트워크 시선
         float headYaw = Mathf.Clamp(Mathf.DeltaAngle(yaw, view.y), -headYawLimit, headYawLimit); //목의 좌우 제한

@@ -157,7 +157,7 @@ public class GameSettingsUIComponent : MonoBehaviour
             }
             return;
         }
-        if (!Input.GetKeyDown(KeyCode.Escape)) return;
+        if (Cctv.blocksLocalInput || !Input.GetKeyDown(KeyCode.Escape)) return;
         if (TrustNoOne.Minimap.MinimapController.IsFullMapOpen || TrustNoOne.Minimap.MinimapController.EscapeConsumedThisFrame) return; //지도가 ESC 를 먼저 사용
         if (isOpen) close();
         else if (sceneName == "StandBy" && LobbyRoomUI.Instance != null && !LobbyRoomUI.Instance.hasAuxiliaryModal) showLobbySettings();

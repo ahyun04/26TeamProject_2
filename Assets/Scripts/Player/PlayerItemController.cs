@@ -50,6 +50,14 @@ public class PlayerItemController : NetworkBehaviour
         return true;
     }
 
+    internal void playElectricAttack() //승인된 방전 연출을 월드 도구와 본인 전용 도구에 전달
+    {
+        if (CurrentItemObject != null)
+            CurrentItemObject.GetComponentInChildren<ElectricEffectComponent>(true)?.play(0.25f);
+        if (HasInputAuthority)
+            firstPersonItemView?.GetCurrentView<ElectricEffectComponent>()?.play(0.25f);
+    }
+
     internal ItemData getSlotItemData(int index) //인벤토리 UI용: 슬롯에 든 아이템 정보 (없으면 null)
     {
         if (index < 0 || index >= SlotCount || Object == null || !Object.IsValid) return null;

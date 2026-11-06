@@ -95,7 +95,7 @@ public class PlayerAppearanceVisualComponent : MonoBehaviour
             applyBody();
         }
         if (!initialized) return;
-        if (health == null || !health.CanAct || voiceObject == null)
+        if (health == null || !health.canActWithoutCctv || voiceObject == null)
         {
             resetGlow();
             return;

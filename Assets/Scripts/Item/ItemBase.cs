@@ -124,6 +124,7 @@ public abstract class ItemBase : NetworkBehaviour, ITargetable
         Matrix4x4 dropTransform = Matrix4x4.TRS(Vector3.zero, worldRotation, transform.lossyScale); //손 장착 회전을 제외한 바닥 표시 자세
         foreach (Renderer itemRenderer in GetComponentsInChildren<Renderer>())
         {
+            if (itemRenderer is LineRenderer || itemRenderer is ParticleSystemRenderer) continue;
             Bounds bounds = itemRenderer.localBounds; //렌더러가 꺼진 장착 상태에서도 읽을 수 있는 모델 범위
             Matrix4x4 toDropSpace = dropTransform * transform.worldToLocalMatrix * itemRenderer.localToWorldMatrix; //자식 모델의 크기와 피벗 반영
             Vector3 min = bounds.min; //모델 범위의 최소 좌표

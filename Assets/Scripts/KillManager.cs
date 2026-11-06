@@ -102,7 +102,10 @@ namespace LockdownProtocol.Networking
             if (!canRequestAttack() || items == null || !items.tryGetEquippedWeapon(out ItemData weapon)) return;
             if (!beginAttack(weapon.AttackInterval, weapon)) return;
             if (tryGetAttackTarget(weapon.AttackRange, out PlayerHealth target))
+            {
                 target.ApplyDamage(weapon.AttackDamage, Object.InputAuthority);
+                target.applyStun(weapon.StunDuration);
+            }
         }
 
         [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
@@ -132,7 +135,7 @@ namespace LockdownProtocol.Networking
             bool survivesAttack = weapon != null ? stamina.tryConsumeAttackStamina(weapon.AttackStaminaCost) :
                 stamina.tryConsumeAttackStamina(); //맨손 즉사 기술은 기존 공통 소모량 유지
             if (!survivesAttack) return false;
-            attackDuration = duration;
+            attackDuration = weapon != null && weapon.StunDuration > 0f ? Mathf.Min(duration, 0.5f) : duration; //스턴 무기의 재사용 대기와 짧은 방전 모션 분리
             attackTimer = TickTimer.CreateFromSeconds(Runner, duration);
             attackSequence++;
             return true;
@@ -149,7 +152,7 @@ namespace LockdownProtocol.Networking
             if (!tryGetFirstHit(ray, range, out RaycastHit hit) || hit.collider == null) return false;
             target = hit.collider.GetComponentInParent<PlayerHealth>();
             return target != null && target != _health && target.Object != null && target.Object.IsValid &&
-                   target.Runner == Runner && target.CanAct &&
+                   target.Runner == Runner && target.canActWithoutCctv &&
                    Vector3.Distance(transform.position, target.transform.position) <= range;
         }
 
@@ -174,6 +177,8 @@ namespace LockdownProtocol.Networking
         private void playAttack() //호스트 승인 후 각 클라이언트에서 모션 재생
         {
             animationController?.playAttack(attackDuration);
+            if (items != null && items.tryGetEquippedWeapon(out ItemData weapon) && weapon.StunDuration > 0f)
+                items.playElectricAttack();
             if (HasInputAuthority) interaction?.cancelInteraction();
         }
 

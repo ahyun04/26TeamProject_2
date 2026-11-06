@@ -71,7 +71,7 @@ public class PlayerFirstPersonArmsComponent : MonoBehaviour
 
     private void LateUpdate() //Animator 평가 후 같은 Hold와 공격 자세 복사
     {
-        if (health != null && health.Object != null && health.Object.IsValid && !health.CanAct)
+        if (health != null && health.Object != null && health.Object.IsValid && !health.canActWithoutCctv)
         {
             hide();
             return;
