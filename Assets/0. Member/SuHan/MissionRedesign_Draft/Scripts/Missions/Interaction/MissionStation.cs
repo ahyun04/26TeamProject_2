@@ -200,6 +200,9 @@ namespace TrustNoOne.Missions
                 if (button != null && button.PartIndex == partIndex)
                     button.PlayPressAnimation();
             }
+
+            // 14b: 누른 사람 몸의 버튼 동작 (누른 본인은 StationButton.Interact 에서 이미 — IA2 · IA6)
+            MissionPlayerAnimation.PlayPress(presser);
         }
 
         /// <summary>이 장치에 연결된 StationButton (꺼진 것 포함). 부품의 Awake 가 아직 안 돌았으면(장치 칸이 비어 있음) 가장 가까운 부모 장치로 판단한다.</summary>

@@ -126,8 +126,8 @@ GameObject:
   - component: {fileID: 2532775876620147866}
   - component: {fileID: 3656878005221919655}
   - component: {fileID: 3086154655143615234}
+  - component: {fileID: -497804128256617855}
   - component: {fileID: 3621813871705624839}
-  - component: {fileID: 3734988979206276495}
   m_Layer: 6
   m_Name: Valve_Station
   m_TagString: Untagged
@@ -187,6 +187,20 @@ MonoBehaviour:
   NetworkedBehaviours:
   - {fileID: 3621813871705624839}
   ForceRemoteRenderTimeframe: 0
+--- !u!114 &-497804128256617855
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1763157176118212101}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 1541381998, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Guid:
+    RawGuidValue: e2d5789c22d445848a228dcd91477cb0
 --- !u!114 &3621813871705624839
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -218,21 +232,6 @@ MonoBehaviour:
   rotationSpeed: 90
   minTargetAngle: 360
   maxTargetAngle: 720
---- !u!114 &3734988979206276495
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1763157176118212101}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ef4f3fa26b6a2fe409e34b943eaa7c70, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  kind: 0
-  missionId: TG006
-  label: 
 --- !u!1 &3069607285897807140
 GameObject:
   m_ObjectHideFlags: 0

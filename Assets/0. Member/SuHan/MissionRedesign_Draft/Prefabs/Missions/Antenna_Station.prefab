@@ -144,9 +144,9 @@ GameObject:
   m_Component:
   - component: {fileID: 3010146987172554044}
   - component: {fileID: 1101543952768829674}
+  - component: {fileID: -895277023917917220}
   - component: {fileID: 6832660905373219980}
   - component: {fileID: 1900380744343127549}
-  - component: {fileID: 4374505975032386451}
   m_Layer: 0
   m_Name: Antenna_Station
   m_TagString: Untagged
@@ -192,6 +192,20 @@ MonoBehaviour:
   NetworkedBehaviours:
   - {fileID: 6832660905373219980}
   ForceRemoteRenderTimeframe: 0
+--- !u!114 &-895277023917917220
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1824597996241369610}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 1541381998, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Guid:
+    RawGuidValue: bedb5c46142015d4f934d0c72456cfac
 --- !u!114 &6832660905373219980
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -241,21 +255,6 @@ MonoBehaviour:
   mode: 0
   promptObject: {fileID: 0}
   highlightObject: {fileID: 2823239105639013470}
---- !u!114 &4374505975032386451
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1824597996241369610}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ef4f3fa26b6a2fe409e34b943eaa7c70, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  kind: 0
-  missionId: TG009
-  label: 
 --- !u!1 &2730493922973934602
 GameObject:
   m_ObjectHideFlags: 0

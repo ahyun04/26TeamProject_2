@@ -15,6 +15,7 @@ namespace TrustNoOne.Missions
     ///  부품을 스테이션과 같은 오브젝트에 두면 스테이션이 먼저 잡혀 클릭이 부품에 전달되지 않는다.
     /// [재사용] 발전기 버튼(0), 안테나 고정 버튼, 차단기 레버(0~5), 전선 완료 레버(0), 코드 자판(0~9) 이 모두 이 부품 하나로 된다.
     /// [눌림 연출] 위치 이동(pressOffset) + 회전(pressRotation, 2b 명세 2-5 — 전선 레버가 당겨졌다 돌아오는 연출). 둘 다 0 이면 움직이지 않는다.
+    /// [플레이어 동작 — 14b IA2] 누른 사람 몸도 버튼 동작을 한 번 한다 (버튼 · 레버 모두). 누른 PC 는 여기서 바로, 다른 PC 는 RPC_ShowPress 에서.
     /// </summary>
     public class StationButton : MonoBehaviour, ITargetable, IInteractable
     {
@@ -65,6 +66,9 @@ namespace TrustNoOne.Missions
 
             station.PressPart(partIndex);
             PlayPressAnimation();
+
+            // 14b: 누른 사람(나) 몸의 버튼 동작 — 다른 PC 는 스테이션의 눌림 보여 주기(RPC_ShowPress)에서 (IA2 · IA6)
+            MissionPlayerAnimation.PlayPress(station.Runner.LocalPlayer);
         }
 
         /// <summary>

@@ -9,6 +9,8 @@ namespace TrustNoOne.Missions
     ///  - 표시 각도는 동기화된 홀드 진행률에서 계산한다. 각도용 네트워크 변수를 따로 두지 않아 진행률과 어긋날 일이 없다.
     ///  - 손을 떼거나 중단하면 진행률이 0 이 되므로 처음 각도로 바로 돌아간다 (명세 P1, 되감기 연출 없음 P8).
     ///  - 초기화(제한 시간)마다 목표 각도를 다시 뽑는다. 완료되면 잠겨 돌린 각도 그대로 (7a — 밸브 · 안테나가 단체가 됨).
+    ///  - (14b IA2 · IA3) 각 PC: 돌리는 사람(조작자 · 아직 목표에 안 닿음) 몸에서 돌리기 동작을 반복한다. 사람이 바뀌면 전 사람은 끄고 새 사람은 켠다.
+    ///    안테나는 목표에 닿은 뒤에도 고정 버튼을 기다리며 조작자가 남아서, "아직 안 닿음"을 함께 본다.
     ///
     /// [옛 코드] ValveMission / AntennaMission 의 회전 부분이 거의 같아 여기로 합쳤다.
     /// </summary>
@@ -31,6 +33,9 @@ namespace TrustNoOne.Missions
         [Networked] private float TargetAngle { get; set; }
 
         private Quaternion startRotation;
+
+        // 각 PC: 지금 돌리기 동작을 켜 둔 사람 (14b)
+        private PlayerRef shownTurner;
 
         /// <summary>rotationAxis 가 비어 있을 때 쓸 축. 하위 클래스가 바꾼다 (밸브는 정면 축).</summary>
         protected virtual Vector3 FallbackAxis => Vector3.up;
@@ -66,6 +71,37 @@ namespace TrustNoOne.Missions
         {
             base.OnStationRender();
             ApplyRotation();
+            UpdateTurningAnimation();
+        }
+
+        protected override void OnStationDespawned(bool hasState)
+        {
+            base.OnStationDespawned(hasState);
+
+            if (!shownTurner.IsNone)
+                MissionPlayerAnimation.SetTurning(shownTurner, false);
+
+            shownTurner = PlayerRef.None;
+        }
+
+        /// <summary>
+        /// 돌리는 사람 몸의 돌리기 동작 (14b IA3 · IA10): 조작자가 있고 아직 목표에 안 닿았으면 그 사람, 아니면 없음.
+        /// 바뀌면 전 사람은 끄고 새 사람은 켠다. 새 사람을 아직 못 찾았으면(스폰 순서) 기억하지 않아 다음 프레임에 다시 시도한다.
+        /// </summary>
+        private void UpdateTurningAnimation()
+        {
+            PlayerRef turner = Object != null && Object.IsValid && !HoldReached ? Operator : PlayerRef.None;
+
+            if (turner == shownTurner)
+                return;
+
+            if (!shownTurner.IsNone)
+                MissionPlayerAnimation.SetTurning(shownTurner, false);
+
+            shownTurner = PlayerRef.None;
+
+            if (!turner.IsNone && MissionPlayerAnimation.SetTurning(turner, true))
+                shownTurner = turner;
         }
 
         private void RollTargetAngle()
