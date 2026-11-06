@@ -30,8 +30,24 @@ public class PlayerHealth : NetworkBehaviour
 
     public float MaxHealth => maxHealth;
     private GameEndSystem gameEndSystem;
+    private PlayerStunComponent stun; //행동 제한의 세부 처리 담당
 
-    internal bool CanAct
+    internal bool isStunned => stun != null && stun.isStunned; //같은 플레이어의 복제된 스턴 상태
+    internal bool canControlLook => canActWithoutCctv && !Cctv.isPlayerViewing(Runner, Object.InputAuthority); //스턴 중에도 시점 회전은 유지
+    internal bool CanAct => canControlLook && !isStunned; //관제와 스턴 중 일반 행동은 서버에서도 차단
+
+    private void Awake() //플레이어 상태 진입점에서 스턴 구성 요소 연결
+    {
+        stun = GetComponent<PlayerStunComponent>();
+    }
+
+    internal void applyStun(float seconds) //외부 공격이 호스트의 스턴 구성 요소를 통해 상태 변경
+    {
+        if (Object == null || !Object.IsValid || !HasStateAuthority || !canActWithoutCctv) return;
+        stun?.applyStun(seconds);
+    }
+
+    internal bool canActWithoutCctv //관제 자체의 종료 판정에 사용할 생존·게임 상태
     {
         get
         {
@@ -60,7 +76,7 @@ public class PlayerHealth : NetworkBehaviour
     public override void FixedUpdateNetwork() //호스트만 생존 중 체력을 네트워크 틱에 따라 자동 회복
     {
         if (!HasStateAuthority || healthRegenPerSecond <= 0f || CurrentHealth >= maxHealth ||
-            !CanAct || !healthRegenTimer.ExpiredOrNotRunning(Runner)) return;
+            !canActWithoutCctv || !healthRegenTimer.ExpiredOrNotRunning(Runner)) return;
         Heal(healthRegenPerSecond * Runner.DeltaTime);
     }
 

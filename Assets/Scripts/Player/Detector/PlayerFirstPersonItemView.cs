@@ -13,6 +13,8 @@ public class PlayerFirstPersonItemView : MonoBehaviour
     [SerializeField] private Vector3 twoHandedArmsRotation = new Vector3(-65f, 0f, 0f); //어깨 절단면을 카메라 뒤로 향하게 할 양손 팔 각도
     [SerializeField] private ItemData knifeData; //칼만 적용할 화면 위치 설정
     [SerializeField] private Vector3 knifeArmsPosition = new Vector3(0.12f, -1.1f, 0.25f); //칼과 팔을 함께 오른쪽 아래로 이동
+    [SerializeField] private ItemData electricShockBatonData; //긴 전기충격기의 전용 표시 설정
+    [SerializeField] private Vector3 electricShockBatonArmsPosition = new Vector3(-0.08f, -1.3f, 0.65f); //전극이 화면 안에 보이도록 팔과 도구를 함께 배치
     [SerializeField] private Vector3 gestureArmsPosition = new Vector3(0.02f, -0.68f, 1.2f); //엄지척을 보여줄 팔 위치
     [SerializeField] private Vector3 gestureArmsRotation = new Vector3(-60f, 0f, 0f); //팔이 엄지를 가리지 않도록 본인 표시만 기울이는 각도
     [SerializeField] private Vector3 missionBaseArmsPosition = new Vector3(-0.08f, -1.05f, 0.25f); //미션 버튼·밸브 동작을 보여줄 팔 위치 (14b — 도구 들기와 같은 오른쪽 아래)
@@ -113,7 +115,8 @@ public class PlayerFirstPersonItemView : MonoBehaviour
         if (health != null && health.Object != null && health.Object.IsValid && !health.CanAct)
         {
             showingGesture = false;
-            if (arms != null) arms.hide();
+            refreshPresentation();
+            if (!health.canActWithoutCctv && arms != null) arms.hide();
             return;
         }
         bool playing = playerAnimator != null &&
@@ -174,6 +177,7 @@ public class PlayerFirstPersonItemView : MonoBehaviour
         arms.transform.localPosition = showingGesture ? gestureArmsPosition :
             missionPose ? missionBaseArmsPosition :
             displayedData != null && displayedData == knifeData ? knifeArmsPosition :
+            displayedData != null && displayedData == electricShockBatonData ? electricShockBatonArmsPosition :
             twoHanded ? twoHandedArmsPosition : armsPosition;
         arms.transform.localRotation = showingGesture ? Quaternion.Euler(gestureArmsRotation) :
             missionPose ? Quaternion.Euler(missionBaseArmsRotation) :

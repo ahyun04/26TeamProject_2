@@ -74,6 +74,8 @@ public class PlayerMovement : NetworkBehaviour
             stamina?.updateStamina(default, false);
             if (HasStateAuthority || HasInputAuthority)
             {
+                if (health != null && health.isStunned && health.canControlLook && GetInput(out NetworkInputData lookInput))
+                    UpdateLookRotation(lookInput);
                 walking = false;
                 simpleKCC.Move();
             }
