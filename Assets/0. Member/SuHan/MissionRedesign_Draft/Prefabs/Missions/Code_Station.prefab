@@ -2729,6 +2729,7 @@ GameObject:
   - component: {fileID: 9016953085328967898}
   - component: {fileID: 6498531773429519279}
   - component: {fileID: 8370447804422125610}
+  - component: {fileID: 3914094432088087677}
   m_Layer: 0
   m_Name: Code_Station
   m_TagString: Untagged
@@ -2744,7 +2745,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 9197976310958852631}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: -0, z: -0, w: 1}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: -0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -2897,3 +2898,18 @@ MonoBehaviour:
   litMaterial: {fileID: 2100000, guid: c4acda1903c4b4f4fade74ec387d81c0, type: 2}
   failMaterial: {fileID: 2100000, guid: db23201ef96ba4946a507bf4993ea5d5, type: 2}
   doneMaterial: {fileID: 2100000, guid: 17ab5d094d672224c8c1100cf92677b5, type: 2}
+--- !u!114 &3914094432088087677
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9197976310958852631}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ef4f3fa26b6a2fe409e34b943eaa7c70, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  kind: 0
+  missionId: TG002
+  label: 

@@ -1920,6 +1920,7 @@ GameObject:
   - component: {fileID: 4850846718391432440}
   - component: {fileID: 1183358678275235453}
   - component: {fileID: 8267535940654791289}
+  - component: {fileID: 7881709931778428676}
   m_Layer: 0
   m_Name: Coordinate_Station
   m_TagString: Untagged
@@ -2004,6 +2005,21 @@ MonoBehaviour:
   greenPrompt: {fileID: 3944538006895079864}
   yellowPrompt: {fileID: 6699577485268208482}
   allowSoloOperation: 0
+--- !u!114 &7881709931778428676
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5633280097261200900}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ef4f3fa26b6a2fe409e34b943eaa7c70, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  kind: 0
+  missionId: TG013
+  label: 
 --- !u!1 &5683513595166900224
 GameObject:
   m_ObjectHideFlags: 0

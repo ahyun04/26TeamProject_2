@@ -52,6 +52,12 @@ namespace TrustNoOne.Minimap
         [SerializeField] private Color exitLockedColor = new Color32(0x99, 0x99, 0x99, 0xFF);
         [SerializeField] private Color exitOpenColor = new Color32(0x4A, 0xFF, 0x7A, 0xFF);
         [SerializeField] private float hoverScale = 1.6f;
+        [Tooltip("목록에서 마우스가 올라간 줄의 글자 확대 배율")]
+        [SerializeField] private float listHoverTextScale = 1.3f;
+        [Tooltip("켜면 미션 점을 항상 표시, 끄면(기획서) 전체 지도에서 목록에 마우스를 올린 미션만 표시")]
+        [SerializeField] private bool alwaysShowMissionMarkers = false;
+        [Tooltip("켜면 M 을 누를 때 콘솔에 지도 상태 진단 로그를 출력")]
+        [SerializeField] private bool debugLogs = false;
         [SerializeField] private float miniMarkerSize = 10f;
         [SerializeField] private float fullMarkerSize = 14f;
 
@@ -206,7 +212,16 @@ namespace TrustNoOne.Minimap
         private void updatePosition()
         {
             lastKnownPos = localPlayer.transform.position;
-            lastKnownYaw = localPlayer.transform.eulerAngles.y;
+            // 화살표는 "보는 방향" 이어야 하므로 카메라(리스너)가 있으면 카메라의 수평 방향을 쓴다
+            Transform look = PlayerCameraController.LocalListenerTransform;
+            if (look != null)
+            {
+                Vector3 f = look.forward;
+                f.y = 0f;
+                lastKnownYaw = f.sqrMagnitude > 0.0001f ? Mathf.Atan2(f.x, f.z) * Mathf.Rad2Deg : lastKnownYaw;
+            }
+            else
+                lastKnownYaw = localPlayer.transform.eulerAngles.y;
             lastKnownPosValid = true;
         }
 
@@ -246,10 +261,37 @@ namespace TrustNoOne.Minimap
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
 
+            if (debugLogs) logDiagnosis();
             IsFullMapOpen = true;
             fullRoot.SetActive(true);
             listDirty = true;
             hoveredMissionId = null;
+        }
+
+        // M 을 눌러 지도를 열 때마다 콘솔에 현재 상태를 한 번 출력 (마커가 안 뜰 때 원인 확인용)
+        private void logDiagnosis()
+        {
+            int markers = 0, missionMarkers = 0, matched = 0;
+            var unmatched = new System.Text.StringBuilder();
+            foreach (MinimapMarker m in MinimapMarker.All)
+            {
+                markers++;
+                if (m.Kind != MinimapMarkerKind.Mission) continue;
+                missionMarkers++;
+                if (tryFindView(m.MissionId, out _)) matched++;
+            }
+            int team = client != null ? client.Team.Count : -1;
+            int mine = client != null ? client.Mine.Count : -1;
+            var ids = new System.Text.StringBuilder();
+            if (client != null)
+            {
+                foreach (ObjectiveView v in client.Team) if (v.Definition != null) ids.Append(v.Definition.Id).Append(' ');
+                foreach (ObjectiveView v in client.Mine) if (v.Definition != null) ids.Append(v.Definition.Id).Append(' ');
+            }
+            Debug.Log($"[Minimap] 진단: 씬 '{loadedScene}', 맵 데이터 {(map != null && map.IsValid ? "정상" : "없음/이미지 없음")}, " +
+                      $"MissionManager {(missions != null ? "있음" : "없음")}, Client {(client != null ? "있음" : "없음")}, " +
+                      $"공개 미션 단체 {team} / 개인 {mine}, 씬 마커 {markers}개(미션 {missionMarkers}개 중 일치 {matched}개)\n" +
+                      $"공개된 미션 Id: {ids}");
         }
 
         private void closeFull()
@@ -275,13 +317,19 @@ namespace TrustNoOne.Minimap
             }
 
             if (listDirty) rebuildList();
+            pollHover();
             syncMarkers(fullMarkers, fullMapRect, true);
         }
 
         private void rebuildList()
         {
             listDirty = false;
-            if (missionListRoot == null || listItemPrefab == null) return;
+            if (missionListRoot == null || listItemPrefab == null)
+            {
+                Debug.LogError("[Minimap] Mission List Root 또는 List Item Prefab 이 연결되지 않아 목록을 만들 수 없습니다.");
+                return;
+            }
+            missionListRoot.SetAsLastSibling(); // 지도 이미지 뒤에 가려지지 않게
 
             for (int i = missionListRoot.childCount - 1; i >= 0; i--)
                 Destroy(missionListRoot.GetChild(i).gameObject);
@@ -303,6 +351,39 @@ namespace TrustNoOne.Minimap
                 bool done = v.Status == ObjectiveStatus.Completed;
                 MinimapListItem item = Instantiate(listItemPrefab, missionListRoot);
                 item.Setup(name, done ? missionDoneColor : Color.white, id, onHover);
+            }
+        }
+
+        // EventSystem/Raycaster 에 의존하지 않고 마우스 위치가 어느 목록 줄 안에 있는지 직접 검사한다
+        private void pollHover()
+        {
+            if (missionListRoot == null) return;
+
+            Canvas canvas = missionListRoot.GetComponentInParent<Canvas>();
+            Canvas root = canvas != null ? canvas.rootCanvas : null;
+            Camera cam = root != null && root.renderMode != RenderMode.ScreenSpaceOverlay ? root.worldCamera : null;
+
+            string found = null;
+            Vector2 mouse = Input.mousePosition;
+            for (int i = 0; i < missionListRoot.childCount; i++)
+            {
+                RectTransform row = missionListRoot.GetChild(i) as RectTransform;
+                if (row == null || !row.gameObject.activeInHierarchy) continue;
+                if (!RectTransformUtility.RectangleContainsScreenPoint(row, mouse, cam)) continue;
+
+                MinimapListItem item = row.GetComponent<MinimapListItem>();
+                if (item != null) found = item.MissionId;
+                break;
+            }
+
+            if (found != hoveredMissionId) onHover(found);
+
+            // 호버 효과: 마우스가 올라간 줄은 커지고 굵어지고 색이 바뀐다
+            for (int i = 0; i < missionListRoot.childCount; i++)
+            {
+                MinimapListItem item = missionListRoot.GetChild(i).GetComponent<MinimapListItem>();
+                if (item == null) continue;
+                item.SetHighlighted(found != null && item.MissionId == found, missionHoverColor, listHoverTextScale);
             }
         }
 
@@ -343,6 +424,7 @@ namespace TrustNoOne.Minimap
                     if (!tryFindView(m.MissionId, out ObjectiveView v)) continue; // 이 PC 에 공개되지 않은 미션은 표시하지 않는다
                     bool done = v.Status == ObjectiveStatus.Completed;
                     hovered = isFull && hoveredMissionId == m.MissionId;
+                    if (!hovered && !alwaysShowMissionMarkers) continue; // 평소엔 숨기고 호버한 미션만 표시
                     color = hovered ? missionHoverColor : done ? missionDoneColor : missionColor;
                 }
                 else if (m.Kind == MinimapMarkerKind.Exit)

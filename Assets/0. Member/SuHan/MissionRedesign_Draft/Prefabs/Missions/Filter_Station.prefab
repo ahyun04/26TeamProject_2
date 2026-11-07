@@ -543,8 +543,8 @@ GameObject:
   m_Component:
   - component: {fileID: 7085764855284413985}
   - component: {fileID: 2164407556997744597}
-  - component: {fileID: -8914944477139674393}
   - component: {fileID: 5841186499435372276}
+  - component: {fileID: 989531556613644885}
   m_Layer: 0
   m_Name: Filter_Station
   m_TagString: Untagged
@@ -598,20 +598,6 @@ MonoBehaviour:
   NetworkedBehaviours:
   - {fileID: 5841186499435372276}
   ForceRemoteRenderTimeframe: 0
---- !u!114 &-8914944477139674393
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3438217598312528643}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 1541381998, guid: e725a070cec140c4caffb81624c8c787, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  Guid:
-    RawGuidValue: 3e3f1e7b0ae1de34783b5543b5b9b108
 --- !u!114 &5841186499435372276
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -640,6 +626,21 @@ MonoBehaviour:
   - {fileID: 7691552385069915291}
   - {fileID: 4409792851973461157}
   - {fileID: 6024320562786051340}
+--- !u!114 &989531556613644885
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3438217598312528643}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ef4f3fa26b6a2fe409e34b943eaa7c70, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  kind: 0
+  missionId: TG011
+  label: 
 --- !u!1 &3933414645882878128
 GameObject:
   m_ObjectHideFlags: 0
