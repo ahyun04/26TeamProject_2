@@ -8,7 +8,7 @@ namespace TrustNoOne.Missions
     /// <summary>
     /// [역할] 생명 유지 장치 본체 한 대 (단체 미션 TG004 "생명 유지 장치 복구" · LifeSupportRestored). 3b 명세 3-3 → 7d 명세.
     ///  본체 3대가 각각 이 장치 하나다 (발전기처럼 — 7d L3B1). 산소통을 우클릭으로 받아 5초 뒤 판정한다.
-    ///  정상 → 이 본체 성공 · 잠김(진행 +1, 3대면 미션 완료), 위험 → 이 본체만 폭발(반경 피해) 후 바로 다시 넣을 수 있다 — 다른 본체 · 진행은 그대로 (L3B4).
+    ///  정상 → 이 본체 성공 · 잠김(진행 +1, 3대면 미션 완료), 위험 → 이 본체만 폭발(반경 안 즉사 — LS18) 후 바로 다시 넣을 수 있다 — 다른 본체 · 진행은 그대로 (L3B4).
     ///
     /// [기획서 (3)] "본체에 하나씩 넣고 넣은후 5초후에 터져 실패이거나 성공여부가 결정 / 본체는 총 3개이고 본체 하나씩 성공 /
     ///  본체 하나 성공 후 그 다음 본체가 실패한다해도 성공한 본체는 그대로 유지 / 실패하면 다른 산소통으로 교체후 재시도".
@@ -22,7 +22,10 @@ namespace TrustNoOne.Missions
     ///  7b-2 부터 살인마도 넣는다. 넣은 뒤 떠나도(위험하면 피해도) 판정은 진행된다.
     /// [동기화 — LS14] 시각 공식. 넣은 시각 · 넣은 통의 위험 여부 · 폭발 시각만 동기화하고, 카운트다운 · 섬광은
     ///  각 PC 가 Object.RenderTime 으로 계산한다. 산소통 목록 · 넣은 사람은 호스트만 안다 (만들고 지우는 것도 호스트뿐).
-    /// [팀원 코드 — LS5 · LS13] PlayerItemController.DropCurrentItem(손에서 내려놓기 — 공용 도우미 MissionItems) · PlayerHealth.ApplyDamage 를 부르기만 한다.
+    /// [팀원 코드 — LS5 · LS13 · LS18] PlayerItemController.DropCurrentItem(손에서 내려놓기 — 공용 도우미 MissionItems) · PlayerHealth.Kill(즉사 전용 — 사망 원인이 일반 피해와 구분) ·
+    ///  PlayerHealth.ApplyDamage(즉사 칸을 끈 경우) 를 부르기만 한다.
+    /// [폭발 즉사 — LS18, 기획 수정 2026-11-09] 반경 안 살아 있는 모두(살인마 포함 — 사용자 결정 A). 3b 의 "즉사는 살인 조건 우회라 제외"(LS5)를 기획이 뒤집음 —
+    ///  시민 폭사가 살인마 승리 조건에 들어가는 점 · 살인마가 폭사해도 판이 계속되는 점은 기획자 확인 목록에 (7a 5-2).
     /// [IItemUseTarget] 아이템 우클릭 대상이라는 표시 — 변환기의 조준 검증이 이 장치를 "입력을 받는 대상"으로 본다 (2c F10).
     /// [근거] 3b 명세 LS5 · LS12 · LS14, 7d 명세 L3B1 ~ L3B11, 7e (7d 명세 7장) RT1 ~ RT4
     /// </summary>
@@ -57,7 +60,10 @@ namespace TrustNoOne.Missions
         [Min(0f)]
         [SerializeField] private float blastRadius = 3f;
 
-        [Tooltip("폭발 피해 = 최대 체력 × 이 비율 (LS5 — 일단 30%, 플레이 후 조정)")]
+        [Tooltip("켬 = 폭발 반경 안 살아 있는 모두 즉사 (LS18 — 기획 수정 2026-11-09). 끔 = 아래 비율만큼 피해 (3b LS5 의 옛 방식)")]
+        [SerializeField] private bool instantKill = true;
+
+        [Tooltip("즉사를 끈 경우의 폭발 피해 = 최대 체력 × 이 비율 (LS5 — 30%)")]
         [Range(0f, 1f)]
         [SerializeField] private float blastDamageRatio = 0.3f;
 
@@ -184,7 +190,7 @@ namespace TrustNoOne.Missions
 
             if (dangerous)
             {
-                Explode();
+                Explode(actor);
                 return;
             }
 
@@ -241,25 +247,32 @@ namespace TrustNoOne.Missions
             ShowOnScreen(screen, screen == LifeSupportScreen.Check ? LifeSupportRules.CountdownSeconds(t, InsertStart, countdown) : 0);
         }
 
-        /// <summary>호스트: 위험한 통 폭발 — 반경 안 피해. 이 본체만 처리하고 미션 실패는 요청하지 않는다 → 다른 본체 · 진행 수 유지, 바로 다시 넣을 수 있다 (7d L3B4 · LS5).</summary>
-        private void Explode()
+        /// <summary>호스트: 위험한 통 폭발 — 반경 안 즉사(LS18) 또는 피해. 이 본체만 처리하고 미션 실패는 요청하지 않는다 → 다른 본체 · 진행 수 유지, 바로 다시 넣을 수 있다 (7d L3B4).</summary>
+        private void Explode(PlayerRef insertedByPlayer)
         {
             ExplodeStart = Runner.SimulationTime;
-            int hit = DamagePlayersInBlast();
-            Debug.Log($"[LifeSupportStation] {name}: 위험한 산소통 폭발 — 반경 {blastRadius:0.#}m 안 {hit}명 피해. 이 본체만 — 다른 본체 · 진행 수는 그대로");
+            int hit = DamagePlayersInBlast(insertedByPlayer);
+            Debug.Log($"[LifeSupportStation] {name}: 위험한 산소통 폭발 — 반경 {blastRadius:0.#}m 안 {hit}명 {(instantKill ? "즉사" : "피해")}. 이 본체만 — 다른 본체 · 진행 수는 그대로");
         }
 
-        private int DamagePlayersInBlast()
+        /// <param name="insertedByPlayer">위험한 통을 넣은 사람 — 즉사의 원인으로 넘긴다 (팀원 Kill 의 source)</param>
+        private int DamagePlayersInBlast(PlayerRef insertedByPlayer)
         {
             int hit = 0;
             Vector3 center = transform.position;
 
             foreach (PlayerHealth health in FindObjectsByType<PlayerHealth>(FindObjectsSortMode.None))
             {
-                if (health == null || !LifeSupportRules.InBlast(Vector3.Distance(health.transform.position, center), blastRadius))
+                // 이미 죽었거나 탈출한 사람은 세지 않는다 (팀원 Kill · ApplyDamage 도 그냥 넘어간다)
+                if (health == null || health.IsDead || health.IsEscaped
+                    || !LifeSupportRules.InBlast(Vector3.Distance(health.transform.position, center), blastRadius))
                     continue;
 
-                health.ApplyDamage(LifeSupportRules.BlastDamage(health.MaxHealth, blastDamageRatio));
+                if (instantKill)
+                    health.Kill(insertedByPlayer);
+                else
+                    health.ApplyDamage(LifeSupportRules.BlastDamage(health.MaxHealth, blastDamageRatio));
+
                 hit++;
             }
 
