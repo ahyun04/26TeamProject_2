@@ -627,6 +627,10 @@ MonoBehaviour:
   damageFeedback: {fileID: 2208862952755636346}
   rolePanel: {fileID: 1514553232808253010}
   roleText: {fileID: 680272035895453504}
+  roleIcon: {fileID: 0}
+  killerIcon: {fileID: 0}
+  citizenIcon: {fileID: 0}
+  roleFadeOutSeconds: 0.5
   roleHoldSeconds: 1.6
   roleFadeSeconds: 1.2
 --- !u!114 &2208862952755636346
@@ -1117,6 +1121,9 @@ MonoBehaviour:
     icon: {fileID: 7452086446608734603}
   selectedColor: {r: 1, g: 0.8352941, b: 0.30980393, a: 1}
   normalColor: {r: 1, g: 1, b: 1, a: 0.4392157}
+  iconScale: 2.5
+  flipIconHorizontal: 0
+  iconRotationZ: -45
   findInterval: 0.5
 --- !u!1 &4350504072523197495
 GameObject:

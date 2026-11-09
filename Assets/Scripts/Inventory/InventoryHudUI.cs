@@ -20,6 +20,9 @@ public class InventoryHudUI : MonoBehaviour
     [SerializeField] private SlotView[] slots = new SlotView[2];
     [SerializeField] private Color selectedColor = new Color32(0xFF, 0xD5, 0x4F, 0xFF); //선택 슬롯 테두리
     [SerializeField] private Color normalColor = new Color32(0xFF, 0xFF, 0xFF, 0x70);   //선택 안 된 슬롯 테두리
+    [SerializeField, Min(0.1f)] private float iconScale = 2f;                            //슬롯 크기는 그대로, 아이템 아이콘만 확대하는 배율
+    [SerializeField] private bool flipIconHorizontal;                                   //켜면 아이콘을 좌우로 뒤집는다 (/ → \)
+    [SerializeField] private float iconRotationZ = -135f;                                     //아이콘 회전 각도 (도). 양수=반시계, 음수=시계 방향. 기본 -135 = 원래 '손잡이 오른쪽 위'를 '손잡이 아래, 입구 위'로
     [SerializeField, Min(0.1f)] private float findInterval = 0.5f;                       //내 캐릭터 탐색 간격
 
     private PlayerItemController controller;
@@ -79,6 +82,8 @@ public class InventoryHudUI : MonoBehaviour
             {
                 view.icon.sprite = sprite;
                 view.icon.enabled = sprite != null;
+                view.icon.rectTransform.localScale = new Vector3(flipIconHorizontal ? -iconScale : iconScale, iconScale, 1f);
+                view.icon.rectTransform.localRotation = Quaternion.Euler(0f, 0f, iconRotationZ);
             }
 
             if (view.frame != null)
