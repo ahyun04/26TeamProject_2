@@ -18,7 +18,7 @@ using UnityEngine;
 ///  공통 후처리: 조준 문구(MissionPrompt.promptObject)가 있으면 PromptBillboard 를 붙여 항상 보는 사람 쪽을 향하게 한다
 ///  (옛 밸브 문구가 방향 고정이라 배치에 따라 뒤집혀 보였음 — 2b 테스트에서 발견).
 /// [조준 외곽선] MissionOutlineBuilder 로 붙인다 (1단계 사용자 요청). 부품마다 MissionPrompt 를 두면 조준한 부품만 켜진다 (2a 명세 P7).
-/// [변환 목록] 1단계 발전기 / 2a 밸브 · 안테나 · 차단기 / 2b 전선 / 2c 필터 · 청소기(아이템) / 2d 압력(신규 — 옛 프리팹이 없어 원본 패널 · 피스톤 모델에서 조립) / 3a 코드 자판(신규 — 원본 자판 모델에서 조립) / 3b 생명 유지 장치 · 산소통(신규 — 모델이 없어 기본 도형으로 조립) / 3c 장비 조립(신규 — 원본 본체 · 부품 모델에서 조립) / 3d 대형 방화문(신규 — 원본 문 · 패널 · 레버 모델에서 조립) / 13a 배관 누수 차단 · 테이프(신규 — 원본 배관 모델 + 기본 도형 임시 표시) / 13b 좌표 설정(신규 — 모델이 없어 기본 도형으로 조립). 미니게임을 이식할 때마다 Build… 와 Convert… 를 하나씩 추가한다.
+/// [변환 목록] 1단계 발전기 / 2a 밸브 · 안테나 · 차단기 / 2b 전선 / 2c 필터 · 청소기(아이템) / 2d 압력(신규 — 옛 프리팹이 없어 원본 패널 · 피스톤 모델에서 조립) / 3a 코드 자판(신규 — 원본 자판 모델에서 조립) / 3b 생명 유지 장치 · 산소통(신규 — 모델이 없어 기본 도형으로 조립) / 3c 장비 조립(신규 — 원본 본체 · 부품 모델에서 조립) / 3d 대형 방화문(신규 — 원본 문 · 패널 · 레버 모델에서 조립) / 13a 배관 누수 차단 · 테이프(신규 — 15 에서 받은 배관 모델 4종 · 테이프 조각 5종 · 롤 모델로) / 13b 좌표 설정(신규 — 15 에서 받은 패널 모델로). 미니게임을 이식할 때마다 Build… 와 Convert… 를 하나씩 추가한다.
 /// </summary>
 public static class LegacyMissionConverter
 {
@@ -73,6 +73,7 @@ public static class LegacyMissionConverter
     // 본체 모델 안의 빈 노드 = 앞면 세로 홈의 바닥 = 산소통이 서는 자리 (보강 명세 1장 · LM3)
     private const string LifeSupportTankSeatNode = "Life_support_oxygen_tank_axes";
     private const string DraftMaterialFolder = "Assets/0. Member/SuHan/MissionRedesign_Draft/Materials";
+    private const string DraftMeshFolder = "Assets/0. Member/SuHan/MissionRedesign_Draft/Meshes";
     private const float LifeSupportInteractRange = 3f;
 
     // 산소통 아이템 번호: 기존 아이템 데이터(10 청소기 · 11 · 12 · 13)와 겹치지 않게
@@ -130,44 +131,71 @@ public static class LegacyMissionConverter
     private static readonly Color FireDoorWallColor = new Color(0.3f, 0.32f, 0.35f);
 
     // 조준 감지 레이어 (ProjectSettings 의 Interactable). 원본 모델은 기본 레이어(0)로 들어와 있어 버튼을 이 레이어로 옮겨야 조준된다
-    // 13a: 배관 누수 차단 (TG012) · 테이프 — 명세 PL16 · PL17 · PL19 · PL20
+    // 13a: 배관 누수 차단 (TG012) · 테이프 — 명세 PL13 · PL20, 15 명세 NM2 · NM3 · NM12 ~ NM15 · NM18 · NM19 (받은 모델 — 모델 담당 커밋 8d073f8)
     public const string PipeLeakStationPath = OutputFolder + "/Pipe_Station.prefab";
-    private const string PipeModelPath = SourceModelFolder + "/Pipe.fbx";
+    // 배관 모델 4종: 0번 구멍 없음 · 1 · 2 · 3번 = 구멍 1 · 2 · 3개 — 모양은 넷이 같다 (15 명세 1-2)
+    private static readonly string[] PipeModelPaths =
+    {
+        SourceModelFolder + "/Pipe_leak_Hole_0.fbx", SourceModelFolder + "/Pipe_leak_Hole_1.fbx",
+        SourceModelFolder + "/Pipe_leak_Hole_2.fbx", SourceModelFolder + "/Pipe_leak_Hole_3.fbx",
+    };
+    // 테이프 조각 5종 V1 ~ V5: 기준점 = 관 축, 관 둘레(반지름 0.204 ~ 0.266m)에 휘어 있다 (15 명세 1-3)
+    private static readonly string[] PipeTapePaths =
+    {
+        SourceModelFolder + "/Pipe_leak_Tape_V1.fbx", SourceModelFolder + "/Pipe_leak_Tape_V2.fbx", SourceModelFolder + "/Pipe_leak_Tape_V3.fbx",
+        SourceModelFolder + "/Pipe_leak_Tape_V4.fbx", SourceModelFolder + "/Pipe_leak_Tape_V5.fbx",
+    };
     public const string TapeItemPath = ItemPrefabFolder + "/Tape_Item.prefab";
     private const string TapeFirstPersonPath = ItemPrefabFolder + "/Tape_Item_FP.prefab";
     private const string TapeDataPath = ItemDataFolder + "/TapeData.asset";
+    private const string TapeModelPath = SourceModelFolder + "/Tape.fbx";
     private const int TapeItemId = 26;                    // 기존 10 ~ 13 · 20 ~ 25 와 겹치지 않게 (PL20)
-    private const float PipeInteractRange = 3f;           // 배관 기준점(바닥 · 관 가운데)에서 — 위 자리(1.97m)도 닿게
+    private const float TapeFirstPersonScale = 0.5f;      // 1인칭 롤 = 받은 모델 0.5배 (지름 12cm) — 1배(24cm)는 손 옆에서 화면을 많이 가린다 (NM19)
+    private const float TapeColliderPadding = 0.01f;      // 테이프 조준 상자 = 모델 범위 + 1cm (NM18)
+    private const float PipeInteractRange = 3f;           // 배관 기준점(바닥 · 관 가운데)에서 — 가장 높은 구멍(1.58m)도 닿게
     private const float PipeHoldSeconds = 2f;             // F 를 누르고 있는 시간 (PL13)
-    private const float PipeModelHeight = 2.995f;         // Pipe.fbx 높이 (FBX 분석 −0.008 ~ 2.986m) — 가져온 크기가 다르면 자리를 이 비율로 맞춘다
-    private const float PipeSurfaceRadius = 0.208f;       // 관 반지름 0.205m (FBX 분석 — 명세 1-3) + 3mm
-    // 후보 6자리 (높이 m, 정면 +Z 에서 잰 각도°) — 곧은 구간 아래 0.10 ~ 0.60 · 위 1.55 ~ 2.10, 높이 15cm 씩 · 방향을 엇갈려 테이프가 겹치지 않게 (PL16)
+    private const float PipeModelHeight = 2.994f;         // 배관 모델 높이 (FBX 분석 −0.008 ~ 2.986m) — 가져온 크기가 다르면 자리를 이 비율로 맞춘다
+    private const float PipeSurfaceRadius = 0.235f;       // 관 반지름 0.232m (FBX 분석 — 15 명세 1-2) + 3mm
+    private const float PipeHoleSurfaceRadius = 0.232f;   // 구멍 검사의 기준 (관 표면)
+    private const float PipeHoleInnerRadius = 0.226f;     // 구멍 검사 (NM12): 관 축에서 이보다 가까운 점 = 표면보다 안쪽으로 들어간 구멍
+    private const float PipeHoleCheckDistance = 0.06f;    // 구멍 검사: 자리에서 이 거리 안의 점만
+    private const float PipeTapeOuterRadius = 0.236f;     // 조각 넓이 가운데 (NM13): 관 축에서 이보다 먼 면 = 바깥 면 (안쪽 · 두께 면 빼기)
+    // 구멍 6자리 (높이 m, 정면 +Z 에서 잰 각도° — Unity 기준): 배관 모델 1 · 2 · 3번에만 있는 점 중 표면보다 안쪽 점 덩어리의 가운데 (15 명세 1-2 · NM12)
+    // 자리 1 = 1번 모델 · 자리 2 · 3 = 2번 · 자리 4 · 5 · 6 = 3번 (PipeLeakRules.ModelOf)
     private static readonly Vector2[] PipeLeakSpots =
     {
-        new Vector2(0.20f, -40f), new Vector2(0.35f, 35f), new Vector2(0.50f, -5f),
-        new Vector2(1.63f, 40f), new Vector2(1.80f, -35f), new Vector2(1.97f, 5f),
+        new Vector2(1.037f, -34.9f),
+        new Vector2(0.806f, -17.2f), new Vector2(1.352f, 35.6f),
+        new Vector2(0.811f, 54.4f), new Vector2(1.170f, -16.9f), new Vector2(1.576f, 53.7f),
     };
-    private const float PipeHoleDiameter = 0.06f;
-    private static readonly Vector2 PipeTapeStripSize = new Vector2(0.12f, 0.03f);   // 띠 한 장 — 관 둘레(반지름 0.21)에 평평하게 대도 끝이 1cm 안쪽으로만 뜨는 길이
-    private const float PipeTapeCrossAngle = 35f;
-    private static readonly Vector3 PipeTargetSize = new Vector3(0.14f, 0.14f, 0.06f);   // 조준 상자 — 구멍(6cm)보다 넉넉하게
-    private const float PipeDoneLabelHeight = 1.2f;       // 「수리 완료」 높이 — 눈높이, 볼록한 곳 앞 (PL19)
+    // 자리마다 붙일 테이프 조각 (PipeTapePaths 번호): 자리 1 = V2 · 2 = V1 · 3 = V5 · 4 = V3 · 5 = V2 · 6 = V4 — 한 배관 안에서는 모두 다른 모양 (NM3 · 사용자 결정 A)
+    private static readonly int[] PipeSpotTapes = { 1, 0, 4, 2, 1, 3 };
+    private static readonly Vector3 PipeTargetSize = new Vector3(0.14f, 0.14f, 0.06f);   // 조준 상자 — 구멍(금 간 자국 포함 6 ~ 11cm)보다 넉넉하게
+    // 조준 고리 (NM14): 렌더러 없는 납작한 양면 고리 — 외곽선(양쪽 2cm씩 커짐)이 구멍 둘레 반지름 약 6 ~ 7.5cm 에 흰 고리로 그려진다
+    private const float PipeRingInnerRadius = 0.045f;
+    private const float PipeRingOuterRadius = 0.055f;
+    private const float PipeRingOffset = 0.004f;          // 자리(관 표면 + 3mm)보다 4mm 앞 — 외곽선 재질은 뒷면만 그려서(Cull Front) 표면에 두면 관 속에 묻힌다
+    private const int PipeRingSegments = 32;
+    private const string PipeRingMeshPath = DraftMeshFolder + "/PipeLeakRing.asset";
+    private const float PipeDoneLabelHeight = 1.85f;      // 「수리 완료」 높이 — 구멍(0.81 ~ 1.58m) 위 · 위 링(2.1m) 아래 (NM15)
     private static readonly Color PipeDoneColor = new Color(0.49f, 0.99f, 0.49f);    // 미션 목록 완료 색 #7CFC7C 와 같게
     private const string PipeGasTexturePath = DraftMaterialFolder + "/PipeGasPuff.png";
     private const string PipeGasMaterialPath = DraftMaterialFolder + "/PipeGas.mat";
 
-    // 13b: 좌표 설정 (TG013) — 명세 CO30 ~ CO32. 모델이 없어 기본 도형으로 조립 (CO9). 크기는 기획서 그림 비율 · 눈높이 약 1.6m 기준, 앞 = +Z
+    // 13b: 좌표 설정 (TG013) — 명세 CO30 ~ CO32, 15 명세 NM7 ~ NM11 (받은 패널 모델 — 모델 담당 커밋 8d073f8). 앞 = +Z
     public const string CoordinateStationPath = OutputFolder + "/Coordinate_Station.prefab";
+    private const string CoordinateModelPath = SourceModelFolder + "/Coordinate_setting_panel.fbx";
+    private const string CoordGreenButtonName = "Coordinate_setting_panel_button_green";    // 모델 자식 — 앞에 선 사람의 왼쪽 (+X)
+    private const string CoordYellowButtonName = "Coordinate_setting_panel_button_yellow";  // 앞에 선 사람의 오른쪽 (−X)
     private const float CoordInteractRange = 3f;                                         // 장치 기준점(바닥 가운데)에서 — 두 사람이 나란히 서도 닿게
-    private static readonly Vector3 CoordBaseSize = new Vector3(0.95f, 0.85f, 0.55f);     // 아래 받침 (짙은 회색)
-    private const float CoordBaseOffsetZ = -0.05f;
-    private static readonly Vector3 CoordPanelSize = new Vector3(1.1f, 0.12f, 0.7f);      // 조작판 (흰색)
-    private static readonly Vector3 CoordPanelCenter = new Vector3(0f, 0.92f, 0.02f);
-    private const float CoordPanelTilt = 25f;                                            // 앞으로 기울임 — 앞 끝이 낮다
-    private static readonly Vector3 CoordFrameSize = new Vector3(1.0f, 0.46f, 0.14f);     // 화면 틀 (흰색)
-    private static readonly Vector3 CoordFrameCenter = new Vector3(0f, 1.25f, -0.22f);    // 위 끝 약 1.47m
-    private const float CoordFrameTilt = 15f;                                            // 뒤로 기울임 — 위 끝이 멀다
-    private static readonly Vector2 CoordScreenSize = new Vector2(0.92f, 0.38f);         // 검은 화면
+    // 모델의 검은 화면 (FBX 분석 — 앞을 보는 검은 면 56개, 15 명세 1-1): 가운데 · 법선(뒤로 18.3°) · 크기
+    private static readonly Vector3 CoordScreenCenter = new Vector3(0f, 1.164f, -0.024f);
+    private static readonly Vector3 CoordScreenNormal = new Vector3(0f, 0.314f, 0.95f);
+    private static readonly Vector2 CoordModelScreenSize = new Vector2(1.304f, 0.507f);
+    private const float CoordScreenGap = 0.001f;                                         // 화면 그림을 모델 화면보다 1mm 앞에
+    private static readonly Vector2 CoordScreenSize = new Vector2(0.92f, 0.38f);         // 화면 그림의 기준 크기 (13b 임시 화면) — 모델 화면 세로에 맞춰 키운다 (NM10)
+    private const float CoordButtonPadding = 0.01f;                                      // 버튼 조준 상자 = 버튼 메시 범위 + 1cm (NM8)
+    private const float CoordPromptHeight = 0.25f;                                       // 조준 문구: 버튼 가운데 위
     private const float CoordAreaRadius = 0.16f;                                         // 탐색 영역 반지름 (화면 위 m) — 화면 세로 0.38 안에 들어가게
     private const float CoordCursorRadius = 0.04f;                                       // 조작 원 고리 반지름
     private const float CoordTargetSize = 0.07f;                                         // 목표 그림 한 변
@@ -175,16 +203,8 @@ public static class LegacyMissionConverter
     private const float CoordAxisLabelX = 0.33f;                                         // 축 글자 · 막대: 화면 가운데에서 좌우
     private static readonly Vector2 CoordBarSize = new Vector2(0.2f, 0.022f);
     private const float CoordBarY = -0.14f;
-    private const float CoordButtonOffsetX = 0.28f;                                      // 버튼: 가운데에서 좌우 (그림의 숫자 자판을 뺀 만큼 가까이 — CO1)
-    private const float CoordButtonOffsetZ = 0.05f;                                      // 버튼: 조작판 가운데보다 조금 앞
-    private static readonly Vector3 CoordButtonSize = new Vector3(0.14f, 0.05f, 0.14f);
-    private static readonly Vector3 CoordBezelSize = new Vector3(0.18f, 0.02f, 0.18f);
     private const float CoordBeepMinDistance = 1f;                                       // 신호음 3D 거리 (CO32)
     private const float CoordBeepMaxDistance = 8f;
-    private static readonly Color CoordBodyColor = new Color(0.86f, 0.87f, 0.88f);
-    private static readonly Color CoordBaseColor = new Color(0.2f, 0.21f, 0.23f);
-    private static readonly Color CoordBezelColor = new Color(0.25f, 0.26f, 0.28f);
-    private static readonly Color CoordScreenColor = new Color(0.02f, 0.05f, 0.07f);
     private static readonly Color CoordGreenColor = new Color(0.3f, 0.95f, 0.3f);       // 그림의 초록 버튼
     private static readonly Color CoordYellowColor = new Color(1f, 0.8f, 0.15f);        // 그림의 노란 버튼
     private static readonly Color CoordAreaColor = new Color(0.45f, 0.85f, 1f, 0.55f);  // 그림의 하늘색 원 (흐리게)
@@ -422,13 +442,13 @@ public static class LegacyMissionConverter
         return Assemble("테이프", "Tape_Item", TapeItemPath, copy => BuildTapeItem(copy, data), false);
     }
 
-    /// <summary>배관 (13a 명세 PL4 · PL16 ~ PL21): 원본 배관 모델(Pipe.fbx)을 복사해 새는 곳 6자리 · 「수리 완료」를 덧붙인다. 공통 틀의 저장 · 검증 · 빌보드 · 몸체를 그대로 쓴다.</summary>
+    /// <summary>배관 (13a 명세 PL13 · PL18 · PL21, 15 명세 NM6 · NM12 ~ NM15): 빈 루트에 받은 배관 모델 4개를 복사해 구멍 6자리 · 테이프 조각 · 「수리 완료」를 덧붙인다. 공통 틀의 저장 · 검증 · 빌보드 · 몸체를 그대로 쓴다.</summary>
     public static NetworkObject CreatePipeLeakStation() =>
-        Convert("배관", PipeModelPath, "Pipe_Station", PipeLeakStationPath, BuildPipeLeak);
+        Assemble("배관", "Pipe_Station", PipeLeakStationPath, BuildPipeLeak);
 
-    /// <summary>좌표 설정 장치 (13b 명세 CO9 · CO30 ~ CO32): 모델이 없어 빈 루트에서 기본 도형으로 조립한다. 공통 틀의 저장 · 검증 · 빌보드 · 몸체를 그대로 쓴다.</summary>
+    /// <summary>좌표 설정 장치 (13b 명세 CO30 ~ CO32, 15 명세 NM7 ~ NM11): 받은 패널 모델을 복사해 버튼 · 화면 그림 · 신호음 자리를 붙인다. 공통 틀의 저장 · 검증 · 빌보드 · 몸체를 그대로 쓴다.</summary>
     public static NetworkObject CreateCoordinateStation() =>
-        Assemble("좌표 장치", "Coordinate_Station", CoordinateStationPath, BuildCoordinate);
+        Convert("좌표 장치", CoordinateModelPath, "Coordinate_Station", CoordinateStationPath, BuildCoordinate);
 
     // ═════════════════════════════════════════════════════════════
     //  공통 틀
@@ -2454,51 +2474,87 @@ public static class LegacyMissionConverter
     }
 
     // ═════════════════════════════════════════════════════════════
-    //  13a: 배관 누수 차단 · 테이프 (원본 배관 모델 + 기본 도형 임시 표시)
+    //  13a: 배관 누수 차단 · 테이프 (15 — 받은 배관 모델 4종 · 테이프 조각 5종 · 롤 모델)
     // ═════════════════════════════════════════════════════════════
 
-    /// <summary>테이프 롤 모양 (PL20 — 임시): 회색 롤(지름 10 · 높이 5cm) + 갈색 심 + 가운데 구멍. 바닥이 원점, 콜라이더 없음. 바깥 롤을 돌려준다 (외곽선 메시).</summary>
-    private static GameObject BuildTapeRoll(Transform parent)
+    /// <summary>
+    /// 테이프 롤 모델 (15 NM18 · NM19 — 받은 모델 Tape.fbx): 원본 모델을 parent 아래에 그대로 복사한다 (모델 파일 안의 1.744배 크기 포함 — 지름 약 24cm).
+    /// 콜라이더가 있으면 지운다. 모델 기준점은 롤 가운데라, 바닥에 놓을 때는 부르는 쪽이 메시 범위로 올린다.
+    /// </summary>
+    private static GameObject BuildTapeModel(Transform parent)
     {
-        Material roll = GetOrCreateColorMaterial("TapeRoll", new Color(0.72f, 0.74f, 0.78f));
-        Material core = GetOrCreateColorMaterial("TapeCore", new Color(0.62f, 0.45f, 0.28f));
-        Material hole = GetOrCreateColorMaterial("TapeHole", new Color(0.08f, 0.08f, 0.09f));
+        GameObject source = LoadSourceModel(TapeModelPath);
 
-        // 기본 원통은 지름 1 · 높이 2 → 크기 y 는 높이의 절반. 심 · 구멍을 조금씩 높게 해 윗면에 갈색 고리 · 검은 구멍이 보이게
-        GameObject outer = CreateShape(PrimitiveType.Cylinder, "Roll (롤)", parent, new Vector3(0f, 0.025f, 0f), new Vector3(0.10f, 0.025f, 0.10f), roll, false);
-        CreateShape(PrimitiveType.Cylinder, "Core (심)", parent, new Vector3(0f, 0.025f, 0f), new Vector3(0.05f, 0.0255f, 0.05f), core, false);
-        CreateShape(PrimitiveType.Cylinder, "Hole (구멍)", parent, new Vector3(0f, 0.025f, 0f), new Vector3(0.038f, 0.026f, 0.038f), hole, false);
-        return outer;
+        if (source == null)
+            return null;
+
+        GameObject model = Object.Instantiate(source, parent);
+        model.name = "Tape Roll (테이프 롤 모델)";
+
+        foreach (Collider collider in model.GetComponentsInChildren<Collider>(true))
+            Object.DestroyImmediate(collider);
+
+        return model;
     }
 
-    /// <summary>테이프 1인칭 모델: 빈 루트 + 롤을 화면 오른쪽 아래에, 구멍이 보이게 앞으로 눕힘. 위치는 에디터 확인 후 조정 (손 설정은 변환 도구가 지킨다 — 11a).</summary>
+    /// <summary>
+    /// 테이프 1인칭 모델 (15 NM19): 빈 루트 + `Model (모델)` 아래 받은 롤 0.5배 (지름 12cm).
+    /// 루트에 ItemWorldView(그리는 대상 = 모델, 충돌 없음)를 붙여 팀원 1인칭 팔이 손 뼈에 붙이게 한다 — 산소통 · 부품 1인칭과 같은 구성 (15 명세 1-5:
+    /// 13a 에서는 이 칸이 없어 손이 아니라 팔 루트에 놓였다). 손 기준 위치 · 회전은 0 에서 시작해 Play 중 화면을 보며 맞추고,
+    /// 맞춘 값은 프리팹에 남기면 변환 도구가 지킨다 (11a BC13 · BC14 — 기존 값 우선, 다시 만들 때 모델 위치 · 크기도 지킴).
+    /// </summary>
     private static bool BuildTapeFirstPerson(GameObject copy)
     {
         GameObject view = new GameObject("Model (모델)");
         view.transform.SetParent(copy.transform, false);
-        view.transform.localPosition = new Vector3(0.22f, -0.28f, 0.45f);
-        view.transform.localRotation = Quaternion.Euler(-60f, 0f, 0f);
-        BuildTapeRoll(view.transform);
+        view.transform.localScale = Vector3.one * TapeFirstPersonScale;
+
+        if (BuildTapeModel(view.transform) == null)
+            return false;
+
+        ItemWorldView worldView = copy.AddComponent<ItemWorldView>();
+        SerializedObject viewSO = new SerializedObject(worldView);
+        SetObjectArray(viewSO.FindProperty("renderers"), copy.GetComponentsInChildren<Renderer>(true));
+        viewSO.FindProperty("colliders").arraySize = 0;
+        viewSO.ApplyModifiedPropertiesWithoutUndo();
         return true;
     }
 
     /// <summary>
-    /// 테이프 아이템 (PL20): 빈 루트(바닥 원점) + 롤 모양. 루트에 NetworkObject · 조준 상자(레이어 6, 12 × 6cm — 작은 물건이라 넉넉히) · ItemWorldView · TapeTool,
-    /// 조준 외곽선 (미션 아이템 공통 — 3c EA16).
+    /// 테이프 아이템 (13a PL20 · 15 NM18): 빈 루트(바닥 원점) + `Model (모델)` 아래 받은 롤 1배 — 메시 범위로 재서 바닥에 닿게 올린다.
+    /// 루트에 NetworkObject · 조준 상자(모델 범위 + 1cm, 레이어 6) · ItemWorldView · TapeTool, 조준 외곽선(롤 메시 — 미션 아이템 공통 3c EA16).
+    /// 3인칭 손 기준 위치 · 회전은 기존 프리팹 값을 지킨다 (11a BC13 — 공통 뒷부분).
     /// </summary>
     private static bool BuildTapeItem(GameObject copy, ItemData data)
     {
         copy.layer = InteractableLayer;
         copy.AddComponent<NetworkObject>();
-        GameObject outer = BuildTapeRoll(copy.transform);
+
+        GameObject view = new GameObject("Model (모델)");
+        view.transform.SetParent(copy.transform, false);
+        GameObject roll = BuildTapeModel(view.transform);
+
+        if (roll == null)
+            return false;
+
+        // 루트 기준 범위 — 복사본은 원점 · 회전 없음이라 월드 범위가 곧 루트 기준. 바닥(가장 낮은 점)이 0 에 오게 모델을 올린다
+        Renderer[] renderers = copy.GetComponentsInChildren<Renderer>(true);
+        Bounds bounds = renderers[0].bounds;
+
+        foreach (Renderer renderer in renderers)
+            bounds.Encapsulate(renderer.bounds);
+
+        float lift = -bounds.min.y;
+        view.transform.localPosition = new Vector3(0f, lift, 0f);
+        bounds.center += new Vector3(0f, lift, 0f);
 
         BoxCollider box = copy.AddComponent<BoxCollider>();
-        box.center = new Vector3(0f, 0.03f, 0f);
-        box.size = new Vector3(0.12f, 0.06f, 0.12f);
+        box.center = bounds.center;
+        box.size = bounds.size + Vector3.one * (TapeColliderPadding * 2f);
 
         ItemWorldView worldView = copy.AddComponent<ItemWorldView>();
         SerializedObject viewSO = new SerializedObject(worldView);
-        SetObjectArray(viewSO.FindProperty("renderers"), copy.GetComponentsInChildren<Renderer>(true));
+        SetObjectArray(viewSO.FindProperty("renderers"), renderers);
         SetObjectArray(viewSO.FindProperty("colliders"), box);
         viewSO.ApplyModifiedPropertiesWithoutUndo();
 
@@ -2507,26 +2563,49 @@ public static class LegacyMissionConverter
         so.FindProperty("data").objectReferenceValue = data;
         so.ApplyModifiedPropertiesWithoutUndo();
 
-        MissionOutlineBuilder.Attach(copy, outer);
+        MissionOutlineBuilder.Attach(copy, roll);
 
-        Debug.Log($"[LegacyMissionConverter] 테이프: 아이템 번호 {TapeItemId}, 롤 지름 0.10 · 높이 0.05m (임시 모양)");
+        Debug.Log($"[LegacyMissionConverter] 테이프: 아이템 번호 {TapeItemId}, 받은 롤 모델 {bounds.size.x:0.00} × {bounds.size.y:0.00} × {bounds.size.z:0.00}m (바닥 맞춤 {lift:0.000}m 올림), 1인칭 {TapeFirstPersonScale}배");
         return true;
     }
 
     /// <summary>
-    /// 배관 (13a 명세 PL4 · PL16 ~ PL19): 원본 배관 모델 복사(앞 +Z, 바닥이 원점) + NetworkObject + PipeLeakStation(TG012 · 잠금 · 범위 3 · F 2초).
-    /// 새는 곳 6자리마다 `Leak Spot n` (관 표면, 오브젝트 앞 +Z = 바깥): 조준 상자(조준 레이어) + StationHoldPart(번호) + 외곽선(구멍) + 조준 문구,
-    /// 자식 구멍 원판 · 가스 연기 · X자 테이프. 처음에는 모두 꺼 둔다 — 배정이 끝나야 샌다 (PipeLeakStation). 「수리 완료」 글자는 눈높이.
-    /// 몸체는 공통 뒷부분(FinishPrefab)이 조각 상자로 붙인다 — 꺼 둔 표시 · 연기 · 글자는 몸체에 들어가지 않는다.
-    /// [크기] 가져온 모델 높이를 재서 FBX 높이(2.995m)와 다르면 자리 · 반지름을 그 비율로 맞춘다 (가져오기 단위가 바뀌어도 표면에 붙게).
+    /// 배관 (13a 명세 PL13 · PL18 · PL21, 15 명세 NM2 · NM6 · NM12 ~ NM15): 빈 루트 + 받은 배관 모델 4개(0번 구멍 없음 ~ 3번 구멍 3개 — 앞 +Z, 바닥이 원점)
+    /// + NetworkObject + PipeLeakStation(TG012 · 잠금 · 범위 3 · F 2초).
+    /// 구멍 6자리마다 `Leak Spot n` 을 그 자리가 속한 모델 아래 관 표면에 둔다 (오브젝트 앞 +Z = 바깥): 조준 상자(조준 레이어) + StationHoldPart(번호)
+    /// + 조준 고리 외곽선(NM14) + 조준 문구, 자식 가스 연기 · 테이프 조각(NM3 · NM13). 저장은 0번 모델만 켠 채 — 배정이 끝나면 새는 곳 비트 수 번호의 모델이 켜진다 (PipeLeakStation).
+    /// 구멍 검사 (NM12): 자리마다 그 모델 메시에 자리 6cm 안 · 관 표면보다 안쪽인 점이 있는지 — 없으면 경고 (모델 담당이 구멍을 옮겼을 때 알게).
+    /// 몸체는 공통 뒷부분(FinishPrefab)이 조각 상자로 붙인다 — 켜진 0번 모델만 들어간다 (꺼 둔 1 ~ 3번은 빠지지만 겉모양은 넷이 같다).
+    /// [크기] 0번 모델 높이를 재서 FBX 높이(2.994m)와 다르면 자리 · 반지름을 그 비율로 맞춘다 (가져오기 단위가 바뀌어도 표면에 붙게).
     /// </summary>
     private static bool BuildPipeLeak(GameObject copy)
     {
-        Renderer[] modelRenderers = copy.GetComponentsInChildren<Renderer>();
+        GameObject[] models = new GameObject[PipeModelPaths.Length];
+        MeshFilter[][] modelFilters = new MeshFilter[PipeModelPaths.Length][];
+
+        for (int m = 0; m < PipeModelPaths.Length; m++)
+        {
+            GameObject source = LoadSourceModel(PipeModelPaths[m]);
+
+            if (source == null)
+                return false;
+
+            GameObject model = Object.Instantiate(source, copy.transform);
+            model.name = m == 0 ? "Pipe 0 (구멍 없음)" : $"Pipe {m} (구멍 {m})";
+
+            foreach (Collider collider in model.GetComponentsInChildren<Collider>(true))
+                Object.DestroyImmediate(collider);
+
+            models[m] = model;
+            // 구멍 검사용 — 자리 · 조각을 붙이기 전의 모델 메시만 (조각 안쪽 면이 구멍으로 세어지지 않게)
+            modelFilters[m] = model.GetComponentsInChildren<MeshFilter>(true);
+        }
+
+        Renderer[] modelRenderers = models[0].GetComponentsInChildren<Renderer>();
 
         if (modelRenderers.Length == 0)
         {
-            Debug.LogError("[LegacyMissionConverter] 배관: 모델에 렌더러가 없습니다 (Pipe.fbx 가 바뀌었는지 확인).");
+            Debug.LogError("[LegacyMissionConverter] 배관: 0번 모델에 렌더러가 없습니다 (Pipe_leak_Hole_0.fbx 가 바뀌었는지 확인).");
             return false;
         }
 
@@ -2542,28 +2621,51 @@ public static class LegacyMissionConverter
         if (Mathf.Abs(scale - 1f) > 0.05f)
             Debug.LogWarning($"[LegacyMissionConverter] 배관: 가져온 모델 높이 {height:0.00}m 가 FBX 분석값 {PipeModelHeight}m 와 달라 자리를 {scale:0.00}배로 맞춥니다.");
 
+        GameObject[] tapeSources = new GameObject[PipeTapePaths.Length];
+
+        for (int t = 0; t < PipeTapePaths.Length; t++)
+        {
+            tapeSources[t] = LoadSourceModel(PipeTapePaths[t]);
+
+            if (tapeSources[t] == null)
+                return false;
+        }
+
         copy.AddComponent<NetworkObject>();
         PipeLeakStation station = copy.AddComponent<PipeLeakStation>();
         SerializedObject so = ConfigureStation(station, MissionEventType.PipeLeakSealed, CompletionPolicy.Lock, PipeInteractRange);
         so.FindProperty("holdDuration").floatValue = PipeHoldSeconds;
 
-        Material holeMaterial = GetOrCreateColorMaterial("PipeLeakHole", new Color(0.05f, 0.05f, 0.06f));
-        Material tapeMaterial = GetOrCreateColorMaterial("PipeLeakTape", new Color(0.86f, 0.87f, 0.88f));
         Material gasMaterial = GetOrCreatePipeGasMaterial();
+        Mesh ringMesh = GetOrCreatePipeRingMesh();
 
         SerializedProperty spotList = so.FindProperty("spots");
         spotList.arraySize = PipeLeakSpots.Length;
+        System.Text.StringBuilder spotLog = new System.Text.StringBuilder();
+        int holeWarnings = 0;
 
         for (int i = 0; i < PipeLeakSpots.Length; i++)
         {
+            int modelIndex = PipeLeakRules.ModelOf(i);
             float angle = PipeLeakSpots[i].y * Mathf.Deg2Rad;
             Vector3 outward = new Vector3(Mathf.Sin(angle), 0f, Mathf.Cos(angle));
+            Vector3 up = Vector3.up * PipeLeakSpots[i].x;
+
+            // 구멍 검사 (NM12): 관 표면의 구멍 가운데 둘레에 표면보다 안쪽 점이 있는가
+            int holeVertices = CountHoleVertices(copy.transform, modelFilters[modelIndex], (outward * PipeHoleSurfaceRadius + up) * scale,
+                PipeHoleCheckDistance * scale, PipeHoleInnerRadius * scale);
+
+            if (holeVertices == 0)
+            {
+                holeWarnings++;
+                Debug.LogWarning($"[LegacyMissionConverter] 배관: 자리 {i + 1} ({PipeLeakSpots[i].x:0.000}m · {PipeLeakSpots[i].y:0.0}°) 둘레 {PipeHoleCheckDistance}m 안에 {models[modelIndex].name} 의 구멍(표면보다 안쪽 점)이 없습니다 — 모델의 구멍이 옮겨졌는지 확인하세요 (15 명세 1-2).");
+            }
 
             GameObject spot = new GameObject($"Leak Spot {i + 1} (새는 곳 {i + 1})");
             spot.layer = InteractableLayer;
-            spot.transform.SetParent(copy.transform, false);
-            spot.transform.localPosition = (outward * PipeSurfaceRadius + Vector3.up * PipeLeakSpots[i].x) * scale;
-            spot.transform.localRotation = Quaternion.LookRotation(outward, Vector3.up);
+            spot.transform.SetParent(models[modelIndex].transform, false);
+            spot.transform.SetPositionAndRotation(copy.transform.TransformPoint((outward * PipeSurfaceRadius + up) * scale),
+                copy.transform.rotation * Quaternion.LookRotation(outward, Vector3.up));
 
             // 조준 상자: 표면에서 바깥쪽으로 4cm · 안쪽으로 2cm. 새는 중 · 내 미션일 때만 켠다 (PipeLeakStation)
             BoxCollider target = spot.AddComponent<BoxCollider>();
@@ -2577,30 +2679,22 @@ public static class LegacyMissionConverter
             partSO.FindProperty("partIndex").intValue = i;
             partSO.ApplyModifiedPropertiesWithoutUndo();
 
-            // 구멍: 원통을 눕혀 바깥(+Z)을 보는 얇은 원판 (두께 4mm — 원통 높이 2 × 0.002)
-            GameObject hole = CreateShape(PrimitiveType.Cylinder, "Hole (구멍)", spot.transform, new Vector3(0f, 0f, 0.002f),
-                new Vector3(PipeHoleDiameter, 0.002f, PipeHoleDiameter), holeMaterial, false);
-            hole.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-            Renderer holeRenderer = hole.GetComponent<Renderer>();
-
             ParticleSystem gas = BuildPipeGas(spot.transform, gasMaterial);
 
-            // X자 테이프: 띠 2장 (±35°). 두 장이 같은 면에서 깜빡이지 않게 1mm 어긋냄. 진행만큼 커진다 (PipeLeakStation)
-            Transform tape = new GameObject("Tape (테이프)").transform;
-            tape.SetParent(spot.transform, false);
-            tape.localPosition = new Vector3(0f, 0f, 0.004f);
+            int tapeIndex = PipeSpotTapes[i];
+            Transform tape = BuildPipeTape(spot.transform, tapeSources[tapeIndex], $"V{tapeIndex + 1}", scale, out float tapeAngle, out float tapeHeight);
+            spotLog.Append($"{(i > 0 ? " · " : string.Empty)}{i + 1}={models[modelIndex].name.Substring(0, 6)} V{tapeIndex + 1}({tapeAngle:0.0}° {tapeHeight:+0.000;-0.000}m, 구멍 점 {holeVertices})");
 
-            for (int s = 0; s < 2; s++)
-            {
-                GameObject strip = CreateShape(PrimitiveType.Cube, $"Strip {s + 1} (띠)", tape, new Vector3(0f, 0f, s * 0.001f),
-                    new Vector3(PipeTapeStripSize.x, PipeTapeStripSize.y, 0.003f), tapeMaterial, false);
-                strip.transform.localRotation = Quaternion.Euler(0f, 0f, s == 0 ? PipeTapeCrossAngle : -PipeTapeCrossAngle);
-            }
+            // 조준 고리 (NM14): 렌더러 없는 고리 메시 — 외곽선만 켜진다. 모델 구멍은 배관 메시의 일부라 그 부분만 외곽선을 낼 수 없어서
+            GameObject ring = new GameObject("Aim Ring (조준 고리 — 외곽선만)");
+            ring.layer = InteractableLayer;
+            ring.transform.SetParent(spot.transform, false);
+            ring.transform.localPosition = new Vector3(0f, 0f, PipeRingOffset * scale);
+            ring.transform.localScale = Vector3.one * scale;
+            ring.AddComponent<MeshFilter>().sharedMesh = ringMesh;
 
-            tape.gameObject.SetActive(false);
-
-            // 조준 외곽선(구멍) + 문구 (PromptAndHighlight — 문구는 PipeLeakStation 이 내 손 상태로 바꾼다)
-            MissionOutlineBuilder.Attach(spot, hole);
+            // 조준 외곽선(고리) + 문구 (PromptAndHighlight — 문구는 PipeLeakStation 이 내 손 상태로 바꾼다)
+            MissionOutlineBuilder.Attach(spot, ring);
             TextMeshPro prompt = CreateFittedText(spot.transform, "Prompt (조준 문구)", new Vector3(0f, 0.11f, 0.08f), Quaternion.identity,
                 new Vector2(0.5f, 0.07f), PipeLeakStation.NeedTapeText, PipeLeakStation.NeedTapeText, KoreanFontPath, Color.white);
             prompt.gameObject.SetActive(false);
@@ -2610,26 +2704,171 @@ public static class LegacyMissionConverter
             promptSO.FindProperty("promptObject").objectReferenceValue = prompt.gameObject;
             promptSO.ApplyModifiedPropertiesWithoutUndo();
 
-            holeRenderer.enabled = false;
-
             SerializedProperty element = spotList.GetArrayElementAtIndex(i);
             element.FindPropertyRelative("Target").objectReferenceValue = target;
-            element.FindPropertyRelative("Hole").objectReferenceValue = holeRenderer;
             element.FindPropertyRelative("Gas").objectReferenceValue = gas;
             element.FindPropertyRelative("Tape").objectReferenceValue = tape;
             element.FindPropertyRelative("Prompt").objectReferenceValue = prompt;
         }
 
-        // 「수리 완료」 (PL19): 볼록한 곳 앞(밸브 받침판 z 0.36 보다 앞), 보는 사람 쪽을 향하는 글자
-        TextMeshPro done = CreateFittedText(copy.transform, "Done Label (수리 완료)", new Vector3(0f, PipeDoneLabelHeight * scale, 0.5f * scale), Quaternion.identity,
+        SetObjectArray(so.FindProperty("pipeModels"), models);
+
+        // 「수리 완료」 (NM15): 구멍 위 · 위 링 아래, 배관 앞(링 0.30m 보다 앞), 보는 사람 쪽을 향하는 글자
+        TextMeshPro done = CreateFittedText(copy.transform, "Done Label (수리 완료)", new Vector3(0f, PipeDoneLabelHeight * scale, 0.45f * scale), Quaternion.identity,
             new Vector2(0.6f, 0.16f), PipeLeakStation.DoneText, PipeLeakStation.DoneText, KoreanFontPath, PipeDoneColor);
         done.gameObject.AddComponent<PromptBillboard>();
         done.gameObject.SetActive(false);
         so.FindProperty("doneLabel").objectReferenceValue = done.gameObject;
         so.ApplyModifiedPropertiesWithoutUndo();
 
-        Debug.Log($"[LegacyMissionConverter] 배관: 모델 높이 {height:0.00}m (비율 {scale:0.00}), 새는 곳 후보 {PipeLeakSpots.Length}자리 (아래 0.20 · 0.35 · 0.50 / 위 1.63 · 1.80 · 1.97m), F {PipeHoldSeconds}초, 범위 {PipeInteractRange}m");
+        // 저장은 0번(구멍 없음)만 켠 채 — 몸체도 0번으로 잰다
+        for (int m = 1; m < models.Length; m++)
+            models[m].SetActive(false);
+
+        Debug.Log($"[LegacyMissionConverter] 배관: 모델 {models.Length}개 (0번 높이 {height:0.00}m · 비율 {scale:0.00}), 구멍 {PipeLeakSpots.Length}자리 — {spotLog}, " +
+                  $"구멍 검사 경고 {holeWarnings}, F {PipeHoldSeconds}초, 범위 {PipeInteractRange}m, 「수리 완료」 {PipeDoneLabelHeight}m");
         return true;
+    }
+
+    /// <summary>구멍 검사 (NM12): 모델 메시 점 중 center(루트 기준)에서 distance 안 · 관 축(루트 원점의 세로선)에서 innerRadius 보다 가까운 점 수.</summary>
+    private static int CountHoleVertices(Transform root, MeshFilter[] filters, Vector3 center, float distance, float innerRadius)
+    {
+        int count = 0;
+
+        foreach (MeshFilter filter in filters)
+        {
+            if (filter == null || filter.sharedMesh == null)
+                continue;
+
+            foreach (Vector3 vertex in filter.sharedMesh.vertices)
+            {
+                Vector3 p = root.InverseTransformPoint(filter.transform.TransformPoint(vertex));
+
+                if ((p - center).sqrMagnitude <= distance * distance && new Vector2(p.x, p.z).magnitude < innerRadius)
+                    count++;
+            }
+        }
+
+        return count;
+    }
+
+    /// <summary>
+    /// 테이프 조각 (NM3 · NM4 · NM13): 자리(관 표면점) 아래 `Tape (테이프 조각 Vn)` 기준점 — 진행만큼 커진다 (PipeLeakStation) →
+    /// `Tape Pivot (관 축)` → 받은 조각 모델 (모델 파일의 회전 포함). 조각의 바깥 면(관 축에서 0.236m 보다 먼 면) 넓이 가운데를 메시에서 재서,
+    /// 관 축으로 (−그 각도) 돌려 자리 앞(+Z = 구멍 쪽)에 오게 하고 그 높이만큼 내려 구멍 높이에 맞춘다. 처음에는 꺼 둔다.
+    /// </summary>
+    private static Transform BuildPipeTape(Transform spot, GameObject source, string label, float scale, out float centerAngle, out float centerHeight)
+    {
+        Transform anchor = new GameObject($"Tape (테이프 조각 {label})").transform;
+        anchor.SetParent(spot, false);
+
+        Transform pivot = new GameObject("Tape Pivot (관 축)").transform;
+        pivot.SetParent(anchor, false);
+
+        GameObject model = Object.Instantiate(source, pivot);
+        model.name = $"Tape Model ({label})";
+
+        foreach (Collider collider in model.GetComponentsInChildren<Collider>(true))
+            Object.DestroyImmediate(collider);
+
+        // 넓이 가운데 — pivot 기준 (아직 위치 · 회전 없음 → 관 축이 원점이 되는 조각 자체 좌표)
+        Vector3 sum = Vector3.zero;
+        float area = 0f;
+
+        foreach (MeshFilter filter in model.GetComponentsInChildren<MeshFilter>(true))
+        {
+            Mesh mesh = filter.sharedMesh;
+
+            if (mesh == null)
+                continue;
+
+            Vector3[] vertices = mesh.vertices;
+            int[] triangles = mesh.triangles;
+
+            for (int k = 0; k + 2 < triangles.Length; k += 3)
+            {
+                Vector3 a = pivot.InverseTransformPoint(filter.transform.TransformPoint(vertices[triangles[k]]));
+                Vector3 b = pivot.InverseTransformPoint(filter.transform.TransformPoint(vertices[triangles[k + 1]]));
+                Vector3 c = pivot.InverseTransformPoint(filter.transform.TransformPoint(vertices[triangles[k + 2]]));
+                Vector3 middle = (a + b + c) / 3f;
+
+                if (new Vector2(middle.x, middle.z).magnitude <= PipeTapeOuterRadius * scale)
+                    continue;
+
+                float piece = Vector3.Cross(b - a, c - a).magnitude * 0.5f;
+                sum += middle * piece;
+                area += piece;
+            }
+        }
+
+        Vector3 centroid = area > 0f ? sum / area : Vector3.forward * (PipeSurfaceRadius * scale);
+        centerAngle = Mathf.Atan2(centroid.x, centroid.z) * Mathf.Rad2Deg;
+        centerHeight = centroid.y;
+
+        // 관 축은 자리(표면점)에서 안쪽(−Z)으로 표면 반지름만큼. Y 축으로 −각도 돌리면 넓이 가운데가 정면(+Z = 구멍 쪽)에 온다
+        pivot.localPosition = new Vector3(0f, -centerHeight, -PipeSurfaceRadius * scale);
+        pivot.localRotation = Quaternion.Euler(0f, -centerAngle, 0f);
+        anchor.gameObject.SetActive(false);
+        return anchor;
+    }
+
+    /// <summary>
+    /// 조준 고리 메시 (NM14 — MissionRedesign_Draft/Meshes/PipeLeakRing.asset): 자리 앞(+Z)을 보는 XY 평면의 납작한 양면 고리
+    /// (안 반지름 0.045 · 바깥 0.055m, 32칸). 렌더러 없이 외곽선만 만든다 — 외곽선 재질은 뒷면만 그리므로(Cull Front) 양면이어야 보인다.
+    /// 앞 · 뒤 면은 점을 따로 두어 법선이 서로 지워지지 않게 한다. 이미 있으면 그대로 (다시 만들어도 같은 모양 — 무작위 없음).
+    /// </summary>
+    private static Mesh GetOrCreatePipeRingMesh()
+    {
+        Mesh existing = AssetDatabase.LoadAssetAtPath<Mesh>(PipeRingMeshPath);
+
+        if (existing != null)
+            return existing;
+
+        EnsureFolder(DraftMeshFolder);
+
+        int n = PipeRingSegments;
+        Vector3[] vertices = new Vector3[n * 4];
+        Vector3[] normals = new Vector3[n * 4];
+        int[] triangles = new int[n * 12];
+
+        for (int k = 0; k < n; k++)
+        {
+            float a = k * Mathf.PI * 2f / n;
+            Vector3 direction = new Vector3(Mathf.Cos(a), Mathf.Sin(a), 0f);
+
+            // 0 · 1 = 앞면(+Z) 안 · 바깥, 2 · 3 = 뒷면(−Z) 안 · 바깥
+            vertices[k * 4] = vertices[k * 4 + 2] = direction * PipeRingInnerRadius;
+            vertices[k * 4 + 1] = vertices[k * 4 + 3] = direction * PipeRingOuterRadius;
+            normals[k * 4] = normals[k * 4 + 1] = Vector3.forward;
+            normals[k * 4 + 2] = normals[k * 4 + 3] = Vector3.back;
+
+            int next = (k + 1) % n * 4;
+            int t = k * 12;
+
+            // 앞면: +Z 쪽에서 보면 시계 방향 (Unity 앞면)
+            triangles[t] = k * 4;
+            triangles[t + 1] = k * 4 + 1;
+            triangles[t + 2] = next + 1;
+            triangles[t + 3] = k * 4;
+            triangles[t + 4] = next + 1;
+            triangles[t + 5] = next;
+
+            // 뒷면: 감는 방향을 뒤집음
+            triangles[t + 6] = k * 4 + 2;
+            triangles[t + 7] = next + 3;
+            triangles[t + 8] = k * 4 + 3;
+            triangles[t + 9] = k * 4 + 2;
+            triangles[t + 10] = next + 2;
+            triangles[t + 11] = next + 3;
+        }
+
+        Mesh mesh = new Mesh { name = "PipeLeakRing" };
+        mesh.vertices = vertices;
+        mesh.normals = normals;
+        mesh.triangles = triangles;
+        mesh.RecalculateBounds();
+        AssetDatabase.CreateAsset(mesh, PipeRingMeshPath);
+        return mesh;
     }
 
     /// <summary>가스 연기 (PL17 — 임시): 바깥(+Z)으로 퍼지며 커지고 옅어지는 회색 부드러운 원. 처음에는 멈춰 있다 (PipeLeakStation 이 켠다).</summary>
@@ -2777,52 +3016,48 @@ public static class LegacyMissionConverter
     // ═════════════════════════════════════════════════════════════
 
     /// <summary>
-    /// 좌표 장치 (13b 명세 CO30 ~ CO32): 받침 · 앞으로 기운 조작판(초록 · 노랑 버튼) · 뒤로 기운 화면 틀 + 검은 화면 · 화면 그림 · 신호음 자리.
-    /// 버튼은 보는 사람 기준 왼쪽 초록 · 오른쪽 노랑 (기획서 그림). 앞(+Z)에 선 사람의 왼쪽 = 장치 +X.
+    /// 좌표 장치 (13b 명세 CO30 ~ CO32, 15 명세 NM7 ~ NM11): 받은 패널 모델 복사 (루트 = 몸체 메시 · 자식 초록 · 노랑 버튼, 앞 +Z, 바닥이 원점) + NetworkObject + CoordinateStation.
+    /// 버튼은 모델 부품 그대로 — 보는 사람 기준 왼쪽 초록(모델 +X) · 오른쪽 노랑 (기획서 그림 · CO30 과 같은 약속이라 장치 스크립트는 그대로).
+    /// 누르는 동안 버튼이 들어가게 버튼 부품을 장치에 넘긴다 (NM9). 화면 그림은 모델 검은 화면 1mm 앞에 화면 세로 비율(1.33배)로 (NM10).
     /// </summary>
     private static bool BuildCoordinate(GameObject copy)
     {
+        Transform green = copy.transform.Find(CoordGreenButtonName);
+        Transform yellow = copy.transform.Find(CoordYellowButtonName);
+
+        if (green == null || yellow == null)
+        {
+            Debug.LogError($"[LegacyMissionConverter] 좌표 장치: 모델에 버튼 부품이 없습니다 ({CoordGreenButtonName} · {CoordYellowButtonName}) — Coordinate_setting_panel.fbx 가 바뀌었는지 확인.");
+            return false;
+        }
+
+        foreach (Collider collider in copy.GetComponentsInChildren<Collider>(true))
+            Object.DestroyImmediate(collider);
+
         copy.AddComponent<NetworkObject>();
         CoordinateStation station = copy.AddComponent<CoordinateStation>();
         SerializedObject so = ConfigureStation(station, MissionEventType.CoordinateSet, CompletionPolicy.Lock, CoordInteractRange);
 
-        Material bodyMaterial = GetOrCreateColorMaterial("CoordBody", CoordBodyColor);
-        Material baseMaterial = GetOrCreateColorMaterial("CoordBase", CoordBaseColor);
-        Material bezelMaterial = GetOrCreateColorMaterial("CoordBezel", CoordBezelColor);
-        Material screenMaterial = GetOrCreateColorMaterial("CoordScreen", CoordScreenColor);
-        Material greenMaterial = GetOrCreateColorMaterial("CoordGreenButton", CoordGreenColor);
-        Material yellowMaterial = GetOrCreateColorMaterial("CoordYellowButton", CoordYellowColor);
+        TextMeshPro greenPrompt = BuildCoordButton(so, station, copy.transform, green, CoordinateStation.GreenPart, "Green Button (초록 — X)");
+        TextMeshPro yellowPrompt = BuildCoordButton(so, station, copy.transform, yellow, CoordinateStation.YellowPart, "Yellow Button (노랑 — Y)");
 
-        CreateShape(PrimitiveType.Cube, "Base (받침)", copy.transform, new Vector3(0f, CoordBaseSize.y * 0.5f, CoordBaseOffsetZ), CoordBaseSize, baseMaterial, false);
+        // 화면 기준: 모델 검은 화면 1mm 앞. 로컬 −Z = 보는 사람 쪽(화면 밖) · +X = 보는 사람 오른쪽 (13b 와 같은 약속 — 코드 LCD 와 같은 LookRotation(안쪽, 위))
+        Vector3 normal = CoordScreenNormal.normalized;
+        Vector3 up = Vector3.Cross(normal, Vector3.right);   // 화면 위쪽 (뒤로 기운 방향)
+        float screenScale = CoordModelScreenSize.y / CoordScreenSize.y;
 
-        // 조작판: 기운 기준(크기 1)에 판 · 버튼을 단다 — 크기를 바꾼 상자 아래에 두면 버튼까지 늘어나서
-        Transform panel = new GameObject("Panel (조작판)").transform;
-        panel.SetParent(copy.transform, false);
-        panel.localPosition = CoordPanelCenter;
-        panel.localRotation = Quaternion.Euler(CoordPanelTilt, 0f, 0f);
-        CreateShape(PrimitiveType.Cube, "Panel Body (판)", panel, Vector3.zero, CoordPanelSize, bodyMaterial, false);
-
-        TextMeshPro greenPrompt = BuildCoordButton(so, station, panel, CoordinateStation.GreenPart, CoordButtonOffsetX, greenMaterial, bezelMaterial, "Green Button (초록 — X)");
-        TextMeshPro yellowPrompt = BuildCoordButton(so, station, panel, CoordinateStation.YellowPart, -CoordButtonOffsetX, yellowMaterial, bezelMaterial, "Yellow Button (노랑 — Y)");
-
-        Transform frame = new GameObject("Screen Frame (화면 틀)").transform;
-        frame.SetParent(copy.transform, false);
-        frame.localPosition = CoordFrameCenter;
-        frame.localRotation = Quaternion.Euler(-CoordFrameTilt, 0f, 0f);
-        CreateShape(PrimitiveType.Cube, "Frame Body (틀)", frame, Vector3.zero, CoordFrameSize, bodyMaterial, false);
-
-        // 화면 기준: 틀 앞면 바로 앞. 로컬 −Z = 보는 사람 쪽 · +X = 보는 사람 오른쪽 (판 · 글자는 −Z 에서 보인다 — 코드 LCD 와 같은 LookRotation(뒤, 위))
         Transform content = new GameObject("Screen (화면)").transform;
-        content.SetParent(frame, false);
-        content.localPosition = new Vector3(0f, 0f, CoordFrameSize.z * 0.5f + 0.001f);
-        content.localRotation = Quaternion.LookRotation(Vector3.back, Vector3.up);
-        CreateShape(PrimitiveType.Quad, "Plate (검은 화면)", content, Vector3.zero, new Vector3(CoordScreenSize.x, CoordScreenSize.y, 1f), screenMaterial, false);
+        content.SetParent(copy.transform, false);
+        content.localPosition = CoordScreenCenter + normal * CoordScreenGap;
+        content.localRotation = Quaternion.LookRotation(-normal, up);
+        content.localScale = Vector3.one * screenScale;
 
         CoordinateScreen screen = content.gameObject.AddComponent<CoordinateScreen>();
         BuildCoordScreen(screen, content);
 
         GameObject soundObject = new GameObject("Beep Sound (신호음 — 소리 칸은 비움)");
-        soundObject.transform.SetParent(frame, false);
+        soundObject.transform.SetParent(copy.transform, false);
+        soundObject.transform.localPosition = CoordScreenCenter;
         AudioSource beep = soundObject.AddComponent<AudioSource>();
         beep.playOnAwake = false;
         beep.spatialBlend = 1f;
@@ -2834,22 +3069,29 @@ public static class LegacyMissionConverter
         so.FindProperty("greenPrompt").objectReferenceValue = greenPrompt;
         so.FindProperty("yellowPrompt").objectReferenceValue = yellowPrompt;
         so.FindProperty("beepSource").objectReferenceValue = beep;
+        so.FindProperty("greenButton").objectReferenceValue = green;
+        so.FindProperty("yellowButton").objectReferenceValue = yellow;
         so.ApplyModifiedPropertiesWithoutUndo();
 
-        Debug.Log($"[LegacyMissionConverter] 좌표 장치: 버튼 2개 (보는 사람 왼쪽 초록 X · 오른쪽 노랑 Y), 화면 {CoordScreenSize.x} × {CoordScreenSize.y}m · 탐색 영역 반지름 {CoordAreaRadius}m, 범위 {CoordInteractRange}m, 신호음 칸 비움 (CO5)");
+        Debug.Log($"[LegacyMissionConverter] 좌표 장치: 받은 모델 · 버튼 2개 (초록 x {green.localPosition.x + green.GetComponent<MeshFilter>().sharedMesh.bounds.center.x:0.00} · 윗면 방향 {green.localRotation * Vector3.up}), " +
+                  $"화면 {CoordModelScreenSize.x} × {CoordModelScreenSize.y}m · 그림 {screenScale:0.00}배 · 탐색 영역 반지름 {CoordAreaRadius * screenScale:0.00}m, 범위 {CoordInteractRange}m, 신호음 칸 비움 (CO5)");
         return true;
     }
 
-    /// <summary>버튼 하나: 테두리 · 누르는 머리(조준 레이어 상자 · StationHoldPart · 외곽선 · 장치 콜라이더 목록) · 조준 문구(PromptAndHighlight). 문구 글자를 돌려준다.</summary>
-    private static TextMeshPro BuildCoordButton(SerializedObject stationSO, CoordinateStation station, Transform panel, int part, float x,
-        Material capMaterial, Material bezelMaterial, string name)
+    /// <summary>
+    /// 버튼 하나 (NM8): 받은 모델의 버튼 부품에 조준 상자(버튼 메시 범위 + 1cm, 조준 레이어) · StationHoldPart · 장치 콜라이더 목록 · 외곽선(버튼 자기 메시)
+    /// · 조준 문구(PromptAndHighlight — 버튼 가운데 위). 문구 글자를 돌려준다.
+    /// </summary>
+    private static TextMeshPro BuildCoordButton(SerializedObject stationSO, CoordinateStation station, Transform root, Transform button, int part, string label)
     {
-        float top = CoordPanelSize.y * 0.5f;
-        CreateShape(PrimitiveType.Cube, name + " Bezel (테두리)", panel, new Vector3(x, top + CoordBezelSize.y * 0.5f, CoordButtonOffsetZ), CoordBezelSize, bezelMaterial, false);
-
-        GameObject cap = CreateShape(PrimitiveType.Cube, name, panel, new Vector3(x, top + CoordBezelSize.y + CoordButtonSize.y * 0.5f, CoordButtonOffsetZ),
-            CoordButtonSize, capMaterial, true);
+        GameObject cap = button.gameObject;
         cap.layer = InteractableLayer;
+
+        MeshFilter filter = cap.GetComponent<MeshFilter>();
+        Bounds local = filter != null && filter.sharedMesh != null ? filter.sharedMesh.bounds : new Bounds(Vector3.zero, Vector3.one * 0.15f);
+        BoxCollider box = cap.AddComponent<BoxCollider>();
+        box.center = local.center;
+        box.size = local.size + Vector3.one * (CoordButtonPadding * 2f);
 
         StationHoldPart holdPart = cap.AddComponent<StationHoldPart>();
         SerializedObject partSO = new SerializedObject(holdPart);
@@ -2858,11 +3100,12 @@ public static class LegacyMissionConverter
         partSO.ApplyModifiedPropertiesWithoutUndo();
 
         // 내 미션이 아니거나 잠기면 꺼지는 콜라이더 (공통 틀 — 연출)
-        AddCollider(stationSO, cap.GetComponent<Collider>());
+        AddCollider(stationSO, box);
 
         MissionOutlineBuilder.Attach(cap, cap);
         string initial = part == CoordinateStation.GreenPart ? CoordinateStation.MoveXText : CoordinateStation.MoveYText;
-        TextMeshPro prompt = CreateFittedText(panel, name + " Prompt (조준 문구)", new Vector3(x, top + 0.3f, CoordButtonOffsetZ), Quaternion.identity,
+        Vector3 above = root.InverseTransformPoint(button.TransformPoint(local.center)) + Vector3.up * CoordPromptHeight;
+        TextMeshPro prompt = CreateFittedText(root, label + " Prompt (조준 문구)", above, Quaternion.identity,
             new Vector2(0.55f, 0.06f), CoordinateStation.LongestPromptText, initial, KoreanFontPath, Color.white);
         prompt.gameObject.SetActive(false);
 

@@ -8,21 +8,22 @@ using Random = UnityEngine.Random;
 namespace TrustNoOne.Missions
 {
     /// <summary>
-    /// [역할] 배관 한 개 (단체 미션 TG012 "배관 누수 차단"의 부품 — PipeLeakSealed). 13a 명세 PL8 ~ PL19.
-    ///  후보 6자리 중 1 ~ 3곳이 샌다. 테이프를 손에 든 채 새는 곳(StationHoldPart)을 조준하고 F 를 2초 누르고 있으면 그 자리가 막힌다.
+    /// [역할] 배관 한 개 (단체 미션 TG012 "배관 누수 차단"의 부품 — PipeLeakSealed). 13a 명세 PL8 ~ PL19, 15 명세 NM2 · NM4 · NM6.
+    ///  받은 배관 모델 4개(0번 구멍 없음 ~ 3번 구멍 3개) 중 새는 곳 비트 수 번호의 모델만 켠다 — 그 모델의 구멍 1 ~ 3곳이 샌다.
+    ///  테이프를 손에 든 채 새는 곳(StationHoldPart)을 조준하고 F 를 2초 누르고 있으면 그 자리가 막힌다.
     ///  새는 곳이 다 막히면 완료(CompleteBy → 잠김 · 「수리 완료」 · TG012 개수 +1). 다음 배관까지 2분은 미션 정의(SinceLastProgress)가 센다.
     ///
     /// [기획서] "배관마다 가스 새는 곳은 랜덤 (1~3개)" / "누수가 발생하는 배관에는 가스가 새는 시각적 효과" / "테이프를 찾아 … 상호작용 키를 누르면 조작이 진행된다" /
     ///  "조작이 완료되면 해당 배관의 누수가 멈추고 「수리 완료」가 표시된다" / 실패 "미션이 초기화되며 다시 진행" → 공통 틀이 ResetStation (막은 배관도 다시 샘 · 다시 뽑기).
     /// [뽑기 — PL11, 계획 실행 중 보충] 호스트가 미션 배정이 끝난 순간 이번 판에 TG012 가 있을 때만 뽑는다 (없는 판은 새지 않는 배관 — 의미 없는 연기를 안 보이게).
-    ///  2분 실패로 초기화될 때 다시 뽑는다. 상태는 "새는 곳" · "막힌 곳" 6칸 비트 묶음 2개 — 늦게 들어온 사람도 같은 모습.
+    ///  2분 실패로 초기화될 때 다시 뽑는다 (모델이 바뀔 수 있다 — 예: 2번 → 3번). 상태는 "새는 곳" · "막힌 곳" 6칸 비트 묶음 2개 — 늦게 들어온 사람도 같은 모습.
     /// [시작 조건 — PL12] 공통 자격(TryBeginOperation) + 그 자리가 새는 중 + 손에 테이프(주머니 칸 아님). [취소 — PL13] 테이프를 손에서 놓으면 매 틱 검사로 진행 0.
     /// [한 사람 — PL14] 공통 틀대로 한 번에 한 명. 한 자리를 막으면 조작을 풀어 다음 자리는 F 를 다시 누른다.
-    /// [표시 — PL17 · PL18 · PL19] 새는 중 = 구멍 + 연기 / 누르는 중 = X자 테이프가 진행만큼 커짐 / 막힘 = 테이프 다 붙음. 조준 문구는 내 손 상태로.
+    /// [표시 — PL18 · PL19 · 15 NM4] 새는 중 = 모델 구멍 + 연기 / 누르는 중 = 테이프 조각이 구멍 표면점에서 진행만큼 커짐 / 막힘 = 조각 다 붙음. 조준 문구는 내 손 상태로.
     /// [가스 피해 — 14a 명세 GD2 ~ GD12, 사용자 요청 · 기획서에 없음] 호스트가 1초마다 아직 새는 자리 둘레(수평 1.2m · 높이 차 2m)의 플레이어에게
     ///  팀원 PlayerHealth.ApplyDamage 로 5 (체력 10 아래로는 안 내려감 — 죽지 않음). 모두 대상(살인마 포함), 단 이 배관에서 테이프를 붙이는 사람(조작자)은 뺀다 —
     ///  피격 알림이 팀원 입력 코드의 F 누르고 있기를 끊어 2초 막기를 끝낼 수 없게 되므로. 한 사람은 여러 배관에 걸려도 1초에 한 번 (배관끼리 쓰는 기록).
-    /// [근거] 13a 명세 PL2 · PL5 · PL8 ~ PL19 · PL27, 기획서 "배관 누수 차단", 14a 명세 GD2 ~ GD12
+    /// [근거] 13a 명세 PL2 · PL8 ~ PL19 · PL27, 기획서 "배관 누수 차단", 14a 명세 GD2 ~ GD12, 15 명세 NM2 · NM4 · NM6 (받은 모델 — 사용자 결정 A)
     /// </summary>
     public class PipeLeakStation : HoldStation
     {
@@ -33,13 +34,10 @@ namespace TrustNoOne.Missions
             [Tooltip("조준 상자 (조준 레이어) — StationHoldPart 가 붙은 오브젝트")]
             public Collider Target;
 
-            [Tooltip("검은 구멍 원판")]
-            public Renderer Hole;
-
             [Tooltip("가스 연기")]
             public ParticleSystem Gas;
 
-            [Tooltip("X자 테이프 묶음 — 진행만큼 커진다")]
+            [Tooltip("테이프 조각 기준점 (구멍 표면점) — 진행만큼 커진다 (15 NM4)")]
             public Transform Tape;
 
             [Tooltip("조준 문구 글자")]
@@ -53,8 +51,12 @@ namespace TrustNoOne.Missions
         // 진행 0 일 때 테이프 크기 — 0 이면 크기 0 행렬로 그려지지 않게 아주 작게
         private const float MinTapeScale = 0.05f;
 
-        [Header("새는 곳 (후보 6자리 — 변환 도구가 채운다)")]
+        [Header("새는 곳 (모델 구멍 6자리 — 변환 도구가 채운다)")]
         [SerializeField] private LeakSpot[] spots = new LeakSpot[PipeLeakRules.SpotCount];
+
+        [Header("배관 모델 (15 NM6 — 0번 구멍 없음 ~ 3번 구멍 3개, 변환 도구가 채운다)")]
+        [Tooltip("새는 곳 비트 수 번호의 모델만 켠다. 새는 곳 자리는 속한 모델 아래에 있어 함께 켜지고 꺼진다")]
+        [SerializeField] private GameObject[] pipeModels = new GameObject[PipeLeakRules.ModelCount];
 
         [Header("표시")]
         [Tooltip("완료하면 켜지는 「수리 완료」 글자")]
@@ -130,16 +132,11 @@ namespace TrustNoOne.Missions
             Roll();
         }
 
-        /// <summary>새는 곳을 다시 뽑는다 (PL5 — 개수 1 ~ 3 · 후보 6곳 중 서로 다른 자리).</summary>
+        /// <summary>새는 곳을 다시 뽑는다 (15 NM2 — 개수 1 ~ 3 → 그 개수 모델의 구멍 자리 묶음).</summary>
         private void Roll()
         {
-            float[] orderRolls = new float[PipeLeakRules.SpotCount];
-
-            for (int i = 0; i < orderRolls.Length; i++)
-                orderRolls[i] = Random.value;
-
-            LeakMask = PipeLeakRules.PickMask(fixedLeakCount, Random.value, orderRolls);
-            Debug.Log($"[PipeLeakStation] {name}: 새는 곳 {PipeLeakRules.Count(LeakMask)}개 (자리 {DescribeSpots(LeakMask)})");
+            LeakMask = PipeLeakRules.PickMask(fixedLeakCount, Random.value);
+            Debug.Log($"[PipeLeakStation] {name}: 새는 곳 {PipeLeakRules.Count(LeakMask)}개 — 배관 모델 {PipeLeakRules.ModelIndex(LeakMask)}번 (자리 {DescribeSpots(LeakMask)})");
         }
 
         protected override bool CanBeginHoldPart(PlayerRef actor, int part)
@@ -310,6 +307,18 @@ namespace TrustNoOne.Missions
             shownProgress = progress;
             shownFlags = flags;
 
+            // 켤 배관 모델 = 새는 곳 비트 수 (NM6). 먼저 켜야 그 아래 새는 곳의 연기가 재생된다 (꺼진 오브젝트의 파티클은 Play 해도 나오지 않음)
+            int model = PipeLeakRules.ModelIndex(leak);
+
+            if (pipeModels != null)
+            {
+                for (int m = 0; m < pipeModels.Length; m++)
+                {
+                    if (pipeModels[m] != null && pipeModels[m].activeSelf != (m == model))
+                        pipeModels[m].SetActive(m == model);
+                }
+            }
+
             for (int i = 0; i < spots.Length; i++)
             {
                 LeakSpot spot = spots[i];
@@ -320,9 +329,6 @@ namespace TrustNoOne.Missions
                 bool isLeak = (leak & (1 << i)) != 0;
                 bool isSealed = (sealedMask & (1 << i)) != 0;
                 bool leaking = isLeak && !isSealed;
-
-                if (spot.Hole != null)
-                    spot.Hole.enabled = leaking;
 
                 if (spot.Gas != null)
                 {

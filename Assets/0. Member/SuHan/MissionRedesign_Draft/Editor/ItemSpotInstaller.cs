@@ -12,7 +12,7 @@ using UnityEngine.SceneManagement;
 ///  2) 구역 상자(ItemZone) — 관리자 아래에 구역 상자가 하나도 없을 때만 설정 묶음(MissionMapSpec.ItemZones) 값으로
 ///  3) 선반 칸(ShelfSlot) — 칸이 하나도 없는 선반에만: 선반 메시의 위 · 아래를 향한 면 → ShelfSlotRules.Find → 선반 자식 `Slot (선반 칸)`
 ///     (테스트 후 추가 — IS23) 입구가 다른 선반 몸통 안인 칸은 만들지 않고, 이미 있는 칸도 매번 검사해 지운다 (끝을 맞대고 겹친 선반)
-///  4) 아이템 크기표 · 무기 3종 · 청소기 프리팹 — 매번 다시 잰다 (프리팹이 바뀌어도 맞게)
+///  4) 아이템 크기표 · 무기 · 청소기 · 테이프 프리팹 — 매번 다시 잰다 (프리팹이 바뀌어도 맞게). 무기는 코드 3종 + 관리자에 이미 있던 것 (15 NM23 — 팀원이 씬에서 넣은 무기를 지킨다)
 /// [다시 실행해도 안전 — IS9] 구역 · 칸은 이미 있으면 그대로 → 기획자가 옮기거나 지운 것이 남는다. 처음 값으로 되돌리려면 그 오브젝트를 지우고 다시 실행.
 /// [콜라이더 없음] 구역 · 칸은 NavMesh 굽기 · 이동 · 조준에 영향이 없어 굽기 순서와 상관없다.
 /// [크기표 — IS13 구현] 프리팹의 켜진 렌더러 메시 범위를 아이템 루트 기준(루트 크기 포함 · 루트 위치 · 회전 제외)으로 잰다 —
@@ -56,12 +56,12 @@ public static class ItemSpotInstaller
         List<ShelfVolume> volumes = ShelfVolumes(scene);
         int slotsCreated = AddShelfSlots(volumes, out int shelvesFilled, out int skippedBlocked);
         int removedBlocked = RemoveBlockedSlots(volumes);
-        int sized = FillDirector(director, out int weapons, out bool vacuum);
+        int sized = FillDirector(director, out int weapons, out string keptWeapons, out bool vacuum);
 
         EditorUtility.SetDirty(director);
         return $"자리 관리자 {(created ? "새로 만듦" : "있음")}, 구역 상자 {zonesTotal}개 (새로 {zonesCreated}), " +
                $"선반 칸 새로 {slotsCreated}칸 (선반 {volumes.Count}개 중 {shelvesFilled}개에 — 칸이 있던 선반은 그대로, 막혀서 안 만든 칸 {skippedBlocked}), " +
-               $"막힌 칸 {removedBlocked}개 지움, 아이템 크기표 {sized}종, 무기 {weapons}종 · 청소기 {(vacuum ? "연결" : "없음")}";
+               $"막힌 칸 {removedBlocked}개 지움, 아이템 크기표 {sized}종, 무기 {weapons}종{keptWeapons} · 청소기 {(vacuum ? "연결" : "없음")}";
     }
 
     private static ItemSpotDirector EnsureDirector(Transform root, out bool created)
@@ -314,8 +314,13 @@ public static class ItemSpotInstaller
         return string.Join(" / ", parts);
     }
 
-    /// <summary>크기표 · 무기 · 청소기 프리팹을 관리자에 넣는다 (매번). 크기를 잰 아이템 수를 돌려준다.</summary>
-    private static int FillDirector(ItemSpotDirector director, out int weapons, out bool vacuum)
+    /// <summary>
+    /// 크기표 · 무기 · 청소기 · 테이프 프리팹을 관리자에 넣는다 (매번). 크기를 잰 아이템 수를 돌려준다.
+    /// [무기 — 15 NM23, 테스트 후 추가] 덮어쓰기 전에 관리자의 무기 목록을 읽어, 코드 목록(WeaponPrefabPaths)에 없는 것을 뒤에 더해 지킨다 (경로 기준, 한 번씩).
+    ///  팀원이 씬의 관리자에 직접 넣은 무기(6d923fa — 전기 충격봉 · 펜치)를 이 메뉴가 코드 3종으로 덮어써 지웠기 때문 — 11a BC13 "기존 값 지키기"와 같은 방식.
+    ///  크기는 모두 다시 잰다. 씬에서 무기를 빼려면 관리자 목록에서 지우면 된다 (코드 3종은 다시 들어간다).
+    /// </summary>
+    private static int FillDirector(ItemSpotDirector director, out int weapons, out string keptWeapons, out bool vacuum)
     {
         List<NetworkObject> sizedPrefabs = new List<NetworkObject>();
         List<Bounds> sizes = new List<Bounds>();
@@ -324,7 +329,25 @@ public static class ItemSpotInstaller
         foreach (string path in MissionItemPaths)
             AddSize(path, sizedPrefabs, sizes);
 
-        foreach (string path in WeaponPrefabPaths)
+        List<string> weaponPaths = new List<string>(WeaponPrefabPaths);
+        List<string> kept = new List<string>();
+        SerializedProperty existing = new SerializedObject(director).FindProperty("weaponPrefabs");
+
+        for (int i = 0; i < existing.arraySize; i++)
+        {
+            Object item = existing.GetArrayElementAtIndex(i).objectReferenceValue;
+            string itemPath = item != null ? AssetDatabase.GetAssetPath(item) : null;
+
+            if (string.IsNullOrEmpty(itemPath) || weaponPaths.Contains(itemPath))
+                continue;
+
+            weaponPaths.Add(itemPath);
+            kept.Add(item.name);
+        }
+
+        keptWeapons = kept.Count > 0 ? $" (씬에 있던 {kept.Count}종 지킴: {string.Join(" · ", kept)})" : string.Empty;
+
+        foreach (string path in weaponPaths)
         {
             NetworkObject weapon = AddSize(path, sizedPrefabs, sizes);
 

@@ -19,6 +19,7 @@ namespace TrustNoOne.Missions
     ///  (CO37 · CO38 — 계획 실행 중 보충) 목표는 x · y 모두 0 에서 떨어지게 뽑고, 완료 순간 초록 · 노랑 담당이 서로 다른 두 사람으로 모두 있어야 한다
     ///  (한 색만으로 · 혼자 멀어졌다 돌아와 번갈아서는 못 깨게). 맞았는데 한 색이 비어 있으면 화면에 "… 담당이 필요합니다".
     /// [표시 — CO18 · CO24] 담당이 있으면 화면 켜짐(CoordinateScreen), 버튼 조준 문구는 내 PC 기준. 신호음은 칸이 있을 때만 (CO5 — 지금은 비어 있어 소리 없음).
+    ///  (15 NM9) 누르는 중인 버튼은 윗면 방향으로 들어간다 — 받은 모델의 버튼이 따로 떨어진 부품이라, 누르는 중 비트(PressMask)로 모든 PC 에서 보인다.
     /// [동기화 — CO19] 원 · 목표 · 방향 · 담당 · 누르는 중은 [Networked] — 늦게 들어온 사람도 같은 화면. 멈춤 1초는 호스트만 센다.
     /// [근거] 13b 명세 CO2 ~ CO26 · CO32, 기획서 "좌표 설정"
     /// </summary>
@@ -76,6 +77,14 @@ namespace TrustNoOne.Missions
         [SerializeField] private TMP_Text greenPrompt;
         [SerializeField] private TMP_Text yellowPrompt;
 
+        [Header("버튼 들어감 (15 NM9 — 변환 도구가 채운다)")]
+        [Tooltip("초록 버튼 부품 (받은 모델의 button_green)")]
+        [SerializeField] private Transform greenButton;
+        [Tooltip("노랑 버튼 부품 (받은 모델의 button_yellow)")]
+        [SerializeField] private Transform yellowButton;
+        [Tooltip("누르는 동안 버튼이 윗면 방향으로 들어가는 깊이 (m)")]
+        [SerializeField] private float buttonPressDepth = 0.015f;
+
         [Header("테스트 (13b CO26)")]
         [Tooltip("켬 = 한 사람이 두 색을 번갈아 맡을 수 있다 (혼자 테스트 씬만). 실제 게임은 꺼짐 — 두 사람이 필요")]
         [SerializeField] private bool allowSoloOperation;
@@ -98,6 +107,12 @@ namespace TrustNoOne.Missions
         private float beepTimer;
         private string shownGreenPrompt;
         private string shownYellowPrompt;
+
+        // 각 PC: 버튼 제자리 (처음 Render 때 읽음) · 보여 준 누르는 중 비트 (바뀔 때만 움직인다)
+        private Vector3 greenRest;
+        private Vector3 yellowRest;
+        private bool buttonRestRead;
+        private int shownPressMask = -1;
 
         // ═════════════════════════════════════════════════════════════
         //  호스트: 판 시작 · 담당 자리 · 움직임 · 완료
@@ -373,7 +388,41 @@ namespace TrustNoOne.Missions
 
             ShowPrompt(greenPrompt, GreenPart, ref shownGreenPrompt);
             ShowPrompt(yellowPrompt, YellowPart, ref shownYellowPrompt);
+            UpdateButtons();
             UpdateBeep(on && !Completed, fill);
+        }
+
+        /// <summary>누르는 중인 버튼을 윗면 방향(버튼 부품의 위쪽 = 조작판 밖)으로 깊이만큼 넣는다 (NM9). 완료되면 모두 올라온다.</summary>
+        private void UpdateButtons()
+        {
+            if (!buttonRestRead)
+            {
+                if (greenButton != null)
+                    greenRest = greenButton.localPosition;
+
+                if (yellowButton != null)
+                    yellowRest = yellowButton.localPosition;
+
+                buttonRestRead = true;
+            }
+
+            int mask = Completed ? 0 : PressMask;
+
+            if (mask == shownPressMask)
+                return;
+
+            shownPressMask = mask;
+            PressButton(greenButton, greenRest, (mask & (1 << GreenPart)) != 0);
+            PressButton(yellowButton, yellowRest, (mask & (1 << YellowPart)) != 0);
+        }
+
+        private void PressButton(Transform button, Vector3 rest, bool pressed)
+        {
+            if (button == null)
+                return;
+
+            // 부모 기준 버튼 윗면 방향 = 버튼 회전 × 위 (받은 모델: 45° 기운 조작판 — 15 명세 1-1)
+            button.localPosition = pressed ? rest - button.localRotation * Vector3.up * buttonPressDepth : rest;
         }
 
         private CoordinateSeatState StateOf(PlayerRef seat)
