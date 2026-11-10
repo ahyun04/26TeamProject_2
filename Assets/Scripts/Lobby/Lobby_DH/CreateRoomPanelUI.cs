@@ -16,6 +16,7 @@ namespace LockdownProtocol.Lobby
 
         [Header("Inputs")]
         [SerializeField] private TMP_InputField roomNameInput;
+        [SerializeField, Min(1)] private int maxRoomNameLength = 10;
         [Header("Max Players (◀ n ▶)")]
         [SerializeField] private TMP_Text maxPlayersText;
         [SerializeField] private Button maxPlayersDecreaseButton;
@@ -43,6 +44,8 @@ namespace LockdownProtocol.Lobby
             if (cancelButton != null) cancelButton.onClick.AddListener(Close);
             if (maxPlayersDecreaseButton != null) maxPlayersDecreaseButton.onClick.AddListener(OnDecrease);
             if (maxPlayersIncreaseButton != null) maxPlayersIncreaseButton.onClick.AddListener(OnIncrease);
+
+            if (roomNameInput != null) roomNameInput.characterLimit = maxRoomNameLength;
 
             // 패널을 열 때마다 기본값으로 초기화
             SetMaxPlayers(defaultMaxPlayers);
@@ -80,6 +83,7 @@ namespace LockdownProtocol.Lobby
             if (_isBusy) return;
 
             string roomName = roomNameInput.text.Trim();
+            if (roomName.Length > maxRoomNameLength) roomName = roomName.Substring(0, maxRoomNameLength);
             if (string.IsNullOrEmpty(roomName))
             {
                 ShowFeedback("방 이름을 입력하세요.");

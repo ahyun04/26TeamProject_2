@@ -20,7 +20,7 @@ public class NicknamePopupUI : MonoBehaviour
     [SerializeField] private Button cancelButton;
     [SerializeField] private TMP_Text feedbackText;
     [SerializeField, Min(1)] private int minLength = 2;
-    [SerializeField, Min(1)] private int maxLength = 12;
+    [SerializeField, Min(1)] private int maxLength = 6;
 
     public event Action Confirmed;
 

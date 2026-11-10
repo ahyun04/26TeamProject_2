@@ -6,26 +6,22 @@ namespace LockdownProtocol.Lobby
 {
     public class LobbyPlayerController : NetworkBehaviour
     {
-        private const int MaxNicknameLength = 12;
+        private const int MaxNicknameLength = 6;
 
-        [Networked, OnChangedRender(nameof(retainLobbyIdentity))] public NetworkString<_16> Nickname { get; private set; }
+        [Networked] public NetworkString<_16> Nickname { get; private set; }
         [Networked] public NetworkBool IsReady { get; private set; }
         [Networked] public NetworkBool IsHost { get; private set; }
         [Networked] public NetworkBool IsTalking { get; private set; }
-        [Networked, OnChangedRender(nameof(retainLobbyIdentity))] public int JoinOrder { get; private set; }
-
-        private NetworkBootstrap bootstrap; //씬 전환 후에도 참가자 표시 정보를 유지할 진입점
+        [Networked] public int JoinOrder { get; private set; }
 
         public event System.Action<bool> ReadyChanged;
 
         public override void Spawned()
         {
-            bootstrap = FindFirstObjectByType<NetworkBootstrap>();
             if (Object.HasInputAuthority)
             {
-                // Main에서 선택한 닉네임을 우선하고 저장값이 없으면 보존한 이름 사용
-                string fallback = bootstrap != null ? bootstrap.getLobbyIdentity(Object.InputAuthority).nickname
-                    : $"Player_{Object.InputAuthority.PlayerId}";
+                // 로컬 플레이어 초기 닉네임 세팅: Main 씬에서 입력한 닉네임, 없으면 Player_{번호}
+                string fallback = $"P{Object.InputAuthority.PlayerId}";
                 string nickname = NicknamePopupUI.HasSavedNickname() ? NicknamePopupUI.GetSavedNickname() : fallback;
                 RPC_SetNickname(string.IsNullOrWhiteSpace(nickname) ? fallback : nickname);
 
@@ -47,17 +43,6 @@ namespace LockdownProtocol.Lobby
                     IsHost = isHost;
                 }
             }
-            retainLobbyIdentity();
-        }
-
-        private void retainLobbyIdentity() //초기 생성과 복제 값 변경 시 이름과 입장 순서 보관
-        {
-            if (bootstrap != null) bootstrap.retainLobbyIdentity(this);
-        }
-
-        public override void Render() //본인 화면에서 확정 방 정보를 씬 제거 전에 보관
-        {
-            if (Object.HasInputAuthority && bootstrap != null) bootstrap.retainRoomSettings(RoomManager.Instance);
         }
 
         public override void Despawned(NetworkRunner runner, bool hasState)
@@ -119,10 +104,32 @@ namespace LockdownProtocol.Lobby
             // 호스트 쪽에서 한 번 더 정리: 태그 문자 제거, 공백 제거, 길이 제한
             string cleaned = (nickname ?? string.Empty).Replace("<", string.Empty).Replace(">", string.Empty).Trim();
             if (cleaned.Length > MaxNicknameLength) cleaned = cleaned.Substring(0, MaxNicknameLength);
-            if (cleaned.Length == 0) cleaned = $"Player_{Object.InputAuthority.PlayerId}";
+            if (cleaned.Length == 0) cleaned = $"P{Object.InputAuthority.PlayerId}";
 
-            Nickname = cleaned;
-            retainLobbyIdentity();
+            Nickname = makeUniqueNickname(cleaned);
+        }
+
+        // 같은 방의 다른 참가자와 겹치면 "이름(2)", "이름(3)" ... 으로 바꾼다 (대소문자 구분 없이 비교, 호스트에서만 실행)
+        private string makeUniqueNickname(string desired)
+        {
+            string candidate = desired;
+            for (int n = 2; n < 100 && isNicknameTaken(candidate); n++)
+            {
+                string suffix = $"({n})";
+                candidate = desired + suffix; // 최대 6자 + 4자 = 10자 이내 (NetworkString<_16> 안에 들어감)
+            }
+            return candidate;
+        }
+
+        private bool isNicknameTaken(string candidate)
+        {
+            foreach (LobbyPlayerController other in FindObjectsByType<LobbyPlayerController>(FindObjectsSortMode.None))
+            {
+                if (other == this || other.Object == null || !other.Object.IsValid) continue;
+                if (string.Equals(other.Nickname.ToString(), candidate, System.StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+            return false;
         }
 
         // ================== 방장 지정 ==================
@@ -143,7 +150,6 @@ namespace LockdownProtocol.Lobby
         {
             if (!Object.HasStateAuthority) return;
             JoinOrder = order;
-            retainLobbyIdentity();
         }
     }
 }
