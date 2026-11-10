@@ -9,15 +9,17 @@ namespace LockdownProtocol.Lobby
     /// 로비 메뉴 화면: [빠른 입장] / [방 생성] / [초대 코드 입력 + 입력 버튼] 4가지만 담당한다.
     /// - [방 생성]은 다음 화면(Create Panel, CreateRoomPanelUI)을 열기만 한다.
     /// - 초대 코드로 참가하면 성공 시 씬 전환은 Fusion의 SceneManager가 자동으로 처리한다.
-    /// - [빠른 입장]은 껍데기(TODO: Fusion 로비 세션 목록 연동).
+    /// - [빠른 입장]은 공개 방 목록 창(RoomListUI)을 연다.
     /// </summary>
     public class LobbyMenuUI : MonoBehaviour
     {
         [Header("Dependencies")]
         [SerializeField] private NetworkBootstrap bootstrap;
 
-        [Header("Quick Join (껍데기)")]
+        [Header("Quick Join")]
         [SerializeField] private Button quickJoinButton;
+        [Tooltip("빠른 입장을 누르면 열리는 방 목록 창 (RoomListUI)")]
+        [SerializeField] private RoomListUI roomListUI;
 
         [Header("Create Room")]
         [SerializeField] private Button createRoomButton;
@@ -48,12 +50,17 @@ namespace LockdownProtocol.Lobby
             if (quickJoinButton != null) quickJoinButton.onClick.RemoveListener(OnQuickJoinClicked);
         }
 
-        /// <summary>빠른 입장 - 껍데기. TODO: Fusion 로비 세션 목록(OnSessionListUpdated)에서
-        /// 공개 + Waiting + 자리 있는 방을 골라 JoinRoom(세션명) 호출.</summary>
+        /// <summary>빠른 입장 - 공개 방 목록 창을 연다. 목록에서 방을 눌러 입장한다 (RoomListUI).</summary>
         private void OnQuickJoinClicked()
         {
             if (_isBusy) return;
-            ShowFeedback("빠른 입장은 준비 중입니다");
+            if (roomListUI == null)
+            {
+                ShowFeedback("방 목록 창이 연결되지 않았습니다");
+                return;
+            }
+            ShowFeedback(string.Empty);
+            roomListUI.Open();
         }
 
         private void OnCreateRoomButtonClicked()

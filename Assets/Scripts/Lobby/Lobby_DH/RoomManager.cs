@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Fusion;
 using LockdownProtocol.Networking;
 using UnityEngine;
@@ -176,6 +177,7 @@ namespace LockdownProtocol.Lobby
             if (newMax < current) { RPC_MaxPlayerRejected(requester, "현재 인원보다 적게 설정할 수 없습니다."); return; }
 
             MaxPlayerCount = newMax;
+            PublishSessionInfo(); //방 목록의 최대 인원 갱신
             Debug.Log($"[RoomManager] 최대 인원 변경 완료: {newMax}");
             RPC_NotifyMaxPlayerChanged(newMax);
         }
@@ -246,6 +248,20 @@ namespace LockdownProtocol.Lobby
 
         [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
         private void RPC_KillerCountRejected([RpcTarget] PlayerRef target, string reason) => KillerCountChangeRejected?.Invoke(reason); //요청자에게 거부 이유 전달
+
+        // ================== 방 목록(빠른 입장) 노출 정보 ==================
+
+        /// <summary>방 목록에 보이는 이름/최대 인원/공개 여부를 현재 값으로 맞춘다. 방장(호스트)만 실행.</summary>
+        public void PublishSessionInfo()
+        {
+            if (!Object.HasStateAuthority || Runner == null || Runner.SessionInfo == null || !Runner.SessionInfo.IsValid) return;
+            Runner.SessionInfo.IsVisible = !IsPrivate;
+            Runner.SessionInfo.UpdateCustomProperties(new Dictionary<string, SessionProperty>
+            {
+                ["n"] = RoomName.ToString(),
+                ["m"] = MaxPlayerCount
+            });
+        }
 
         // ================== 방 나가기 ==================
 

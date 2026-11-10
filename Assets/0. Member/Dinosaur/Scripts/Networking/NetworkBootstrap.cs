@@ -247,6 +247,16 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
                 args.PlayerCount = RoomManager.AbsoluteMaxPlayers; //변경 가능한 최대 정원 예약, 실제 입장은 RoomManager의 논리 정원으로 제한
             }
 
+            if (mode == GameMode.Host)
+            {
+                args.IsVisible = !isPrivate; //비공개 방은 방 목록(빠른 입장)에 보이지 않는다. 초대 코드로는 입장 가능
+                args.SessionProperties = new Dictionary<string, SessionProperty>
+                {
+                    ["n"] = _roomName, //방 목록에 표시할 방 이름
+                    ["m"] = _maxPlayers //방 목록에 표시할 최대 인원
+                };
+            }
+
             StartGameResult result = await _runner.StartGame(args);
             sessionConnected = result.Ok && !disconnected;
             return result;
@@ -521,6 +531,12 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
             {
                 args.PlayerCount = RoomManager.AbsoluteMaxPlayers;
                 if (!string.IsNullOrEmpty(migratedSessionName)) args.SessionName = migratedSessionName;
+                // 방 목록용 속성 키를 미리 만들어 둔다 (값은 마이그레이션 뒤 PublishSessionInfo 에서 실제 값으로 갱신)
+                args.SessionProperties = new Dictionary<string, SessionProperty>
+                {
+                    ["n"] = string.IsNullOrEmpty(_roomName) ? "room" : _roomName,
+                    ["m"] = Mathf.Max(_maxPlayers, RoomManager.AbsoluteMinPlayers)
+                };
             }
 
             StartGameResult result = await _runner.StartGame(args);
@@ -537,7 +553,10 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
                 Debug.Log($"[NetworkBootstrap] 마이그레이션 완료: 세션 '{info.Name}', 열림 {info.IsOpen}, 공개 {info.IsVisible}, 최대 {info.MaxPlayers}, 현재 {info.PlayerCount}, 씬 '{_runner.SceneManager?.MainRunnerScene.name}'");
                 RoomManager room = RoomManager.Instance; //마이그레이션 직후 방을 다시 입장 가능 상태로
                 if (room != null && room.Object != null && room.Object.IsValid && room.Runner == _runner)
+                {
                     room.SetRoomState(RoomManager.RoomState.Waiting);
+                    room.PublishSessionInfo(); //방 목록의 이름/인원/공개 여부를 실제 값으로 갱신
+                }
                 await reloadRoomSceneAfterMigration();
             }
         }
