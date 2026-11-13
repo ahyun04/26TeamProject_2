@@ -13,6 +13,7 @@ using UnityEngine.SceneManagement;
 ///  - 시작 화면: Play(빌드 실행) 직후 [혼자] [호스트] [손님] 중 고른 방식으로 러너를 시작한다. 실패하면 이유를 보이고 다시 고른다 (6a 명세 MT6)
 ///  - 플레이어 스폰: 호스트(혼자 모드 포함)가 들어온 사람마다 플레이어를 스폰하고, 나가면 지운다 (MT9)
 ///  - 혼자 모드 자동 배정: 미션 관리자가 준비되면 "나 = 시민, 범인 없음"으로 배정한다 (멀티 배정은 MissionTestAssignmentPanel)
+///    `Solo As Killer` 를 켜면 "나 = 살인마, 시민 없음" — 살인마 화면 암전을 혼자 보려고 (16a 명세 KB22)
 ///  - 판 다시 시작: 러너를 끝내고 씬을 다시 불러 시작 화면으로 돌아간다. 호스트가 끝내면 손님도 끊겨 같이 돌아간다 (MT5)
 ///
 /// [왜 필요한가] Fusion 의 NetworkBehaviour(Spawned / FixedUpdateNetwork 등)는 러너가 그 오브젝트를 등록해야 콜백이 불린다.
@@ -43,6 +44,10 @@ public class MissionTestBootstrap : MonoBehaviour, INetworkRunnerCallbacks
     [SerializeField] private Transform playerSpawnPoint;
     [Tooltip("들어온 사람마다 시작점에서 이만큼(m)씩 오른쪽으로 비켜 세운다 (겹치지 않게)")]
     [SerializeField] private float playerSpacing = 1.5f;
+
+    [Header("살인마 암전 (16a)")]
+    [Tooltip("켬 = 혼자 모드에서 나를 살인마로 배정한다 (시민 없음) — 살인마 화면 암전을 혼자 보려고 (16a 명세 KB22). 끔 = 나 = 시민 (기존)")]
+    [SerializeField] private bool soloAsKiller;
 
     private enum Phase { Choosing, Connecting, Running }
 
@@ -241,12 +246,15 @@ public class MissionTestBootstrap : MonoBehaviour, INetworkRunnerCallbacks
         if (missionManager == null || !missionManager.IsReady)
             return;
 
-        missionManager.InitializeMissions(
-            new List<PlayerRef> { runner.LocalPlayer },
-            new List<PlayerRef>());
+        // 16a KB22: Solo As Killer 면 나 = 살인마 (같은 목록을 살인마 쪽으로)
+        List<PlayerRef> me = new List<PlayerRef> { runner.LocalPlayer };
+        List<PlayerRef> nobody = new List<PlayerRef>();
+        missionManager.InitializeMissions(soloAsKiller ? nobody : me, soloAsKiller ? me : nobody);
 
         soloInitialized = true;
-        Debug.Log("[MissionTestBootstrap] 혼자 모드 미션 배정 완료 (나 = 시민 1명, 범인 없음)");
+        Debug.Log(soloAsKiller
+            ? "[MissionTestBootstrap] 혼자 모드 미션 배정 완료 (나 = 살인마 1명, 시민 없음 — Solo As Killer)"
+            : "[MissionTestBootstrap] 혼자 모드 미션 배정 완료 (나 = 시민 1명, 범인 없음)");
     }
 
     public void OnShutdown(NetworkRunner runner, ShutdownReason shutdownReason)

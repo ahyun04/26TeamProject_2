@@ -1,4 +1,5 @@
 using System.Text;
+using TrustNoOne.Gimmicks;
 using TrustNoOne.Missions;
 using UnityEngine;
 
@@ -13,15 +14,23 @@ using UnityEngine;
 ///  F9  : 내 행동 확정 — 탈출/사망을 흉내낸다. "뛰지 않는다" 같은 종료 판정 목표가 이때 결과로 확정된다.
 ///  F10 : 게임 종료 전체 공개 (MissionManager.RevealAllMissions)
 ///  F8  : (테스트) 방화문을 뺀 단체 미션 즉시 완료 — 방화문 해금을 빨리 보려고 (3d 명세 FD17). 장치 모습은 바뀌지 않는다 (미션 상태만)
+///  F4  : (테스트) 살인마 암전을 "지금부터 3초 뒤 시작"으로 다시 잡기 — 길이도 다시 뽑는다 (16a 명세 KB21)
+///
+/// [살인마 암전 한 줄 — 16a KB19] 대기(시작까지 · 길이 · 살인마 수) / 암전 중(남은 초 · 어두움) / 끝 / 이번 판 없음 + 내 화면 적용 여부.
+///  씬에 KillerBlackoutManager 가 없으면 줄을 그리지 않는다.
+/// [암전 화면 한 줄 — 16b KB40] 그 아래 회색으로: 팔(팀원 팔 · 복사본 · 없음) · 지도(막음 · 씬에 없음 · 대체 · 평소) · 조준점 아래 안내 글자.
 /// </summary>
 public class MissionDebugOverlay : MonoBehaviour
 {
     [SerializeField] private KeyCode finalizeKey = KeyCode.F9;
     [SerializeField] private KeyCode revealKey = KeyCode.F10;
     [SerializeField] private KeyCode completeOtherTeamKey = KeyCode.F8;
+    [SerializeField] private KeyCode blackoutRestartKey = KeyCode.F4;
     [SerializeField] private float panelWidth = 540f;
 
     private MissionManager manager;
+    private KillerBlackoutManager blackout;
+    private KillerBlackoutView blackoutView;
     private GUIStyle style;
     private string lastAction = string.Empty;
     private readonly StringBuilder builder = new StringBuilder();
@@ -51,6 +60,26 @@ public class MissionDebugOverlay : MonoBehaviour
             lastAction = $"{completeOtherTeamKey}: (테스트) 방화문 제외 단체 미션 {completed}개 완료";
             Debug.Log($"[MissionDebugOverlay] {lastAction}");
         }
+
+        if (Input.GetKeyDown(blackoutRestartKey) && TryGetBlackout())
+        {
+            bool planned = blackout.RestartForTest();
+            lastAction = planned
+                ? $"{blackoutRestartKey}: (테스트) 살인마 암전 3초 뒤 다시 — 길이 {blackout.Duration:0.0}초"
+                : $"{blackoutRestartKey}: (테스트) 살인마 암전 다시 잡기 실패 (판 시작 전이거나 길이 0)";
+            Debug.Log($"[MissionDebugOverlay] {lastAction}");
+        }
+    }
+
+    private bool TryGetBlackout()
+    {
+        if (blackout == null)
+        {
+            blackout = FindFirstObjectByType<KillerBlackoutManager>();
+            blackoutView = blackout != null ? blackout.GetComponent<KillerBlackoutView>() : null;
+        }
+
+        return blackout != null && blackout.Object != null && blackout.Object.IsValid;
     }
 
     /// <summary>
@@ -118,6 +147,7 @@ public class MissionDebugOverlay : MonoBehaviour
 
         builder.AppendLine($"<b>시민 전체 진행도</b>  {client.CitizenProgress01 * 100f:0}%  ({client.CitizenProgressCurrent}/{client.CitizenProgressRequired})");
         builder.AppendLine($"단체 미션 전체 완료: {YesNo(client.TeamCompleted)}    탈출: {(client.EscapeUnlocked ? "<color=#7CFC7C>해금</color>" : "잠김")}");
+        AppendBlackout();
 
         builder.AppendLine();
         builder.AppendLine(client.IsTeamParticipant ? "<b>[단체 미션]</b>" : "<b>[단체 미션]</b> (나는 참여 대상 아님)");
@@ -145,12 +175,59 @@ public class MissionDebugOverlay : MonoBehaviour
         }
 
         builder.AppendLine();
-        builder.AppendLine($"<color=#AAAAAA>{finalizeKey}: 내 행동 확정(탈출·사망 흉내)   {revealKey}: 전체 공개   {completeOtherTeamKey}: 방화문 빼고 단체 미션 완료(테스트)</color>");
+        builder.AppendLine($"<color=#AAAAAA>{finalizeKey}: 내 행동 확정(탈출·사망 흉내)   {revealKey}: 전체 공개   {completeOtherTeamKey}: 방화문 빼고 단체 미션 완료(테스트)   {blackoutRestartKey}: 살인마 암전 3초 뒤(테스트)</color>");
 
         if (!string.IsNullOrEmpty(lastAction))
             builder.AppendLine($"<color=#FFD37C>{lastAction}</color>");
 
         return builder.ToString();
+    }
+
+    /// <summary>
+    /// 16a KB19: 살인마 암전 한 줄. 예) "암전: 대기 — 시작까지 0:07 · 길이 12.4초 · 살인마 1명   내 화면: 적용"
+    ///  / "암전 중 — 9.8초 남음 (어두움 1.00)" / "암전: 끝" / "암전: 이번 판 없음" / "암전: 판 시작 전"
+    /// </summary>
+    private void AppendBlackout()
+    {
+        if (!TryGetBlackout())
+            return;
+
+        string status;
+
+        if (!blackout.RoundStarted)
+        {
+            status = "암전: 판 시작 전";
+        }
+        else
+        {
+            BlackoutState state = blackout.Evaluate();
+
+            switch (state.Phase)
+            {
+                case BlackoutPhase.Waiting:
+                    status = $"암전: 대기 — 시작까지 {FormatTime(state.SecondsToStart)} · 길이 {blackout.Duration:0.0}초 · 살인마 {blackout.KillerCount}명";
+                    break;
+                case BlackoutPhase.FadingIn:
+                case BlackoutPhase.Dark:
+                    status = $"<color=#FF9C5C>암전 중 — {state.SecondsLeft:0.0}초 남음 (어두움 {state.Darkness:0.00})</color>";
+                    break;
+                case BlackoutPhase.Ended:
+                    status = "암전: 끝";
+                    break;
+                default:
+                    status = "암전: 이번 판 없음";
+                    break;
+            }
+        }
+
+        string mine = blackoutView == null
+            ? string.Empty
+            : blackoutView.AppliesToMe ? "   내 화면: 적용" : $"   내 화면: 미적용({blackoutView.NotAppliedReason})";
+
+        builder.AppendLine($"{status}{mine}");
+
+        if (blackoutView != null)
+            builder.AppendLine($"<color=#AAAAAA>암전 화면: {blackoutView.ScreenStatus}</color>");
     }
 
     /// <summary>category 가 null 이면 단체 미션 목록, 아니면 내 목록 중 그 카테고리만.</summary>

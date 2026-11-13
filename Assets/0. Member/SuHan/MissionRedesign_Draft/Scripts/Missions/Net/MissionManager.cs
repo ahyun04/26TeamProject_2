@@ -95,6 +95,13 @@ namespace TrustNoOne.Missions
         /// </summary>
         public event Action<MissionEventType> OnMissionReset;
 
+        /// <summary>
+        /// 미션 배정이 끝난 순간 1회 (호스트, 16a 명세 KB11). 인자 = InitializeMissions 에 들어온 시민 · 살인마 목록 그대로.
+        /// 살인마 전용 암전(KillerBlackoutManager)이 이 순간을 판 시작으로 본다 (KB10 — 실제 게임 · 테스트 씬 모두 이 함수로 배정한다).
+        /// 알림만 더했다 — 기존 동작은 그대로.
+        /// </summary>
+        public event Action<IReadOnlyList<PlayerRef>, IReadOnlyList<PlayerRef>> OnMissionsAssigned;
+
         // ───────────── 클라이언트 캐시 (모든 피어) ─────────────
 
         /// <summary>UI 가 읽는 로컬 캐시. 이 PC 가 화면에 그려도 되는 정보만 들어 있다.</summary>
@@ -263,6 +270,9 @@ namespace TrustNoOne.Missions
             Initialized = true;
 
             Debug.Log($"[MissionManager] 미션 초기화 완료: 목표 {plan.Objectives.Count}개 (단체 {teamObjectives.Count})");
+
+            // 16a KB11: 상태를 다 쓴 뒤 알린다 — 구독자가 Initialized = true 를 본다
+            OnMissionsAssigned?.Invoke(citizens, killers);
         }
 
         /// <summary>새 판을 시작하기 위해 모든 상태를 비운다 (호스트).</summary>

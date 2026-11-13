@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Fusion;
+using TrustNoOne.Gimmicks;
 using TrustNoOne.Missions;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -26,6 +27,10 @@ using Object = UnityEngine.Object;
 ///  - (13a) 단체 TG012 배관 누수 차단: 진짜 PipeLeakStation 3개 (뒷줄 z −16, 받은 배관 모델 4종 — 15) · 테이프 2개 (배관 앞, 받은 롤 모델)
 ///  - (13b) 단체 TG013 좌표 설정: 진짜 CoordinateStation 1대 (배관 줄 서쪽 끝 (−12, −16), 받은 패널 모델 — 15) — 혼자 테스트라 `혼자 허용` 을 켠다 (CO26)
 ///  - (6b 보강) 1층 아이템 NavMesh: 장치를 다 놓은 뒤 MissionTestLayout 아래 `NavMesh (1층 아이템 구역)` 을 굽는다 (바닥 ±40m) — 산소통 · 부품 · 레버는 그 위 무작위
+///  - (16a) 살인마 전용 암전 관리자: 미션 관리자 옆에 일반 씬 오브젝트로 (프리팹 없음 — NetworkObject + KillerBlackoutManager + KillerBlackoutView).
+///      혼자 테스트라 첫 대기 10초 (실제 게임 기본 120 은 그대로 — KB20). 혼자 살인마는 MissionTestBootstrap 의 `Solo As Killer`
+///  - (16b) 같은 오브젝트에 암전 화면 부품 4개 (BlackoutScreenRig · BlackoutArms · BlackoutMapBlocker · BlackoutPromptLabel) — 없을 때만 붙이고,
+///      BlackoutArms 의 팔 프리팹 칸에 팀원 1인칭 팔 프리팹을 연결한다 (읽기만 — 빈손 팔 복사본용, 16b KB34 · KB40)
 ///
 /// [이식이 진행되면] 자리 표시 큐브를 하나씩 진짜 스테이션으로 바꾼다 (PlaceholderStations 에서 빼고 변환 결과를 배치).
 /// [다시 실행해도 안전] 에셋은 값만 갱신, 씬의 MissionTestLayout 은 지우고 새로 만든다 (씬에서 손으로 옮긴 장치 위치도 원래대로 돌아간다).
@@ -66,6 +71,13 @@ public static class SoloMissionTestSetup
     private const int TeamCount = 13;
     private const int PersonalCount = 0;
     private const int ActionGoalCount = 1;
+
+    // 16a KB20: 살인마 암전 관리자 이름 · 혼자 테스트의 첫 대기(초) — 2분을 기다리지 않게 (실제 게임 기본 120 — BlackoutSchedule.DefaultFirstDelay)
+    private const string KillerBlackoutName = "KillerBlackoutManager";
+    private const float SoloBlackoutFirstDelay = 10f;
+
+    // 16b KB34: 빈손 팔 복사본에 쓸 팀원 1인칭 팔 프리팹 (Player.prefab 의 PlayerFirstPersonItemView.armsPrefab 과 같은 것 — 읽기만)
+    private const string FirstPersonArmsPrefabPath = "Assets/0. Member/Dinosaur/Prefab/PlayerFirstPersonArms.prefab";
 
     private static readonly Color TeamColor = new Color(0.35f, 0.55f, 1f);
 
@@ -208,7 +220,8 @@ public static class SoloMissionTestSetup
         "배관(맨 뒷줄 3개 — 13a): 테이프(배관 앞)를 들고 연기 나는 곳을 조준 → F 2초 = 막기, 배관 하나를 다 막으면 다음 배관까지 2분\n" +
         "좌표(맨 뒷줄 배관 옆 1대 — 13b): 초록 F = 가로 · 노랑 F = 세로 (떼면 멈춤, 다시 누르면 반대) → 노란 목표에 맞추고 둘 다 떼고 1초. 여기선 혼자 두 색 가능\n" +
         "Shift 달리기 = AG101 '뛰지 않는다' 위반   F9 내 행동 확정 / F10 전체 공개\n" +
-        "멀티: 에디터 [호스트] + 빌드 [손님] → 호스트 F5 손님 = 시민 / F6 손님 1명 = 범인   F7 판 다시 시작";
+        "멀티: 에디터 [호스트] + 빌드 [손님] → 호스트 F5 손님 = 시민 / F6 손님 1명 = 범인   F7 판 다시 시작\n" +
+        "살인마 암전(16a): 판 시작 10초 뒤 · 살인마 화면만 10~15초 깜깜   F4 = 3초 뒤 다시(호스트)   혼자 살인마 = MissionTestBootstrap 의 Solo As Killer";
 
     // ═════════════════════════════════════════════════════════════
     //  진입점
@@ -595,6 +608,7 @@ public static class SoloMissionTestSetup
         networkRoot.SetParent(layoutRoot.transform, false);
 
         PlaceSceneObject(missionManagerPrefab, networkRoot, "MissionManager", Vector3.zero, Quaternion.identity);
+        CreateKillerBlackoutManager(networkRoot);
 
         for (int i = 0; i < placements.Count; i++)
         {
@@ -658,6 +672,41 @@ public static class SoloMissionTestSetup
         EditorSceneManager.MarkSceneDirty(scene);
         // 저장할 때 Fusion 이 씬 오브젝트의 정렬 키를 굽는다 (호스트 · 손님이 같은 오브젝트로 짝을 맞추는 번호)
         EditorSceneManager.SaveScene(scene);
+    }
+
+    /// <summary>
+    /// 16a KB20: 살인마 암전 관리자를 놓는다 — 이름으로 찾아 없을 때만 만들고, 첫 대기를 혼자 테스트 값(10초)으로 둔다.
+    /// 프리팹 없이 일반 씬 오브젝트로 (16c 의 실제 게임 씬 설치와 같은 모양). 씬을 저장할 때 Fusion 이 씬 오브젝트로 굽는다.
+    /// </summary>
+    private static void CreateKillerBlackoutManager(Transform parent)
+    {
+        Transform existing = parent.Find(KillerBlackoutName);
+        GameObject go = existing != null ? existing.gameObject : new GameObject(KillerBlackoutName);
+        go.transform.SetParent(parent, false);
+
+        GetOrAdd<NetworkObject>(go);
+        KillerBlackoutManager manager = GetOrAdd<KillerBlackoutManager>(go);
+
+        // 16b: 화면 부품 4개 (KillerBlackoutView 의 RequireComponent 와 같은 것 — 이미 있는 View 에도 빠짐없이 붙게 먼저 놓는다)
+        GetOrAdd<BlackoutScreenRig>(go);
+        BlackoutArms arms = GetOrAdd<BlackoutArms>(go);
+        GetOrAdd<BlackoutMapBlocker>(go);
+        GetOrAdd<BlackoutPromptLabel>(go);
+        GetOrAdd<KillerBlackoutView>(go);
+
+        SerializedObject so = new SerializedObject(manager);
+        so.FindProperty("firstDelay").floatValue = SoloBlackoutFirstDelay;
+        so.ApplyModifiedPropertiesWithoutUndo();
+
+        GameObject armsPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(FirstPersonArmsPrefabPath);
+        PlayerFirstPersonArmsComponent armsComponent = armsPrefab != null ? armsPrefab.GetComponent<PlayerFirstPersonArmsComponent>() : null;
+
+        if (armsComponent == null)
+            Debug.LogError($"[SoloMissionTestSetup] 1인칭 팔 프리팹을 찾지 못했습니다: {FirstPersonArmsPrefabPath} — 암전 중 빈손 팔이 보이지 않습니다.");
+
+        SerializedObject armsSo = new SerializedObject(arms);
+        armsSo.FindProperty("armsPrefab").objectReferenceValue = armsComponent;
+        armsSo.ApplyModifiedPropertiesWithoutUndo();
     }
 
     /// <summary>
