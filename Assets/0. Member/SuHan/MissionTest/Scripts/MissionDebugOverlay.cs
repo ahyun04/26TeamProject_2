@@ -19,6 +19,7 @@ using UnityEngine;
 /// [살인마 암전 한 줄 — 16a KB19] 대기(시작까지 · 길이 · 살인마 수) / 암전 중(남은 초 · 어두움) / 끝 / 이번 판 없음 + 내 화면 적용 여부.
 ///  씬에 KillerBlackoutManager 가 없으면 줄을 그리지 않는다.
 /// [암전 화면 한 줄 — 16b KB40] 그 아래 회색으로: 팔(팀원 팔 · 복사본 · 없음) · 지도(막음 · 씬에 없음 · 대체 · 평소) · 조준점 아래 안내 글자.
+/// [타이머 차이 한 줄 — 16c KB52] 그 아래: 판 시작(암전 기준)과 팀원 GameTimer 의 지난 초 차이 (회색, 어긋나면 주황) / 타이머: 시작 전 / 씬에 없음.
 /// </summary>
 public class MissionDebugOverlay : MonoBehaviour
 {
@@ -228,6 +229,23 @@ public class MissionDebugOverlay : MonoBehaviour
 
         if (blackoutView != null)
             builder.AppendLine($"<color=#AAAAAA>암전 화면: {blackoutView.ScreenStatus}</color>");
+
+        builder.AppendLine(FormatTimerComparison());
+    }
+
+    /// <summary>
+    /// 16c KB52: 판 시작 비교 한 줄. 예) "타이머 차이 0.000초 (암전 기준 125.3초 · 타이머 기준 125.3초)" — 두 창의 "시작까지" 숫자와 나란히 본다.
+    /// </summary>
+    private string FormatTimerComparison()
+    {
+        if (blackout.TimerComparison is BlackoutTimerComparison comparison)
+        {
+            string color = comparison.Matches ? "#AAAAAA" : "#FF9C5C";
+            string mark = comparison.Matches ? string.Empty : " — 어긋남!";
+            return $"<color={color}>타이머 차이 {comparison.Gap:0.000}초 (암전 기준 {comparison.BlackoutElapsed:0.0}초 · 타이머 기준 {comparison.TimerElapsed:0.0}초){mark}</color>";
+        }
+
+        return blackout.HasGameTimer ? "<color=#AAAAAA>타이머: 시작 전</color>" : "<color=#AAAAAA>타이머: 씬에 없음</color>";
     }
 
     /// <summary>category 가 null 이면 단체 미션 목록, 아니면 내 목록 중 그 카테고리만.</summary>
