@@ -15,7 +15,7 @@ public class CctvDisplayComponent : MonoBehaviour
     [SerializeField, Min(64)] private int textureHeight = 432; //클라이언트별 영상 세로 해상도
     [SerializeField, Range(1f, 30f)] private float framesPerSecond = 12f; //항상 켜진 모니터의 갱신 빈도
 
-    private Cctv owner; //공유 화면과 이용 상태의 진입점
+    private Cctv owner; //공유 화면의 진입점
     private RenderTexture texture; //각 PC에서만 생성하는 영상
     private Material material; //다른 기계 재질에 영향을 주지 않을 화면 재질
     private Material originalMaterial; //종료 시 복구할 원래 화면 재질
@@ -58,7 +58,7 @@ public class CctvDisplayComponent : MonoBehaviour
         int index = Mathf.Clamp(owner.selectedCamera, 0, cameraCount - 1); //현재 공유 화면
         for (int i = 0; i < cameraCount; i++)
         {
-            bool lit = i == index && owner.viewerCount > 0 && Mathf.Repeat(Time.unscaledTime, 1f) < 0.5f; //현재 구역 이용 중에만 점멸
+            bool lit = i == index && Mathf.Repeat(Time.unscaledTime, 1f) < 0.5f; //모니터에 표시하는 카메라만 점멸
             if (indicators != null && i < indicators.Length && indicators[i] != null) indicators[i].enabled = lit;
             if (indicatorStates[i] == lit) continue;
             indicatorStates[i] = lit;
@@ -73,7 +73,7 @@ public class CctvDisplayComponent : MonoBehaviour
         if (changed && caption != null)
         {
             string area = areaNames != null && index < areaNames.Length ? areaNames[index] : string.Empty; //기획서 구역 이름
-            caption.text = $"CAM {index + 1:00}  {area}\nF 보기 / 종료   ◀ ▶ 전환   Esc 종료";
+            caption.text = $"CAM {index + 1:00}  {area}";
         }
         if (!changed && Time.unscaledTime < nextRenderTime) return;
         displayedIndex = index;

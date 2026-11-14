@@ -33,8 +33,8 @@ public class PlayerHealth : NetworkBehaviour
     private PlayerStunComponent stun; //행동 제한의 세부 처리 담당
 
     internal bool isStunned => stun != null && stun.isStunned; //같은 플레이어의 복제된 스턴 상태
-    internal bool canControlLook => canActWithoutCctv && !Cctv.isPlayerViewing(Runner, Object.InputAuthority); //스턴 중에도 시점 회전은 유지
-    internal bool CanAct => canControlLook && !isStunned; //관제와 스턴 중 일반 행동은 서버에서도 차단
+    internal bool canControlLook => canActWithoutCctv; //스턴 중에도 시점 회전은 유지
+    internal bool CanAct => canControlLook && !isStunned; //스턴 중 일반 행동은 서버에서도 차단
 
     private void Awake() //플레이어 상태 진입점에서 스턴 구성 요소 연결
     {

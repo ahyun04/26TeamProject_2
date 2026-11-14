@@ -14,6 +14,7 @@ public class PlayerInteractionPromptComponent : MonoBehaviour
     private PlayerTargetDetector detector; //기존 조준 대상 탐지
     private PlayerItemController items; //본인의 소지 상태
     private PlayerInteraction interaction; //진행 중인 상호작용
+    private CctvButtonComponent highlightedButton; //현재 외곽선을 표시하는 관제 버튼
     private PlayerHealth health; //사망과 게임 종료 제한
 
     private void Awake() //초기 표시 숨김
@@ -34,19 +35,20 @@ public class PlayerInteractionPromptComponent : MonoBehaviour
             health = current != null ? current.GetComponentInParent<PlayerHealth>() : null;
         }
         ItemBase item = detector != null ? detector.CurrentTarget as ItemBase : null; //지금 조준한 획득 대상
-        Cctv cctv = detector != null ? detector.CurrentTarget as Cctv : null; //기존 조준 안내에 연결할 관제 장치
+        CctvButtonComponent cctv = detector != null ? detector.CurrentTarget as CctvButtonComponent : null; //기존 조준 안내에 연결할 관제 장치
         bool validTarget = cctv != null ? cctv.canUseLocally() : item != null && item.Object != null && item.Object.IsValid && !item.IsHeld;
         bool starting = RoomManager.Instance != null && RoomManager.Instance.CurrentRoomState == RoomManager.RoomState.Starting; //게임 시작 전환 제한
         bool visible = playerCamera != null && health != null && health.CanAct && items != null &&
             validTarget &&
             !starting && !items.isPickupPending && !GameAudio.blocksPlayerInput && !SessionDisconnectUIComponent.IsOpen &&
             Cursor.lockState == CursorLockMode.Locked && (interaction == null || !interaction.isInteracting);
-        if (!visible) { promptPanel.gameObject.SetActive(false); return; }
+        if (!visible) { hidePrompt(); return; }
 
         Collider itemCollider = item != null ? item.GetComponentInChildren<Collider>() : null; //아이템의 화면 표시 기준
-        Vector3 position = cctv != null ? cctv.promptPoint.position : itemCollider != null ? itemCollider.bounds.center + Vector3.up * itemCollider.bounds.extents.y : item.transform.position; //대상 위쪽 위치
+        Vector3 position = cctv != null ? cctv.aimPoint : itemCollider != null ? itemCollider.bounds.center + Vector3.up * itemCollider.bounds.extents.y : item.transform.position; //대상 위쪽 위치
         Vector3 screen = playerCamera.WorldToScreenPoint(position); //실제 카메라 기준 화면 좌표
-        if (screen.z <= 0f) { promptPanel.gameObject.SetActive(false); return; }
+        if (screen.z <= 0f) { hidePrompt(); return; }
+        setHighlightedButton(cctv);
         promptText.text = cctv != null ? cctv.interactionHint : items.CurrentItemObject != null ? "주머니가 가득 찼습니다" : "[마우스 좌클릭] 잡기";
         RectTransform parent = (RectTransform)promptPanel.parent; //안내창을 배치할 캔버스 영역
         RectTransformUtility.ScreenPointToLocalPointInRectangle(parent, (Vector2)screen + screenOffset, null, out Vector2 point);
@@ -57,8 +59,22 @@ public class PlayerInteractionPromptComponent : MonoBehaviour
         promptPanel.gameObject.SetActive(true);
     }
 
+    private void setHighlightedButton(CctvButtonComponent button) //이전에 조준한 버튼의 외곽선 해제
+    {
+        if (highlightedButton == button) return;
+        if (highlightedButton != null) highlightedButton.setHighlighted(false);
+        highlightedButton = button;
+        if (highlightedButton != null) highlightedButton.setHighlighted(true);
+    }
+
     private void OnDisable() //씬과 플레이어 표시 종료 시 안내 정리
     {
+        hidePrompt();
+    }
+
+    private void hidePrompt() //안내와 버튼 외곽선을 함께 숨김
+    {
+        setHighlightedButton(null);
         if (promptPanel != null) promptPanel.gameObject.SetActive(false);
     }
 }

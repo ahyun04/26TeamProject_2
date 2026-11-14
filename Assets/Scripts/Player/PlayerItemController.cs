@@ -182,6 +182,9 @@ public class PlayerItemController : NetworkBehaviour
 
     private void handleItemInput(bool leftDown, bool rightDown, bool dropDown) //클릭 시작 시 장착 상태로 한 동작만 선택
     {
+        if (leftDown && targetDetector != null && targetDetector.DetectNow() is CctvButtonComponent button && button.tryPress())
+            return;
+
         if (dropDown && CurrentItemObject != null)
         {
             RequestUnequipItem();

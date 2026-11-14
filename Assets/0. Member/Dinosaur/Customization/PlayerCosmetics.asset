@@ -1,0 +1,129 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7296e488b723d0c43aa8c3b0f64a53e9, type: 3}
+  m_Name: PlayerCosmetics
+  m_EditorClassIdentifier: 
+  headPath: Armature_Player/Hips/Spine/Spine1/Spine2/Neck/Head
+  backPath: Armature_Player/Hips/Spine/Spine1/Spine2
+  stickerSurface: {fileID: 4300000, guid: c80d182c9e484c74bac9fe1039975e93, type: 2}
+  stickerMaterial: {fileID: 2100000, guid: 89fa576b72dc8014a97db21c1d4bd720, type: 2}
+  entries:
+  - id: 1000
+    slot: 1
+    displayName: "\uC548\uACBD"
+    sticker: {fileID: 21300000, guid: a12af31ab333f234aba12697fbab04ac, type: 3}
+    thumbnail: {fileID: 0}
+    stickerTiling: {x: 2.617801, y: 2.617801, z: 0.5, w: -2.7408378}
+    model: {fileID: 0}
+    localPosition: {x: 0, y: 0, z: 0}
+    localRotation: {x: 0, y: 0, z: 0}
+    scale: 0
+  - id: 1001
+    slot: 1
+    displayName: "\uBC45\uBC45\uC774 \uC548\uACBD"
+    sticker: {fileID: 21300000, guid: 7030c801147044843bc3a08e1333f00d, type: 3}
+    thumbnail: {fileID: 0}
+    stickerTiling: {x: 2.6041667, y: 2.6041667, z: 0.5, w: -2.7239585}
+    model: {fileID: 0}
+    localPosition: {x: 0, y: 0, z: 0}
+    localRotation: {x: 0, y: 0, z: 0}
+    scale: 0
+  - id: 1002
+    slot: 1
+    displayName: "\uBE68\uAC04\uCF54"
+    sticker: {fileID: 21300000, guid: be68f00bea491594988dcf0251255072, type: 3}
+    thumbnail: {fileID: 0}
+    stickerTiling: {x: 7.9365077, y: 7.9365077, z: 0.5, w: -8.84127}
+    model: {fileID: 0}
+    localPosition: {x: 0, y: 0, z: 0}
+    localRotation: {x: 0, y: 0, z: 0}
+    scale: 0
+  - id: 1003
+    slot: 1
+    displayName: "\uBCC4"
+    sticker: {fileID: 21300000, guid: f9e7e59783c58784f87a823a7ac95c1b, type: 3}
+    thumbnail: {fileID: 0}
+    stickerTiling: {x: 7.0921984, y: 7.0921984, z: -0.3865248, w: -8.400709}
+    model: {fileID: 0}
+    localPosition: {x: 0, y: 0, z: 0}
+    localRotation: {x: 0, y: 0, z: 0}
+    scale: 0
+  - id: 1004
+    slot: 3
+    displayName: "\uAC1C\uAD6C\uB9AC \uAC00\uBC29"
+    sticker: {fileID: 0}
+    thumbnail: {fileID: 21300000, guid: e2db32dc39b754d4598544392e061f4d, type: 3}
+    stickerTiling: {x: 0, y: 0, z: 0, w: 0}
+    model: {fileID: 919132149155446097, guid: 06958a4998f4dd24a9a33f9d7d1e7e41, type: 3}
+    localPosition: {x: 0.0000003064, y: -0.00121658, z: -0.002015824}
+    localRotation: {x: 350.1017, y: 0, z: 0}
+    scale: 0.0070000025
+  - id: 1005
+    slot: 2
+    displayName: "\uACF0\uB3CC\uC774 \uBA38\uB9AC\uB760"
+    sticker: {fileID: 0}
+    thumbnail: {fileID: 21300000, guid: 1a2a9c300e383b942aabd95754912479, type: 3}
+    stickerTiling: {x: 0, y: 0, z: 0, w: 0}
+    model: {fileID: 919132149155446097, guid: 92728824cc845a840bafe52361ea7b64, type: 3}
+    localPosition: {x: 0.00000030679504, y: 0.0044141696, z: -0.0008957228}
+    localRotation: {x: 345.65033, y: -0.000027320742, z: -1.0505535e-12}
+    scale: 0.009000004
+  - id: 1006
+    slot: 2
+    displayName: "\uACE0\uC591\uC774 \uBA38\uB9AC\uB760"
+    sticker: {fileID: 0}
+    thumbnail: {fileID: 21300000, guid: 30e52c1b540fa0a4082d5b47dfe1b91f, type: 3}
+    stickerTiling: {x: 0, y: 0, z: 0, w: 0}
+    model: {fileID: 919132149155446097, guid: 26099d1a1f0aa3d498c5861813b0f430, type: 3}
+    localPosition: {x: 0.00000030680684, y: 0.004511049, z: -0.00092050666}
+    localRotation: {x: 345.65033, y: -0.000027320742, z: -1.0505535e-12}
+    scale: 0.009100004
+  - id: 1007
+    slot: 2
+    displayName: "\uC0AC\uC2B4 \uBA38\uB9AC\uB760"
+    sticker: {fileID: 0}
+    thumbnail: {fileID: 21300000, guid: f0f3385672c859447a4f426b63c014e5, type: 3}
+    stickerTiling: {x: 0, y: 0, z: 0, w: 0}
+    model: {fileID: 919132149155446097, guid: 46e470ea69b2ad149bf6f194caeeea96, type: 3}
+    localPosition: {x: 0.00000030696424, y: 0.0049943225, z: -0.0012505774}
+    localRotation: {x: 345.65033, y: -0.000027320742, z: -1.0505535e-12}
+    scale: 0.009100004
+  - id: 1008
+    slot: 2
+    displayName: "\uAC15\uC544\uC9C0 \uBA38\uB9AC\uB760"
+    sticker: {fileID: 0}
+    thumbnail: {fileID: 21300000, guid: 208c1c0d6a968ed4bbe8762cb59118da, type: 3}
+    stickerTiling: {x: 0, y: 0, z: 0, w: 0}
+    model: {fileID: 919132149155446097, guid: 0adb6eb5ada41ba41af56885dba31e2d, type: 3}
+    localPosition: {x: 0.00000030685047, y: 0.0043844273, z: -0.001011979}
+    localRotation: {x: 345.65033, y: -0.000027320742, z: -1.0505535e-12}
+    scale: 0.008700004
+  - id: 1009
+    slot: 2
+    displayName: "\uD1A0\uB07C \uBA38\uB9AC\uB760"
+    sticker: {fileID: 0}
+    thumbnail: {fileID: 21300000, guid: 20366fb0f1783ce468c09de929fe490d, type: 3}
+    stickerTiling: {x: 0, y: 0, z: 0, w: 0}
+    model: {fileID: 919132149155446097, guid: 9301cbda7d794a6418fd12d33248eabc, type: 3}
+    localPosition: {x: 0.00000030692397, y: 0.005067545, z: -0.0011660887}
+    localRotation: {x: 345.65033, y: -0.000027320742, z: -1.0505535e-12}
+    scale: 0.009200004
+  - id: 1010
+    slot: 2
+    displayName: "\uAC1C\uAD6C\uB9AC \uBAA8\uC790"
+    sticker: {fileID: 0}
+    thumbnail: {fileID: 21300000, guid: dae90ed595f634247a6e8daa3d4c1973, type: 3}
+    stickerTiling: {x: 0, y: 0, z: 0, w: 0}
+    model: {fileID: 919132149155446097, guid: 8df7866e04a091641bd143220a9ea3b1, type: 3}
+    localPosition: {x: 0.00000030688463, y: 0.0046241507, z: -0.0010836264}
+    localRotation: {x: 345.65033, y: -0.000027320742, z: -1.0505535e-12}
+    scale: 0.0110000055

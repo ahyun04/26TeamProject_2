@@ -34,6 +34,7 @@ public class PlayerAppearanceVisualComponent : MonoBehaviour
     private Color appearanceColor = Color.white; //배정된 캐릭터 색상
     private float damageFlashRemaining; //몸 피격 표시 남은 시간
     private Material[] characterMaterials; //피격 후 복원할 각 몸 재질의 기본색
+    private PlayerCosmeticsComponent cosmetics; //장식의 장착과 1인칭 표시 담당
 
     private void Awake() //메시별 속성 블록 준비
     {
@@ -54,11 +55,24 @@ public class PlayerAppearanceVisualComponent : MonoBehaviour
         initialized = true;
     }
 
-    internal void setColor(Color color) //공유 재질을 수정하지 않고 해당 캐릭터만 색상 적용
+    internal void initializeCosmetics(PlayerCosmeticsCatalog catalog, Transform model) //같은 장식 데이터를 미리보기와 플레이어에 연결
+    {
+        if (catalog == null || model == null) return;
+        if (cosmetics == null) cosmetics = gameObject.AddComponent<PlayerCosmeticsComponent>();
+        cosmetics.initialize(catalog, model);
+    }
+
+    internal void setAppearance(PlayerAppearanceSelection selection, Color color) //해당 캐릭터의 색상·장식 적용
     {
         appearanceColor = color;
         applyBody();
         applyGlow();
+        cosmetics?.setSelection(selection);
+    }
+
+    internal void setCosmeticsHidden(bool hidden) //본인 시점과 CCTV에서 같은 장식 표시 제어
+    {
+        cosmetics?.setHidden(hidden);
     }
 
     private void flashDamage() //기존 네트워크 피해 알림으로 모든 화면의 몸 표시 갱신

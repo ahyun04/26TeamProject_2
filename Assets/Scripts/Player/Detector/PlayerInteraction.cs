@@ -70,14 +70,15 @@ public class PlayerInteraction : NetworkBehaviour
         if (!Input.GetMouseButtonDown(0))
             return;
 
-        if (targetDetector.CurrentTarget is IDragInteractable dragInteractable)
+        ITargetable target = targetDetector.DetectNow(); //클릭한 순간의 조준 대상으로 상호작용
+        if (target is IDragInteractable dragInteractable)
         {
             activeDragTarget = dragInteractable;
             activeDragTarget.BeginDrag();
             return;
         }
 
-        if (targetDetector.CurrentTarget is IInteractable interactable)
+        if (target is IInteractable interactable)
             interactable.Interact();
     }
 

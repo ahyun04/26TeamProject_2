@@ -5,7 +5,7 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public class PlayerAppearanceSettingsComponent : MonoBehaviour
 {
-    private const string preferenceKey = "TrustNoOne.Appearance.Color"; //본인의 확정 색상 저장 키
+    private const string preferencePrefix = "TrustNoOne.Appearance."; //기존 색상 키와 새 장식 키의 공통 접두어
     [SerializeField] private Color[] palette =
     {
         new Color(0.16f, 0.52f, 0.90f), new Color(0.90f, 0.20f, 0.23f), new Color(0.18f, 0.70f, 0.36f),
@@ -15,116 +15,127 @@ public class PlayerAppearanceSettingsComponent : MonoBehaviour
         new Color(0.20f, 0.27f, 0.46f), new Color(0.25f, 0.75f, 0.64f), new Color(0.80f, 0.57f, 0.82f)
     }; //서버와 클라이언트가 공통으로 사용하는 선택 색상
     [SerializeField] private int defaultColorIndex; //개인 설정의 기본 색상
+    [SerializeField] private PlayerCosmeticsCatalog cosmeticsCatalog; //장식 선택과 서버 검증에 사용할 목록
 
     internal static PlayerAppearanceSettingsComponent instance { get; private set; } //공용 프리팹의 개인 설정 담당
-    internal event Action changed; //선택·확정 색상 변경 알림
-    internal int selectedIndex => isEditing ? draftIndex : savedIndex; //설정창에서 표시할 색상
-    internal int committedIndex => savedIndex; //현재 확정한 개인 색상
-    internal int colorCount => palette.Length; //선택 가능한 색상 개수
+    internal event Action changed; //미리보기 또는 확정 외형 변경 알림
+    internal PlayerAppearanceSelection selected => isEditing ? draft : saved; //설정창에서 표시할 외형
+    internal PlayerAppearanceSelection preferred => saved; //다음 방에서 요청할 개인 외형
+    internal PlayerAppearanceSelection current => editingStart; //현재 방에서 확정된 외형
+    internal PlayerAppearanceSelection defaults => new() { color = defaultColorIndex }; //기본 색상과 장식 없음
+    internal int colorCount => palette.Length; //선택 색상 수
+    internal PlayerCosmeticsCatalog catalog => cosmeticsCatalog; //설정 UI와 캐릭터가 공유하는 카탈로그
+    internal bool hasChanges => isEditing && (!draft.Equals(editingStart) || saveFailed); //적용 또는 재저장이 필요한 편집
 
-    private int savedIndex; //적용을 마친 색상
-    private int draftIndex; //미리보기 색상
+    private PlayerAppearanceSelection saved; //디스크에 저장한 개인 외형
+    private PlayerAppearanceSelection editingStart; //취소할 때 돌아갈 현재 기준
+    private PlayerAppearanceSelection draft; //미리보기에서만 바꾼 외형
     private bool isEditing; //설정창 편집 중 여부
-    private bool prepared; //공용 저장에 포함할 색상 키 작성 여부
-    private bool hadPreference; //저장 실패 시 기존 키 복원 여부
-    private int previousPreference; //저장 실패 시 복원할 값
+    private bool saveFailed; //승인된 외형을 로컬에 재저장해야 하는지 여부
 
-    private void Awake() //공용 설정 연결과 저장값 읽기
+    private void Awake() //기존 색상과 유효한 장식 저장값 읽기
     {
         if (instance != null && instance != this) return;
         instance = this;
-        savedIndex = validIndex(PlayerPrefs.GetInt(preferenceKey, defaultColorIndex));
-        draftIndex = savedIndex;
+        saved.color = validColor(PlayerPrefs.GetInt(preferencePrefix + "Color", defaultColorIndex));
+        saved.face = loadItem(PlayerAppearanceSlot.Face);
+        saved.head = loadItem(PlayerAppearanceSlot.Head);
+        saved.body = loadItem(PlayerAppearanceSlot.Body);
     }
 
-    internal Color getColor(int index) //공통 팔레트의 색상 조회
+    private int loadItem(PlayerAppearanceSlot slot) //삭제되거나 잘못된 로컬 장식은 장착하지 않음
     {
-        return palette[validIndex(index)];
+        int id = PlayerPrefs.GetInt(preferencePrefix + slot); //슬롯의 기존 저장 ID
+        return isValid(slot, id) ? id : 0;
     }
 
-    private int validIndex(int index) //잘못 저장된 색상 보정
+    private int validColor(int index) //잘못된 로컬 색상 값 보정
     {
         return index >= 0 && index < palette.Length ? index : Mathf.Clamp(defaultColorIndex, 0, palette.Length - 1);
     }
 
-    internal void beginEditing() //확정값을 미리보기 시작값으로 사용
+    internal Color getColor(int index) //공통 팔레트 색상 조회
     {
-        if (isEditing) return;
-        draftIndex = savedIndex;
+        return palette.Length > 0 ? palette[validColor(index)] : Color.white;
+    }
+
+    internal bool isValid(PlayerAppearanceSlot slot, int id) //로컬 선택과 호스트 요청에 공통 적용
+    {
+        return slot == PlayerAppearanceSlot.Color
+            ? id >= 0 && id < palette.Length
+            : id == 0 || (cosmeticsCatalog != null && cosmeticsCatalog.find(slot, id) != null);
+    }
+
+    internal bool isValid(PlayerAppearanceSelection selection) //다른 슬롯의 ID와 등록되지 않은 색상 거부
+    {
+        return isValid(PlayerAppearanceSlot.Color, selection.color) && isValid(PlayerAppearanceSlot.Face, selection.face) &&
+               isValid(PlayerAppearanceSlot.Head, selection.head) && isValid(PlayerAppearanceSlot.Body, selection.body);
+    }
+
+    internal void beginEditing(PlayerAppearanceSelection baseline) //확정 외형을 현재 설정의 시작값으로 사용
+    {
+        editingStart = baseline;
+        draft = baseline;
         isEditing = true;
         changed?.Invoke();
     }
 
-    internal void selectColor(int index) //유효한 미리보기 색상 선택
+    internal void updateCurrent(PlayerAppearanceSelection confirmed) //초기 배정과 이후 승인 결과를 취소 기준에 반영
     {
-        if (!isEditing || index < 0 || index >= palette.Length || draftIndex == index) return;
-        draftIndex = index;
+        if (!isEditing || editingStart.Equals(confirmed)) return;
+        for (PlayerAppearanceSlot slot = PlayerAppearanceSlot.Color; slot <= PlayerAppearanceSlot.Body; slot++)
+            if (draft.get(slot) == editingStart.get(slot)) draft.set(slot, confirmed.get(slot));
+        editingStart = confirmed;
         changed?.Invoke();
     }
 
-    internal void restoreDefaults() //기본값을 미리보기에만 반영
+    internal void select(PlayerAppearanceSlot slot, int id) //유효한 한 슬롯만 미리보기에서 변경
     {
-        selectColor(validIndex(defaultColorIndex));
+        if (!isEditing || !isValid(slot, id) || draft.get(slot) == id) return;
+        draft.set(slot, id);
+        changed?.Invoke();
     }
 
-    internal bool prepareSave() //음량과 색상을 같은 PlayerPrefs 저장에 포함
+    internal void restoreDefaults(int color) //선택 가능한 기본 색상으로 장식을 모두 제거
     {
-        if (!isEditing || prepared) return true;
+        if (!isEditing) return;
+        draft = new PlayerAppearanceSelection { color = color };
+        changed?.Invoke();
+    }
+
+    internal bool save(PlayerAppearanceSelection confirmed) //승인된 외형만 개인 설정으로 저장
+    {
         try
         {
-            hadPreference = PlayerPrefs.HasKey(preferenceKey);
-            previousPreference = PlayerPrefs.GetInt(preferenceKey, savedIndex);
-            PlayerPrefs.SetInt(preferenceKey, draftIndex);
-            prepared = true;
+            writePreferences(confirmed);
+            PlayerPrefs.Save();
+            saved = confirmed;
+            saveFailed = false;
+            updateCurrent(confirmed);
             return true;
         }
         catch (Exception exception)
         {
-            Debug.LogError($"[PlayerAppearanceSettingsComponent] 색상 저장 준비 실패: {exception.Message}");
+            saveFailed = true;
+            try { writePreferences(saved); }
+            catch (Exception restoreException) { Debug.LogException(restoreException); }
+            Debug.LogError($"[PlayerAppearanceSettingsComponent] 외형 저장 실패: {exception.Message}");
             return false;
         }
     }
 
-    internal bool completeSave() //공용 저장 성공 뒤 색상 확정
+    private static void writePreferences(PlayerAppearanceSelection selection) //색상 키 호환과 슬롯별 값 유지
     {
-        bool hasChanged = savedIndex != draftIndex; //서버에 전달할 변경 여부
-        savedIndex = draftIndex;
+        PlayerPrefs.SetInt(preferencePrefix + "Color", selection.color);
+        PlayerPrefs.SetInt(preferencePrefix + "Face", selection.face);
+        PlayerPrefs.SetInt(preferencePrefix + "Head", selection.head);
+        PlayerPrefs.SetInt(preferencePrefix + "Body", selection.body);
+    }
+
+    internal void cancelEditing() //미적용 선택을 폐기
+    {
         isEditing = false;
-        prepared = false;
-        changed?.Invoke();
-        return hasChanged;
-    }
-
-    internal void rollbackSave() //공용 저장 실패 시 기존 색상 키 복원
-    {
-        if (!prepared) return;
-        if (hadPreference) PlayerPrefs.SetInt(preferenceKey, previousPreference);
-        else PlayerPrefs.DeleteKey(preferenceKey);
-        prepared = false;
-    }
-
-    internal void cancelEditing() //미적용 색상을 폐기
-    {
-        rollbackSave();
-        draftIndex = savedIndex;
-        isEditing = false;
-        changed?.Invoke();
-    }
-
-    internal void acceptColor(int index) //호스트가 조정한 실제 색상 저장
-    {
-        if (index < 0 || index >= palette.Length || savedIndex == index) return;
-        savedIndex = index;
-        if (!isEditing) draftIndex = index;
-        try
-        {
-            PlayerPrefs.SetInt(preferenceKey, index);
-            PlayerPrefs.Save();
-        }
-        catch (Exception exception)
-        {
-            Debug.LogError($"[PlayerAppearanceSettingsComponent] 배정 색상 저장 실패: {exception.Message}");
-        }
+        saveFailed = false;
         changed?.Invoke();
     }
 
