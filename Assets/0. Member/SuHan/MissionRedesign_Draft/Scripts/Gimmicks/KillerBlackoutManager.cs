@@ -11,9 +11,11 @@ namespace TrustNoOne.Gimmicks
     ///  - 호스트: 미션 배정이 끝난 순간(= 판 시작, MissionManager.OnMissionsAssigned)에 살인마 목록을 적고,
     ///    BlackoutSchedule.Pick 으로 이번 판 계획(시작 · 길이)을 뽑아 [Networked] 에 쓴다
     ///  - 모든 PC: 같은 [Networked] 값과 같은 시각(Runner.SimulationTime)으로 Evaluate 를 계산한다 → 화면은 KillerBlackoutView 가 자기 것만 가린다
+    ///  - 모든 PC (16c): 매 프레임 판 시작을 팀원 GameTimer 의 시작과 비교해 TimerComparison 에 두고, 처음 한 번 로그를 남긴다
+    ///    (16a 위험 1 — 실제 게임 흐름에서 두 시계가 같은 순간에 시작하는지 기록으로 확인)
     /// [이유] 접근법 1 (사용자 결정) — 플레이어 프리팹(팀원)을 고치지 않고, 늦게 들어온 PC 도 [Networked] 로 같은 값을 받는다.
     ///  RPC 알림은 놓친 PC 가 어긋난다 (KB9). 서버 위치 · 이동 · 공격 · 상호작용 판정은 건드리지 않는다 (기획서 "서버 위치 · 이동 판정은 그대로").
-    /// [근거] 16a 명세 KB9 · KB10 · KB11 · KB12 · KB13 · KB17 · KB21 · KB23
+    /// [근거] 16a 명세 KB9 · KB10 · KB11 · KB12 · KB13 · KB17 · KB21 · KB23, 16c 명세 KB50 · KB51
     /// </summary>
     public class KillerBlackoutManager : NetworkBehaviour
     {
@@ -62,7 +64,23 @@ namespace TrustNoOne.Gimmicks
         [Networked, Capacity(MaxKillers)]
         public NetworkArray<PlayerRef> Killers => default;
 
+        // 16c KB51: 타이머는 시작했는데 판 시작 알림이 이만큼(초) 넘게 없으면 경고 — 두 값이 손님 PC 에 따로 도착할 수 있는 여유
+        private const float MissingRoundWarnSeconds = 2f;
+
         private MissionManager missionManager;
+
+        // 16c KB51: 판 시작 비교 (모든 PC) — GameTimer 는 한 번만 찾는다 (없으면 "없음"으로 기억)
+        private GameTimer gameTimer;
+        private bool gameTimerSearched;
+        private bool timerComparisonLogged;
+        private bool missingRoundWarned;
+        private float timerStartedSeenAt = -1f;
+
+        /// <summary>씬에 GameTimer 가 있나 (혼자 테스트 씬에는 없다 — 디버그 패널 "타이머: 씬에 없음")</summary>
+        public bool HasGameTimer => gameTimer != null;
+
+        /// <summary>16c KB51 · KB52: 지금 프레임의 판 시작 비교 — 판 시작 알림과 타이머 시작이 둘 다 있을 때만 값이 있다</summary>
+        public BlackoutTimerComparison? TimerComparison { get; private set; }
 
         /// <summary>발동 순간부터 어두워지는 시간(초) — 모든 PC 가 같은 씬 값을 쓴다</summary>
         public float FadeSeconds => fadeSeconds;
@@ -120,6 +138,76 @@ namespace TrustNoOne.Gimmicks
         {
             if (missionManager != null)
                 missionManager.OnMissionsAssigned -= OnMissionsAssigned;
+        }
+
+        public override void Render()
+        {
+            CompareWithGameTimer();
+        }
+
+        // ═════════════════════════════════════════════════════════════
+        //  판 시작 비교 (모든 PC — 16c KB51)
+        // ═════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// 판 시작(배정 알림)과 팀원 GameTimer 의 시작을 같은 PC 의 같은 시각으로 비교한다. 같은 틱에 정해지므로 차이는 0 이어야 한다 (16c 명세 1-2).
+        /// 허용 오차 = 1틱 (Runner.DeltaTime). 처음 비교한 순간 로그 한 번 — 같으면 일반 로그, 어긋나면 경고.
+        /// 타이머가 끝난 뒤(남은 0)에는 값을 바꾸지 않는다 — 마지막 비교를 그대로 둔다.
+        /// </summary>
+        private void CompareWithGameTimer()
+        {
+            if (!gameTimerSearched)
+            {
+                gameTimer = FindFirstObjectByType<GameTimer>();
+                gameTimerSearched = true;
+            }
+
+            if (gameTimer == null || gameTimer.Object == null || !gameTimer.Object.IsValid || !gameTimer.IsStarted)
+            {
+                TimerComparison = null;
+                return;
+            }
+
+            if (!RoundStarted)
+            {
+                TimerComparison = null;
+                WarnIfRoundNeverStarted();
+                return;
+            }
+
+            if (gameTimer.IsTimeUp)
+                return;
+
+            BlackoutTimerComparison comparison = BlackoutTimerCheck.Compare(Elapsed, gameTimer.TotalDurationSeconds, gameTimer.RemainingSeconds, Runner.DeltaTime);
+            TimerComparison = comparison;
+
+            if (timerComparisonLogged)
+                return;
+
+            timerComparisonLogged = true;
+            string text = $"[KillerBlackoutManager] 판 시작 비교 — 암전 기준 {comparison.BlackoutElapsed:0.000}초 · 타이머 기준 {comparison.TimerElapsed:0.000}초 · 차이 {comparison.Gap:0.000}초 " +
+                          (comparison.Matches ? $"(같음 — 1틱 {comparison.Tolerance:0.000}초 이내)" : $"(어긋남! — 1틱 {comparison.Tolerance:0.000}초 넘음)");
+
+            if (comparison.Matches)
+                Debug.Log(text);
+            else
+                Debug.LogWarning(text);
+        }
+
+        /// <summary>16c KB51: 타이머는 시작했는데 판 시작 알림이 2초 넘게 없으면 경고 한 번 (MissionManager 배정이 중간에 돌아간 판 — 16c 명세 1-2)</summary>
+        private void WarnIfRoundNeverStarted()
+        {
+            if (missingRoundWarned)
+                return;
+
+            if (timerStartedSeenAt < 0f)
+                timerStartedSeenAt = Time.unscaledTime;
+
+            if (Time.unscaledTime - timerStartedSeenAt <= MissingRoundWarnSeconds)
+                return;
+
+            missingRoundWarned = true;
+            Debug.LogWarning("[KillerBlackoutManager] 타이머는 시작됐는데 판 시작 알림이 없음 — 이번 판 암전 없음 (MissionManager 의 미션 배정이 중간에 돌아갔는지 확인)");
         }
 
         // ═════════════════════════════════════════════════════════════

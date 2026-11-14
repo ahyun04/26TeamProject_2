@@ -20,7 +20,9 @@ using UnityEngine.SceneManagement;
 /// [선반 — 11a 명세 BC12] 씬의 선반(모델 폴더 Shelf*.fbx)에 막는 몸체를 붙인다 (이미 막혀 있으면 건너뜀, 모델 파일은 그대로).
 /// [미션 목록 — 10 명세 ML12] 왼쪽 미션 목록 패널을 왼쪽 위 글자 칸 하나로 바꾼다 (공통 단계 SetupMissionList — 글자 칸이 없을 때만).
 /// [아이템 자리 — 12b 명세] NavMesh 굽기 뒤 공통 단계 ItemSpotInstaller (자리 관리자 · 구역 상자 6개 · 선반 칸 · 크기표). 배치표의 고정 청소기는 빼고 씬에서도 지운다.
-/// [근거] 9a 명세 MP1 ~ MP11 (질문 1 · 2 · 3 사용자 결정, 접근 1), 10 명세 ML10 ~ ML12, 11a 명세 BC3 · BC12, 12b 명세 IS4 · IS18
+/// [살인마 암전 — 16c KB47 · KB48] 메뉴 `SuHan/Install Killer Blackout To 4~12` 는 암전 관리자만 놓고 저장한다 (NavMesh · 선반 · 아이템 자리는 건드리지 않음).
+///  Apply 도 저장 직전에 같은 공통 단계(KillerBlackoutInstaller.Ensure)를 부른다 — 이미 있으면 숫자를 덮지 않는다.
+/// [근거] 9a 명세 MP1 ~ MP11 (질문 1 · 2 · 3 사용자 결정, 접근 1), 10 명세 ML10 ~ ML12, 11a 명세 BC3 · BC12, 12b 명세 IS4 · IS18, 16c 명세 KB42 · KB45 ~ KB48
 /// </summary>
 public static class Map412MissionInstaller
 {
@@ -154,13 +156,15 @@ public static class Map412MissionInstaller
         int overlaps = MissionMapInstaller.CheckOverlaps(Spec, placedNow, root);
         // 미션 목록: 왼쪽 위 글자 칸 하나 (10 명세 ML12 — 글자 칸이 없는 목록만)
         int listsSetUp = MissionMapInstaller.SetupMissionList(scene);
+        // 살인마 암전 관리자 (16c KB48 — 없을 때만 만들고, 있으면 빈 팔 칸만 채움)
+        KillerBlackoutInstaller.Ensure(root, out bool blackoutCreated, out _);
 
         // 저장할 때 Fusion 이 씬 오브젝트의 정렬 키를 굽는다 (호스트 · 손님이 같은 오브젝트로 짝을 맞추는 번호)
         MissionMapInstaller.SaveScene(scene);
 
         Debug.Log($"[Map412MissionInstaller] 완료 — 풀에 새 미션 {poolAdded}개 추가, 새 장치 {placedNow.Count}개 놓음 · {skipped}개 이미 있어 건너뜀, " +
                   $"MissionManager {(managerCreated ? "새로 만듦" : "있음")}, PlayerHealthActorGate {(gateCreated ? "새로 만듦" : "있음")}, " +
-                  $"선반 {shelvesBlocked}개 막음, NavMesh {(navMeshBaked ? "구움" : "실패")}, 겹침 경고 {overlaps}개, 미션 목록 {listsSetUp}개 설정, 옛 고정 청소기 {(oldVacuumRemoved ? "지움" : "없음")}, 선반 방 바닥 구역 {(shelfRoomZoneRemoved ? "지움" : "없음")}, 아이템 자리: {itemSpots}. 멀티 테스트 전에는 SuHan/Build Full Game (Windows) 로 다시 빌드하세요.");
+                  $"선반 {shelvesBlocked}개 막음, NavMesh {(navMeshBaked ? "구움" : "실패")}, 겹침 경고 {overlaps}개, 미션 목록 {listsSetUp}개 설정, 옛 고정 청소기 {(oldVacuumRemoved ? "지움" : "없음")}, 선반 방 바닥 구역 {(shelfRoomZoneRemoved ? "지움" : "없음")}, 아이템 자리: {itemSpots}, 암전 관리자 {(blackoutCreated ? "새로 만듦" : "있음")}. 멀티 테스트 전에는 SuHan/Build Full Game (Windows) 로 다시 빌드하세요.");
     }
 
     /// <summary>선반 방 바닥 구역 상자를 지운다 (12b IS22 — 선반 방은 선반 칸에만). 지웠으면 true.</summary>
@@ -201,5 +205,22 @@ public static class Map412MissionInstaller
     public static void RemoveTestOverlay()
     {
         MissionMapInstaller.RemoveTestOverlay(Spec);
+    }
+
+    /// <summary>
+    /// 16c KB47: 4~12 씬에 살인마 암전 관리자만 놓고 저장한다 — 미션 장치 · NavMesh · 선반 · 아이템 자리는 건드리지 않는다 (팀원 값을 덮지 않게).
+    /// 다시 실행해도 안전 (이미 있으면 없는 컴포넌트 · 빈 팔 칸만). 저장할 때 Fusion 이 새 씬 오브젝트의 정렬 키를 굽는다.
+    /// </summary>
+    [MenuItem("SuHan/Install Killer Blackout To 4~12")]
+    public static void InstallKillerBlackout()
+    {
+        if (!MissionMapInstaller.TryOpenScene(Spec, out Scene scene))
+            return;
+
+        Transform root = MissionMapInstaller.FindOrCreateRoot(scene);
+        KillerBlackoutInstaller.Ensure(root, out bool created, out bool armsFilled);
+        MissionMapInstaller.SaveScene(scene);
+
+        Debug.Log($"[Map412MissionInstaller] 암전 관리자 {(created ? "새로 만듦" : "있음")} · 팔 칸 {(armsFilled ? "채움" : "그대로")} — 멀티 테스트 전에 SuHan/Build Full Game (Windows) 로 다시 빌드하세요.");
     }
 }

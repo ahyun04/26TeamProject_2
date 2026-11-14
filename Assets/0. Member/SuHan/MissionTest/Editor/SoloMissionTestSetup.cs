@@ -31,6 +31,7 @@ using Object = UnityEngine.Object;
 ///      혼자 테스트라 첫 대기 10초 (실제 게임 기본 120 은 그대로 — KB20). 혼자 살인마는 MissionTestBootstrap 의 `Solo As Killer`
 ///  - (16b) 같은 오브젝트에 암전 화면 부품 4개 (BlackoutScreenRig · BlackoutArms · BlackoutMapBlocker · BlackoutPromptLabel) — 없을 때만 붙이고,
 ///      BlackoutArms 의 팔 프리팹 칸에 팀원 1인칭 팔 프리팹을 연결한다 (읽기만 — 빈손 팔 복사본용, 16b KB34 · KB40)
+///  - (16c) 관리자 놓기는 4~12 와 같은 공통 단계 KillerBlackoutInstaller.Ensure 를 쓰고, 혼자 테스트 첫 대기 10초만 여기서 넣는다 (16c KB49)
 ///
 /// [이식이 진행되면] 자리 표시 큐브를 하나씩 진짜 스테이션으로 바꾼다 (PlaceholderStations 에서 빼고 변환 결과를 배치).
 /// [다시 실행해도 안전] 에셋은 값만 갱신, 씬의 MissionTestLayout 은 지우고 새로 만든다 (씬에서 손으로 옮긴 장치 위치도 원래대로 돌아간다).
@@ -72,12 +73,9 @@ public static class SoloMissionTestSetup
     private const int PersonalCount = 0;
     private const int ActionGoalCount = 1;
 
-    // 16a KB20: 살인마 암전 관리자 이름 · 혼자 테스트의 첫 대기(초) — 2분을 기다리지 않게 (실제 게임 기본 120 — BlackoutSchedule.DefaultFirstDelay)
-    private const string KillerBlackoutName = "KillerBlackoutManager";
+    // 16a KB20: 혼자 테스트의 살인마 암전 첫 대기(초) — 2분을 기다리지 않게 (실제 게임 기본 120 — BlackoutSchedule.DefaultFirstDelay).
+    //  관리자 이름 · 팔 프리팹 경로는 공통 설치 단계 KillerBlackoutInstaller 로 옮겼다 (16c KB49)
     private const float SoloBlackoutFirstDelay = 10f;
-
-    // 16b KB34: 빈손 팔 복사본에 쓸 팀원 1인칭 팔 프리팹 (Player.prefab 의 PlayerFirstPersonItemView.armsPrefab 과 같은 것 — 읽기만)
-    private const string FirstPersonArmsPrefabPath = "Assets/0. Member/Dinosaur/Prefab/PlayerFirstPersonArms.prefab";
 
     private static readonly Color TeamColor = new Color(0.35f, 0.55f, 1f);
 
@@ -675,38 +673,16 @@ public static class SoloMissionTestSetup
     }
 
     /// <summary>
-    /// 16a KB20: 살인마 암전 관리자를 놓는다 — 이름으로 찾아 없을 때만 만들고, 첫 대기를 혼자 테스트 값(10초)으로 둔다.
-    /// 프리팹 없이 일반 씬 오브젝트로 (16c 의 실제 게임 씬 설치와 같은 모양). 씬을 저장할 때 Fusion 이 씬 오브젝트로 굽는다.
+    /// 16a KB20: 살인마 암전 관리자를 놓는다 — 4~12 와 같은 공통 단계(16c KB49 — 없을 때만 만들고 없는 컴포넌트 · 빈 팔 칸만 채움)를 부른 뒤,
+    /// 첫 대기를 혼자 테스트 값(10초)으로 둔다 (매번). 프리팹 없이 일반 씬 오브젝트로 — 씬을 저장할 때 Fusion 이 씬 오브젝트로 굽는다.
     /// </summary>
     private static void CreateKillerBlackoutManager(Transform parent)
     {
-        Transform existing = parent.Find(KillerBlackoutName);
-        GameObject go = existing != null ? existing.gameObject : new GameObject(KillerBlackoutName);
-        go.transform.SetParent(parent, false);
-
-        GetOrAdd<NetworkObject>(go);
-        KillerBlackoutManager manager = GetOrAdd<KillerBlackoutManager>(go);
-
-        // 16b: 화면 부품 4개 (KillerBlackoutView 의 RequireComponent 와 같은 것 — 이미 있는 View 에도 빠짐없이 붙게 먼저 놓는다)
-        GetOrAdd<BlackoutScreenRig>(go);
-        BlackoutArms arms = GetOrAdd<BlackoutArms>(go);
-        GetOrAdd<BlackoutMapBlocker>(go);
-        GetOrAdd<BlackoutPromptLabel>(go);
-        GetOrAdd<KillerBlackoutView>(go);
+        KillerBlackoutManager manager = KillerBlackoutInstaller.Ensure(parent, out _, out _);
 
         SerializedObject so = new SerializedObject(manager);
         so.FindProperty("firstDelay").floatValue = SoloBlackoutFirstDelay;
         so.ApplyModifiedPropertiesWithoutUndo();
-
-        GameObject armsPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(FirstPersonArmsPrefabPath);
-        PlayerFirstPersonArmsComponent armsComponent = armsPrefab != null ? armsPrefab.GetComponent<PlayerFirstPersonArmsComponent>() : null;
-
-        if (armsComponent == null)
-            Debug.LogError($"[SoloMissionTestSetup] 1인칭 팔 프리팹을 찾지 못했습니다: {FirstPersonArmsPrefabPath} — 암전 중 빈손 팔이 보이지 않습니다.");
-
-        SerializedObject armsSo = new SerializedObject(arms);
-        armsSo.FindProperty("armsPrefab").objectReferenceValue = armsComponent;
-        armsSo.ApplyModifiedPropertiesWithoutUndo();
     }
 
     /// <summary>
