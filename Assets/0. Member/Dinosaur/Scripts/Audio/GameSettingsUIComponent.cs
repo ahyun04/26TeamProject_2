@@ -62,7 +62,7 @@ public class GameSettingsUIComponent : MonoBehaviour
     private bool customizationSelected; //현재 커스터마이징 탭 선택 여부
     private bool rulesSelected; //현재 규칙 탭 선택 여부
     private bool lobbySelected; //현재 로비 탭 선택 여부
-    private bool applying; //방 설정의 서버 응답 대기 여부
+    private bool applying; //방 설정 또는 외형의 서버 응답 대기 여부
     private bool auxiliaryModal; //기존 초대·나가기 창에서 돌아올 상태
     private bool gameSettingsOpen; //게임 설정 팝업의 열림 상태
     private bool gameSettingsApplying; //게임 설정 서버 응답 대기 상태
@@ -157,8 +157,9 @@ public class GameSettingsUIComponent : MonoBehaviour
             }
             return;
         }
-        if (Cctv.blocksLocalInput || !Input.GetKeyDown(KeyCode.Escape)) return;
+        if (!Input.GetKeyDown(KeyCode.Escape)) return;
         if (TrustNoOne.Minimap.MinimapController.IsFullMapOpen || TrustNoOne.Minimap.MinimapController.EscapeConsumedThisFrame) return; //지도가 ESC 를 먼저 사용
+        if (applying) return;
         if (isOpen) close();
         else if (sceneName == "StandBy" && LobbyRoomUI.Instance != null && !LobbyRoomUI.Instance.hasAuxiliaryModal) showLobbySettings();
         else if (NetworkBootstrap.isGameplayScene(sceneName) && PlayerCameraController.LocalListenerTransform != null) open();
@@ -206,7 +207,6 @@ public class GameSettingsUIComponent : MonoBehaviour
         if (!isOpen) return;
         finishVolumeInput();
         owner.cancelSettings();
-        PlayerAppearance.cancelCustomization();
         lobbyUI?.endEditing();
         finishClose();
     }
@@ -230,10 +230,8 @@ public class GameSettingsUIComponent : MonoBehaviour
     private void handleRoomApplied(bool accepted, string reason) //공유 설정 승인 뒤 개인 설정 저장
     {
         if (!isOpen) return;
-        applying = false;
-        refreshApplyState();
         if (accepted) applyLocalSettings();
-        else if (saveHintText != null) saveHintText.text = reason;
+        else handleAppearanceApplied(false, reason);
     }
 
     internal bool showGameSettings(GameSettingsInteractionComponent station) //단말기 접근으로만 게임 설정 팝업 열기
@@ -289,18 +287,22 @@ public class GameSettingsUIComponent : MonoBehaviour
         restoreCursor();
     }
 
-    private void applyLocalSettings() //기존 음량과 캐릭터 설정 확정
+    private void applyLocalSettings() //외형 승인 뒤 기존 음량 저장으로 연결
     {
-        if (PlayerAppearance.prepareSave() && owner.applySettings())
-        {
-            PlayerAppearance.completeSave();
-            finishClose();
-        }
-        else
-        {
-            PlayerAppearance.rollbackSave();
-            if (saveHintText != null) saveHintText.text = "저장하지 못했습니다. 다시 적용해 주세요.";
-        }
+        applying = true;
+        refreshApplyState();
+        if (saveHintText != null) saveHintText.text = "설정을 적용하는 중입니다.";
+        PlayerAppearance.applyCustomization(handleAppearanceApplied);
+    }
+
+    private void handleAppearanceApplied(bool accepted, string reason) //승인 후 저장하거나 설정창에 거절 사유 표시
+    {
+        if (!isOpen || !applying) return;
+        applying = false;
+        refreshApplyState();
+        if (accepted && owner.applySettings()) finishClose();
+        else if (saveHintText != null)
+            saveHintText.text = accepted ? "음량 설정을 저장하지 못했습니다. 다시 적용해 주세요." : reason;
     }
 
     private void restoreDefaults() //기본값은 적용 전까지 미리 듣기에만 반영
@@ -308,9 +310,11 @@ public class GameSettingsUIComponent : MonoBehaviour
         if (!isOpen || applying) return;
         finishVolumeInput();
         owner.restoreDefaultSettings();
-        PlayerAppearance.restoreDefaults();
+        bool defaultColorAvailable = PlayerAppearance.restoreDefaults(); //다른 참가자가 이미 기본색을 사용 중인지 확인
         lobbyUI?.restoreDefaults();
         refreshValues();
+        if (!defaultColorAvailable && saveHintText != null)
+            saveHintText.text = "기본색이 사용 중이라 현재 색상을 유지했습니다.";
     }
 
     private void finishClose() //입력 차단 해제와 현재 화면의 커서 복원
@@ -318,6 +322,7 @@ public class GameSettingsUIComponent : MonoBehaviour
         isOpen = false;
         applying = false;
         auxiliaryModal = false;
+        PlayerAppearance.cancelCustomization();
         lobbyUI?.endEditing();
         refreshApplyState();
         toggleFrame = Time.frameCount;
@@ -499,6 +504,8 @@ public class GameSettingsUIComponent : MonoBehaviour
     {
         if (applyButton != null) applyButton.interactable = !applying;
         if (defaultsButton != null) defaultsButton.interactable = !applying;
+        if (closeButton != null) closeButton.interactable = !applying;
+        if (cancelButton != null) cancelButton.interactable = !applying;
     }
 
     private void refreshTab() //현재 페이지와 아이콘 탭의 선택 배경 표시

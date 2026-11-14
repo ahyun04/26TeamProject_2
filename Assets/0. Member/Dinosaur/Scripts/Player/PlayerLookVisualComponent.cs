@@ -22,6 +22,7 @@ public class PlayerLookVisualComponent : NetworkBehaviour, IAfterTick
     private PlayerHealth health; //사망과 탈출 등 표시 종료 상태
     private PlayerCameraController cameraController; //본인에게 활성화된 1인칭 카메라
     private SkinnedMeshRenderer characterRenderer; //1인칭 팔과 분리된 원래 캐릭터 메시
+    private PlayerAppearanceVisualComponent appearanceVisual; //같은 카메라에 맞춰 장식을 숨길 표시 구성 요소
     private ShadowCastingMode originalShadows; //본인 카메라 종료 시 복원할 그림자 설정
     private bool bodyHidden; //본인 화면에서 원래 몸을 숨겼는지 여부
     private NetworkBehaviour.PropertyReader<float> bodyYawReader; //다른 참가자에게 복제된 몸 방향 보간
@@ -33,11 +34,14 @@ public class PlayerLookVisualComponent : NetworkBehaviour, IAfterTick
     private bool headApplied; //이전 프레임의 시선 회전 적용 여부
     private bool spawned; //네트워크 상태 접근 가능 여부
 
+    internal Transform modelRoot => bodyPivot; //외형 장식을 연결할 캐릭터 모델
+
     private void Awake() //기존 구성 요소와 모델 기본 회전 준비
     {
         kcc = GetComponent<SimpleKCC>();
         health = GetComponent<PlayerHealth>();
         cameraController = GetComponent<PlayerCameraController>();
+        appearanceVisual = GetComponent<PlayerAppearanceVisualComponent>();
         if (bodyPivot != null)
         {
             bodyLocalRotation = bodyPivot.localRotation;
@@ -134,6 +138,7 @@ public class PlayerLookVisualComponent : NetworkBehaviour, IAfterTick
         }
         else characterRenderer.shadowCastingMode = originalShadows;
         bodyHidden = hidden;
+        appearanceVisual?.setCosmeticsHidden(hidden);
     }
 
     internal void restoreLocalView() //관전·카메라 종료 시 머리와 몸의 원래 표시 복원
@@ -146,12 +151,14 @@ public class PlayerLookVisualComponent : NetworkBehaviour, IAfterTick
     {
         if (bodyHidden && characterRenderer != null) characterRenderer.shadowCastingMode = originalShadows;
         if (headHidden && headBone != null) headBone.localScale = headAnimationScale;
+        if (bodyHidden) appearanceVisual?.setCosmeticsHidden(false);
     }
 
     internal void endExternalView() //기본 1인칭 카메라를 그리기 전에 본인 모델 숨김 복구
     {
         if (bodyHidden && characterRenderer != null) characterRenderer.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
         if (headHidden && headBone != null) headBone.localScale = Vector3.zero;
+        if (bodyHidden) appearanceVisual?.setCosmeticsHidden(true);
     }
 
     private void Update() //Animator가 평가되기 전에 이전 프레임의 시선 보정 제거

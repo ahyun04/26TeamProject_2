@@ -9,7 +9,7 @@ public class GameAudio : MonoBehaviour
     [SerializeField] private LobbyControlGuideUIComponent controlGuide; //대기실 조작키 안내
 
     private static GameAudio instance; //클라이언트 하나의 사운드 진입점
-    internal static bool blocksPlayerInput => blocksMenuInput || Cctv.blocksLocalInput; //메뉴와 관제의 로컬 입력 차단
+    internal static bool blocksPlayerInput => blocksMenuInput; //메뉴와 종료 화면의 로컬 입력 차단
     internal static bool blocksMenuInput => GameResultFeedbackComponent.blocksPlayerInput ||
         (instance != null && instance.settingsUI.blocksPlayerInput) || TrustNoOne.Minimap.MinimapController.IsFullMapOpen; //설정창과 지도 및 종료 화면 입력 차단
     internal static bool isLobbySettingsOpen => instance != null && instance.settingsUI.isLobbyOpen; //통합 방 화면 열림 상태
