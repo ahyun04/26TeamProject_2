@@ -16,8 +16,13 @@ namespace LockdownProtocol.Lobby
 
         public event System.Action<bool> ReadyChanged;
 
+        private NetworkBootstrap bootstrap; // 닉네임/입장 순서 보관용 (게임 중 플레이어 목록이 사용)
+        private NetworkString<_16> retainedNickname; // 마지막으로 보관한 닉네임
+        private int retainedJoinOrder = int.MinValue; // 마지막으로 보관한 입장 순서
+
         public override void Spawned()
         {
+            bootstrap = FindFirstObjectByType<NetworkBootstrap>();
             if (Object.HasInputAuthority)
             {
                 // 로컬 플레이어 초기 닉네임 세팅: Main 씬에서 입력한 닉네임, 없으면 Player_{번호}
@@ -43,6 +48,17 @@ namespace LockdownProtocol.Lobby
                     IsHost = isHost;
                 }
             }
+        }
+
+        // 닉네임/입장 순서가 바뀔 때마다 NetworkBootstrap 에 보관한다.
+        // (게임 씬으로 넘어갈 때 대기실 객체가 먼저 사라지므로, 사라진 뒤에는 읽을 수 없다)
+        public override void Render()
+        {
+            if (bootstrap == null || Object == null || !Object.IsValid) return;
+            if (retainedJoinOrder == JoinOrder && retainedNickname.Equals(Nickname)) return;
+            retainedNickname = Nickname;
+            retainedJoinOrder = JoinOrder;
+            bootstrap.retainLobbyIdentity(this);
         }
 
         public override void Despawned(NetworkRunner runner, bool hasState)
