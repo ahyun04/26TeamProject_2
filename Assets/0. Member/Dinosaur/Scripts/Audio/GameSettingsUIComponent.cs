@@ -9,6 +9,7 @@ using UnityEngine.UI;
 public class GameSettingsUIComponent : MonoBehaviour
 {
     [SerializeField] private GameObject panel; //설정창 패널
+    [SerializeField] private GameObject settingsWindow; //기본 설정 탭과 공용 버튼 영역
     [SerializeField] private Button openButton; //메뉴의 설정 버튼
     [SerializeField] private Button closeButton; //설정창 닫기 버튼
     [SerializeField] private Slider masterSlider; //전체 음량 조절
@@ -54,6 +55,7 @@ public class GameSettingsUIComponent : MonoBehaviour
     [SerializeField] private GameObject gameSettingsHint; //단말기 접근 시 G키 안내
 
     private GameAudio owner; //설정 기능 진입점
+    private PlayerCustomizationUIComponent customizationUI; //꾸미기 화면의 버튼과 안내 연결
     private GameEndSystem gameEndSystem; //결과 화면 우선 표시
     private string sceneName; //현재 게임 씬
     private bool isOpen; //현재 설정창 상태
@@ -98,6 +100,8 @@ public class GameSettingsUIComponent : MonoBehaviour
         applyButton?.onClick.AddListener(apply);
         cancelButton?.onClick.AddListener(close);
         defaultsButton?.onClick.AddListener(restoreDefaults);
+        customizationUI = customizationPage != null ? customizationPage.GetComponent<PlayerCustomizationUIComponent>() : null;
+        customizationUI?.bindActions(apply, close, restoreDefaults);
         connectVolumeInputs();
         refreshTab();
     }
@@ -220,7 +224,7 @@ public class GameSettingsUIComponent : MonoBehaviour
         {
             applying = true;
             refreshApplyState();
-            if (saveHintText != null) saveHintText.text = "방 인원을 적용하는 중입니다.";
+            setSaveHint("방 인원을 적용하는 중입니다.");
             lobbyUI.applyMaximum(handleRoomApplied);
             return;
         }
@@ -291,7 +295,7 @@ public class GameSettingsUIComponent : MonoBehaviour
     {
         applying = true;
         refreshApplyState();
-        if (saveHintText != null) saveHintText.text = "설정을 적용하는 중입니다.";
+        setSaveHint("설정을 적용하는 중입니다.");
         PlayerAppearance.applyCustomization(handleAppearanceApplied);
     }
 
@@ -301,8 +305,7 @@ public class GameSettingsUIComponent : MonoBehaviour
         applying = false;
         refreshApplyState();
         if (accepted && owner.applySettings()) finishClose();
-        else if (saveHintText != null)
-            saveHintText.text = accepted ? "음량 설정을 저장하지 못했습니다. 다시 적용해 주세요." : reason;
+        else setSaveHint(accepted ? "음량 설정을 저장하지 못했습니다. 다시 적용해 주세요." : reason);
     }
 
     private void restoreDefaults() //기본값은 적용 전까지 미리 듣기에만 반영
@@ -313,8 +316,8 @@ public class GameSettingsUIComponent : MonoBehaviour
         bool defaultColorAvailable = PlayerAppearance.restoreDefaults(); //다른 참가자가 이미 기본색을 사용 중인지 확인
         lobbyUI?.restoreDefaults();
         refreshValues();
-        if (!defaultColorAvailable && saveHintText != null)
-            saveHintText.text = "기본색이 사용 중이라 현재 색상을 유지했습니다.";
+        if (!defaultColorAvailable) setSaveHint("기본색이 사용 중이라 현재 색상을 유지했습니다.");
+        else if (customizationSelected) customizationUI?.setActionMessage(string.Empty);
     }
 
     private void finishClose() //입력 차단 해제와 현재 화면의 커서 복원
@@ -327,6 +330,7 @@ public class GameSettingsUIComponent : MonoBehaviour
         refreshApplyState();
         toggleFrame = Time.frameCount;
         panel.SetActive(false);
+        customizationSelected = false;
         restoreCursor();
     }
 
@@ -506,6 +510,13 @@ public class GameSettingsUIComponent : MonoBehaviour
         if (defaultsButton != null) defaultsButton.interactable = !applying;
         if (closeButton != null) closeButton.interactable = !applying;
         if (cancelButton != null) cancelButton.interactable = !applying;
+        customizationUI?.setActionsInteractable(!applying);
+    }
+
+    private void setSaveHint(string message) //열린 화면에 적용 진행 상태와 실패 사유 표시
+    {
+        if (saveHintText != null) saveHintText.text = message;
+        if (customizationSelected) customizationUI?.setActionMessage(message);
     }
 
     private void refreshTab() //현재 페이지와 아이콘 탭의 선택 배경 표시
@@ -519,6 +530,8 @@ public class GameSettingsUIComponent : MonoBehaviour
         }
         if (soundPage != null) soundPage.SetActive(!rulesSelected && !lobbySelected && !customizationSelected && soundSelected);
         if (controlsPage != null) controlsPage.SetActive(!rulesSelected && !lobbySelected && !customizationSelected && !soundSelected);
+        if (settingsWindow != null) settingsWindow.SetActive(!customizationSelected);
+        customizationUI?.setActionMessage(string.Empty);
         if (customizationPage != null) customizationPage.SetActive(customizationSelected);
         if (lobbyPage != null) lobbyPage.SetActive(lobbySelected);
         if (rulesPage != null) rulesPage.SetActive(rulesSelected);

@@ -1,6 +1,8 @@
+using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.UI;
 
 public class PlayerCustomizationUIComponent : MonoBehaviour
@@ -12,25 +14,32 @@ public class PlayerCustomizationUIComponent : MonoBehaviour
     [SerializeField] private GameObject previewModelPrefab; //원본 캐릭터 모델
     [SerializeField] private RuntimeAnimatorController previewAnimator; //캐릭터 정지 자세
     [SerializeField] private Button[] categoryButtons; //색깔, 얼굴, 머리, 몸 순서의 탭
+    [SerializeField] private RectTransform[] categoryChevrons; //열린 카테고리의 화살표
+    [SerializeField] private Sprite activeCategorySprite; //열린 카테고리의 파란 배경
+    [SerializeField] private Sprite inactiveCategorySprite; //접힌 카테고리의 배경
+    [SerializeField] private ScrollRect categoryScroll; //카테고리와 펼친 목록의 세로 스크롤
+    [SerializeField] private LayoutElement itemTray; //선택한 카테고리 아래 놓이는 아이템 영역
+    [SerializeField, Min(0f)] private float colorTrayHeight = 218f; //색상 두 줄에 필요한 높이
+    [SerializeField, Min(0f)] private float accessoryTrayHeight = 184f; //장식 한 줄에 필요한 높이
     [SerializeField] private ScrollRect itemScroll; //가로로 이동하는 꾸미기 목록
     [SerializeField] private RectTransform colorContent; //기존 색상 선택 영역
     [SerializeField] private RectTransform accessoryContent; //현재 장식 목록의 선택 영역
     [SerializeField] private Button accessoryButtonPrefab; //이름과 그림을 표시할 장식 선택 버튼
     [SerializeField] private Button rotatePreviewButton; //정면과 후면 미리보기 전환
-    [SerializeField] private TMP_Text rotatePreviewLabel; //미리보기 전환 버튼의 현재 동작
+    [SerializeField] private Button applyButton; //변경한 설정 저장
+    [SerializeField] private Button cancelButton; //미적용 변경 취소
+    [SerializeField] private Button defaultsButton; //꾸미기와 설정 기본값 복원
+    [SerializeField] private Button closeButton; //미적용 변경을 취소하고 닫기
 
-    private static readonly Color activeTabColor = new(0.14f, 0.43f, 0.68f); //선택 카테고리와 장식 테두리
-    private static readonly Color inactiveTabColor = new(0.14f, 0.19f, 0.27f); //일반 선택 버튼 배경
-    private static readonly string[] colorNames = { "파랑", "빨강", "초록", "노랑", "보라", "하늘", "분홍", "주황", "연두", "흰색", "회색", "갈색", "남색", "민트", "연보라" }; //팔레트 색 이름
-    private readonly List<int> accessoryIds = new(); //생성한 장식 버튼의 데이터 ID
-    private readonly List<Button> accessoryButtons = new(); //현재 카테고리의 장식 선택 버튼
-    private readonly List<TMP_Text> colorLabels = new(); //색상 이름과 사용 중 표시
+    private readonly List<(int id, Button button, GameObject mark)> accessoryOptions = new(); //현재 카테고리의 장식과 체크 표시
+    private readonly List<TMP_Text> colorLabels = new(); //사용 중인 색상 표시
     private PlayerAppearanceSlot selectedSlot; //현재 선택한 카테고리
     private PlayerAppearanceSettingsComponent settings; //편집 중인 외형 데이터
     private GameObject previewModel; //같은 탭 안에서 유지하는 미리보기 모델
     private PlayerAppearanceVisualComponent previewVisual; //실제 캐릭터와 공유하는 외형 표시
     private Camera previewCamera; //미리보기 전용 카메라
     private Light previewLight; //캐릭터 미리보기 조명
+    private Light previewFillLight; //반대편 그림자를 부드럽게 하는 조명
     private RenderTexture previewTexture; //미리보기 표시용 렌더 결과
     private Vector3 previewCenter; //정면과 후면에서 같은 구도의 기준점
     private float previewDistance; //캐릭터와 미리보기 카메라 사이 거리
@@ -39,6 +48,7 @@ public class PlayerCustomizationUIComponent : MonoBehaviour
     private int occupiedColors; //다른 참가자가 사용 중인 마지막 색상 목록
     private PlayerAppearanceSelection? displayed; //마지막으로 렌더링한 전체 외형
     private bool usedFallback; //입장 때 저장한 색상 대신 다른 색상이 배정된 상태
+    private string actionMessage; //기존 설정창의 적용 결과와 기본값 안내
 
     private void Awake() //공용 프리팹의 선택 입력 연결
     {
@@ -55,7 +65,28 @@ public class PlayerCustomizationUIComponent : MonoBehaviour
             colorLabels.Add(colorButtons[i].transform.Find("Color name").GetComponent<TMP_Text>());
         }
         rotatePreviewButton.onClick.AddListener(rotatePreview);
-        showCategory(PlayerAppearanceSlot.Color);
+    }
+
+    internal void bindActions(UnityAction apply, UnityAction close, UnityAction restoreDefaults) //설정창 진입점의 저장과 취소 처리 재사용
+    {
+        applyButton.onClick.AddListener(apply);
+        cancelButton.onClick.AddListener(close);
+        defaultsButton.onClick.AddListener(restoreDefaults);
+        closeButton.onClick.AddListener(close);
+    }
+
+    internal void setActionsInteractable(bool interactable) //적용 응답 대기 중 꾸미기 버튼 잠금
+    {
+        applyButton.interactable = interactable;
+        cancelButton.interactable = interactable;
+        defaultsButton.interactable = interactable;
+        closeButton.interactable = interactable;
+    }
+
+    internal void setActionMessage(string message) //공용 설정 저장 결과를 하단에 표시
+    {
+        actionMessage = message;
+        if (isActiveAndEnabled) refreshStatus();
     }
 
     private void OnEnable() //현재 외형에 맞춰 미리보기를 다시 표시
@@ -76,17 +107,28 @@ public class PlayerCustomizationUIComponent : MonoBehaviour
     private void showCategory(PlayerAppearanceSlot slot) //미리보기와 편집값을 유지한 채 목록만 변경
     {
         selectedSlot = slot;
+        int categoryIndex = (int)slot; //목록을 펼칠 카테고리의 순서
         bool showColors = slot == PlayerAppearanceSlot.Color; //팔레트 또는 장식 목록 표시
+        itemTray.transform.SetAsLastSibling();
+        itemTray.transform.SetSiblingIndex(categoryButtons[categoryIndex].transform.GetSiblingIndex() + 1);
+        itemTray.preferredHeight = showColors ? colorTrayHeight : accessoryTrayHeight;
         colorContent.gameObject.SetActive(showColors);
         accessoryContent.gameObject.SetActive(!showColors);
         itemScroll.content = showColors ? colorContent : accessoryContent;
         if (!showColors) fillAccessories(slot);
         for (int i = 0; i < categoryButtons.Length; i++)
-            categoryButtons[i].image.color = i == (int)slot ? activeTabColor : inactiveTabColor;
-        if (!isActiveAndEnabled) return;
+        {
+            bool expanded = i == categoryIndex; //카테고리 헤더의 활성 상태
+            categoryButtons[i].image.sprite = expanded ? activeCategorySprite : inactiveCategorySprite;
+            categoryChevrons[i].localRotation = expanded ? Quaternion.Euler(0f, 0f, 180f) : Quaternion.identity;
+        }
         Canvas.ForceUpdateCanvases();
+        LayoutRebuilder.ForceRebuildLayoutImmediate(categoryScroll.content);
         LayoutRebuilder.ForceRebuildLayoutImmediate(itemScroll.content);
+        categoryScroll.StopMovement();
+        categoryScroll.verticalNormalizedPosition = 1f;
         itemScroll.StopMovement();
+        itemScroll.horizontalNormalizedPosition = 0f;
         scrollToSelection();
         setPreviewView(slot == PlayerAppearanceSlot.Body);
         refresh();
@@ -95,29 +137,45 @@ public class PlayerCustomizationUIComponent : MonoBehaviour
     private void scrollToSelection() //현재 선택한 항목을 가로 목록에서 화면에 표시
     {
         int selectedId = settings != null ? settings.selected.get(selectedSlot) : 0; //선택 항목의 ID
-        int index = selectedSlot == PlayerAppearanceSlot.Color ? selectedId : accessoryIds.IndexOf(selectedId); //선택 항목의 가로 순서
-        float hiddenWidth = itemScroll.content.rect.width - itemScroll.viewport.rect.width; //목록이 이동할 수 있는 범위
-        GridLayoutGroup row = itemScroll.content.GetComponent<GridLayoutGroup>(); //공용 한 줄 목록의 칸 크기
-        float offset = row.padding.left + index * (row.cellSize.x + row.spacing.x) + row.cellSize.x * 0.5f
-            - itemScroll.viewport.rect.width * 0.5f; //선택한 칸을 가급적 가운데에 배치
-        itemScroll.horizontalNormalizedPosition = index < 0 || hiddenWidth <= 0f ? 0f : Mathf.Clamp01(offset / hiddenWidth);
+        Button selectedButton = selectedSlot == PlayerAppearanceSlot.Color ? colorButtons[selectedId] :
+            accessoryOptions.Find(option => option.id == selectedId).button; //현재 선택한 색상 또는 장식 버튼
+        float visibleWidth = itemScroll.viewport.rect.width; //목록에서 한 번에 보이는 너비
+        float hiddenWidth = itemScroll.content.rect.width - visibleWidth; //가로로 이동 가능한 너비
+        if (selectedButton == null || hiddenWidth <= 0f) return;
+
+        RectTransform selectedRect = (RectTransform)selectedButton.transform; //선택 칸의 레이아웃 위치
+        float left = selectedRect.anchoredPosition.x - selectedRect.rect.width * selectedRect.pivot.x; //컨텐츠 안에서 선택 칸의 왼쪽
+        float right = left + selectedRect.rect.width; //컨텐츠 안에서 선택 칸의 오른쪽
+        float offset = itemScroll.horizontalNormalizedPosition * hiddenWidth; //현재 목록의 왼쪽 위치
+        if (left < offset) offset = left;
+        else if (right > offset + visibleWidth) offset = right - visibleWidth;
+        itemScroll.horizontalNormalizedPosition = Mathf.Clamp01(offset / hiddenWidth);
     }
 
     private void fillAccessories(PlayerAppearanceSlot slot) //선택 슬롯과 리소스가 연결된 장식만 노출
     {
-        foreach (Button button in accessoryButtons)
+        foreach (var option in accessoryOptions)
         {
-            button.gameObject.SetActive(false);
-            Destroy(button.gameObject);
+            option.button.gameObject.SetActive(false);
+            Destroy(option.button.gameObject);
         }
-        accessoryButtons.Clear();
-        accessoryIds.Clear();
+        accessoryOptions.Clear();
         addAccessoryButton(slot, 0, "없음", null);
         PlayerCosmeticsCatalog catalog = (settings != null ? settings : PlayerAppearance.settings)?.catalog; //플레이어와 공용 장식 데이터
         if (catalog == null || catalog.items == null || !catalog.hasResources(slot)) return;
         foreach (PlayerCosmeticsCatalog.Entry entry in catalog.items)
             if (entry != null && entry.slot == slot && entry.isAvailable)
-                addAccessoryButton(slot, entry.id, entry.displayName, entry.thumbnail != null ? entry.thumbnail : entry.sticker);
+                addAccessoryButton(slot, entry.id, getAccessoryLabel(slot, entry.displayName),
+                    entry.thumbnail != null ? entry.thumbnail : entry.sticker);
+    }
+
+    private static string getAccessoryLabel(PlayerAppearanceSlot slot, string displayName) //머리 탭에서 구분되는 장식 이름만 표시
+    {
+        const string headbandSuffix = " 머리띠"; //같은 부위 장식에 반복되는 단어
+        if (slot == PlayerAppearanceSlot.Head && !string.IsNullOrEmpty(displayName) &&
+            displayName.EndsWith(headbandSuffix, StringComparison.Ordinal))
+            return displayName.Substring(0, displayName.Length - headbandSuffix.Length);
+        return displayName;
     }
 
     private void addAccessoryButton(PlayerAppearanceSlot slot, int id, string name, Sprite sprite) //공용 버튼에 이름과 그림 연결
@@ -125,12 +183,10 @@ public class PlayerCustomizationUIComponent : MonoBehaviour
         Button button = Instantiate(accessoryButtonPrefab, accessoryContent); //장식 카드
         button.transform.Find("Name").GetComponent<TMP_Text>().text = name;
         Image icon = button.transform.Find("Icon").GetComponent<Image>(); //장식 원본 미리보기 그림
-        icon.sprite = sprite;
-        icon.enabled = sprite != null;
+        if (sprite != null) icon.sprite = sprite;
         button.onClick.AddListener(() => PlayerAppearance.select(slot, id));
         button.gameObject.SetActive(true);
-        accessoryIds.Add(id);
-        accessoryButtons.Add(button);
+        accessoryOptions.Add((id, button, button.transform.Find("Selected").gameObject));
     }
 
     private void refresh() //선택 강조, 점유 상태, 캐릭터 미리보기 갱신
@@ -145,33 +201,31 @@ public class PlayerCustomizationUIComponent : MonoBehaviour
             bool selected = selection.color == i; //현재 미리보기의 색상
             colorButtons[i].image.color = PlayerAppearance.getColor(i);
             colorButtons[i].interactable = canEdit && !occupied;
-            colorLabels[i].text = occupied ? colorNames[i] + "\n사용 중" : colorNames[i];
+            colorLabels[i].text = occupied ? "사용 중" : string.Empty;
             if (selectionMarks != null && i < selectionMarks.Length && selectionMarks[i] != null) selectionMarks[i].SetActive(selected);
-            Outline outline = colorButtons[i].GetComponent<Outline>(); //선택 색상 가장자리
-            if (outline != null) outline.enabled = selected;
         }
-        for (int i = 0; i < accessoryButtons.Count; i++)
+        foreach (var option in accessoryOptions)
         {
-            Button button = accessoryButtons[i]; //현재 슬롯의 장식 선택 버튼
-            bool selected = selection.get(selectedSlot) == accessoryIds[i]; //선택한 장식의 강조
-            button.interactable = canEdit;
-            button.image.color = selected ? activeTabColor : inactiveTabColor;
-            button.GetComponent<Outline>().enabled = selected;
+            option.button.interactable = canEdit;
+            option.mark.SetActive(selection.get(selectedSlot) == option.id);
         }
-        if (statusText != null)
-        {
-            if (PlayerAppearance.isApplying) statusText.text = "외형을 적용하는 중입니다.";
-            else if (!canEdit) statusText.text = "외형은 메인 메뉴, 로비 또는 대기실에서 변경할 수 있습니다.";
-            else if (usedFallback && selectedSlot == PlayerAppearanceSlot.Color) statusText.text = "저장한 색상을 다른 참가자가 사용 중이라 이 방에서는 다른 색상이 배정되었습니다.";
-            else if (selectedSlot == PlayerAppearanceSlot.Color && occupiedColors != 0) statusText.text = "사용 중인 색상은 다른 참가자가 선택한 색상입니다.";
-            else if (selectedSlot != PlayerAppearanceSlot.Color && accessoryButtons.Count == 1) statusText.text = "표시할 수 있는 장식이 없습니다.";
-            else statusText.text = string.Empty;
-        }
+        refreshStatus();
         if (previewVisual == null || (displayed.HasValue && displayed.Value.Equals(selection))) return;
         if (displayed.HasValue && displayed.Value.get(selectedSlot) != selection.get(selectedSlot)) scrollToSelection();
         displayed = selection;
         previewVisual.setAppearance(selection, PlayerAppearance.getColor(selection.color));
         previewCamera.Render();
+    }
+
+    private void refreshStatus() //선택 제한이나 저장 결과가 있을 때만 안내 표시
+    {
+        if (!string.IsNullOrEmpty(actionMessage)) statusText.text = actionMessage;
+        else if (PlayerAppearance.isApplying) statusText.text = "외형을 적용하는 중입니다.";
+        else if (!canEdit) statusText.text = "외형은 메인 메뉴, 로비 또는 대기실에서 변경할 수 있습니다.";
+        else if (usedFallback && selectedSlot == PlayerAppearanceSlot.Color) statusText.text = "저장한 색상을 다른 참가자가 사용 중이라 이 방에서는 다른 색상이 배정되었습니다.";
+        else if (selectedSlot == PlayerAppearanceSlot.Color && occupiedColors != 0) statusText.text = "사용 중인 색상은 다른 참가자가 선택한 색상입니다.";
+        else if (selectedSlot != PlayerAppearanceSlot.Color && accessoryOptions.Count == 1) statusText.text = "표시할 수 있는 장식이 없습니다.";
+        else statusText.text = string.Empty;
     }
 
     private void createPreview() //기존 모델·조명으로 실제 외형을 별도 렌더링
@@ -193,29 +247,36 @@ public class PlayerCustomizationUIComponent : MonoBehaviour
         Bounds bounds = renderer.bounds; //모델의 실제 크기
         if (bounds.size.y > 0f) previewModel.transform.localScale *= 1.45f / bounds.size.y;
         bounds = renderer.bounds;
-        previewCenter = bounds.center + Vector3.up * 0.08f;
+        previewCenter = bounds.center + Vector3.up * 0.02f;
         previewDistance = bounds.size.y * 3f;
         GameObject cameraObject = new("Character appearance preview"); //미리보기 카메라
         previewCamera = cameraObject.AddComponent<Camera>();
         previewCamera.enabled = false;
         previewCamera.clearFlags = CameraClearFlags.SolidColor;
-        previewCamera.backgroundColor = new Color(0.075f, 0.105f, 0.15f);
+        previewCamera.backgroundColor = Color.clear;
         previewCamera.cullingMask = 1 << 31;
         previewCamera.orthographic = true;
         previewCamera.orthographicSize = bounds.extents.y * 1.20f;
         previewCamera.nearClipPlane = 0.01f;
         previewCamera.farClipPlane = Mathf.Max(10f, bounds.size.y * 8f);
-        previewTexture = new RenderTexture(400, 520, 24);
+        previewTexture = new RenderTexture(576, 692, 24, RenderTextureFormat.ARGB32);
         previewCamera.targetTexture = previewTexture;
         previewImage.texture = previewTexture;
-        GameObject lightObject = new("Character appearance preview light"); //미리보기만 비추는 조명
-        previewLight = lightObject.AddComponent<Light>();
-        previewLight.type = LightType.Point;
-        previewLight.cullingMask = 1 << 31;
-        previewLight.intensity = 5f;
-        previewLight.range = 6f;
-        previewLight.shadows = LightShadows.None;
+        previewLight = createPreviewLight(cameraObject.transform, "Key light", 5.8f);
+        previewFillLight = createPreviewLight(cameraObject.transform, "Fill light", 2.7f);
         setPreviewView(viewBack);
+    }
+
+    private static Light createPreviewLight(Transform parent, string lightName, float intensity) //캐릭터에만 영향을 주는 미리보기 조명 생성
+    {
+        var light = new GameObject(lightName).AddComponent<Light>(); //카메라와 함께 해제되는 조명
+        light.transform.SetParent(parent);
+        light.type = LightType.Point;
+        light.cullingMask = 1 << 31;
+        light.intensity = intensity;
+        light.range = 7f;
+        light.shadows = LightShadows.None;
+        return light;
     }
 
     private void rotatePreview() //같은 캐릭터의 앞면과 뒷면 확인
@@ -226,12 +287,12 @@ public class PlayerCustomizationUIComponent : MonoBehaviour
     private void setPreviewView(bool back) //등 장식 선택 시 뒷면으로 즉시 이동
     {
         viewBack = back;
-        rotatePreviewLabel.text = back ? "앞면 보기" : "뒷면 보기";
         if (previewCamera == null) return;
-        Vector3 direction = back ? new Vector3(0.18f, 0f, 1f).normalized : Vector3.back; //선택점 확인이 쉬운 미리보기 방향
+        Vector3 direction = back ? new Vector3(0.7f, 0f, 1f).normalized : Vector3.back; //가방과 어깨끈이 보이는 뒷면 방향
         previewCamera.transform.position = previewCenter + direction * previewDistance;
         previewCamera.transform.LookAt(previewCenter);
         previewLight.transform.position = previewCenter + new Vector3(-1f, 1.5f, back ? 2f : -2f);
+        previewFillLight.transform.position = previewCenter + new Vector3(1.3f, 0.45f, back ? 1.8f : -1.7f);
         previewCamera.Render();
     }
 
@@ -241,13 +302,13 @@ public class PlayerCustomizationUIComponent : MonoBehaviour
         if (previewImage != null) previewImage.texture = null;
         if (previewCamera != null) previewCamera.targetTexture = null;
         if (previewModel != null) { previewModel.SetActive(false); Destroy(previewModel); }
-        if (previewCamera != null) Destroy(previewCamera.gameObject);
-        if (previewLight != null) { previewLight.enabled = false; Destroy(previewLight.gameObject); }
+        if (previewCamera != null) { previewCamera.gameObject.SetActive(false); Destroy(previewCamera.gameObject); }
         if (previewTexture != null) { previewTexture.Release(); Destroy(previewTexture); }
         previewModel = null;
         previewVisual = null;
         previewCamera = null;
         previewLight = null;
+        previewFillLight = null;
         previewTexture = null;
         displayed = null;
     }
