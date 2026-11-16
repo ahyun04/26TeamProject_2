@@ -7,9 +7,11 @@ public class CctvDoorComponent : NetworkBehaviour
 {
     [SerializeField] private FireDoorVisual visual; //위아래 문짝 연출과 문짝 충돌
     [SerializeField, Min(0.1f)] private float travelSeconds = 1f; //한 방향으로 완전히 움직이는 시간
+    [SerializeField, Min(0.1f)] private float lockSeconds = 15f; //완전히 닫힌 상태를 유지하는 시간
 
     [Networked] private NetworkBool targetClosed { get; set; } //호스트가 확정한 닫힘 목표 상태
     [Networked] private TickTimer travelTimer { get; set; } //모든 참가자가 공유하는 이동 종료 틱
+    [Networked] private TickTimer reopenTimer { get; set; } //자동으로 열기 시작하는 틱
 
     private bool spawned; //네트워크 상태 접근 여부
 
@@ -21,6 +23,7 @@ public class CctvDoorComponent : NetworkBehaviour
         {
             targetClosed = false;
             travelTimer = TickTimer.None;
+            reopenTimer = TickTimer.None;
         }
         spawned = true;
         applyPose();
@@ -29,18 +32,27 @@ public class CctvDoorComponent : NetworkBehaviour
     internal void toggle() //호스트만 방향을 바꾸고 현재 위치에서 이어서 움직임
     {
         if (!spawned || Object == null || !Object.IsValid || !HasStateAuthority) return;
-
-        float closed = getClosedProgress();
-        targetClosed = !targetClosed;
-        float remaining = targetClosed ? 1f - closed : closed;
-        travelTimer = remaining > 0f
-            ? TickTimer.CreateFromSeconds(Runner, remaining * travelSeconds)
-            : TickTimer.None;
+        setClosed(!targetClosed);
         applyPose();
+    }
+
+    private void setClosed(bool closedTarget) //현재 문짝 위치에서 이동을 이어서 시작
+    {
+        float closed = getClosedProgress();
+        targetClosed = closedTarget;
+        float remainingTravelSeconds = (closedTarget ? 1f - closed : closed) * travelSeconds;
+        travelTimer = remainingTravelSeconds > 0f
+            ? TickTimer.CreateFromSeconds(Runner, remainingTravelSeconds)
+            : TickTimer.None;
+        reopenTimer = closedTarget
+            ? TickTimer.CreateFromSeconds(Runner, remainingTravelSeconds + lockSeconds)
+            : TickTimer.None;
     }
 
     public override void FixedUpdateNetwork() //시뮬레이션에서도 문짝 위치와 충돌 갱신
     {
+        if (HasStateAuthority && targetClosed && reopenTimer.Expired(Runner))
+            setClosed(false);
         applyPose();
     }
 

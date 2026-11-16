@@ -182,7 +182,9 @@ public class PlayerFirstPersonItemView : MonoBehaviour
         arms.transform.localRotation = showingGesture ? Quaternion.Euler(gestureArmsRotation) :
             missionPose ? Quaternion.Euler(missionBaseArmsRotation) :
             twoHanded ? Quaternion.Euler(twoHandedArmsRotation) : Quaternion.identity;
-        if (currentView != null) currentView.SetActive(!showingGesture && !showingMission);
+        bool holding = currentView != null && !showingGesture && !showingMission;
+        arms.setHoldingItem(holding);
+        if (currentView != null) currentView.SetActive(holding);
         if (showingGesture || showingMission || currentView != null) arms.show();
         else arms.hide();
     }

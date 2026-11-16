@@ -1,6 +1,7 @@
 using Fusion;
 using LockdownProtocol.Lobby;
 using Photon.Voice.Unity;
+using TrustNoOne.Missions;
 using UnityEngine;
 
 /// <summary>
@@ -95,8 +96,10 @@ public class VoiceProximityController : NetworkBehaviour
         foreach (RaycastHit hit in Physics.RaycastAll(origin, direction.normalized, distance,
                      obstacleMask, QueryTriggerInteraction.Ignore))
         {
-            // 플레이어의 몸은 벽으로 취급하지 않는다.
-            if (hit.collider.GetComponentInParent<PlayerHealth>() == null) return true;
+            if (hit.collider.GetComponentInParent<PlayerHealth>() != null) continue;
+            FireDoorVisual door = hit.collider.GetComponentInParent<FireDoorVisual>(); //문짝 너머에서도 거리 범위 내 대화 허용
+            if (door != null && door.containsDoorCollider(hit.collider)) continue;
+            return true;
         }
         return false;
     }

@@ -10,10 +10,16 @@ public class PlayerFirstPersonArmsComponent : MonoBehaviour
 
     private readonly List<Transform> sourceBones = new List<Transform>(); //기존 애니메이션이 움직이는 본
     private readonly List<Transform> viewBones = new List<Transform>(); //본인 시점에 복사할 본
+    private readonly List<(Transform bone, Vector3 position, Quaternion rotation)> groundedTorso = new(); //점프 중 유지할 몸통 자세
+    private Animator animator; //들기 레이어와 점프 재생 상태 확인
+    private int holdLayer; //기존 한손·양손 들기 레이어
+    private bool holdingItem; //미션과 제스처를 제외한 도구 표시
     private SkinnedMeshRenderer sourceRenderer; //본인 캐릭터의 색상 복사 원본
     private PlayerHealth health; //사망과 탈출 시 표시 해제
     private MaterialPropertyBlock properties; //선택한 캐릭터 색상 복사
     private int materialCount; //팔 재질 슬롯 수
+    private static readonly int groundedHash = Animator.StringToHash("IsGrounded"); //캐릭터의 접지 여부
+    private static readonly int jumpHash = Animator.StringToHash("ANM_Player_Jump"); //몸통을 흔드는 점프 동작
 
     internal bool initialize(Animator sourceAnimator) //기존 애니메이션 본과 팔 전용 본 연결
     {
@@ -22,6 +28,10 @@ public class PlayerFirstPersonArmsComponent : MonoBehaviour
 
         sourceBones.Clear();
         viewBones.Clear();
+        groundedTorso.Clear();
+        animator = sourceAnimator;
+        holdLayer = animator.GetLayerIndex("Item Hold");
+        Transform spine = rigRoot.Find("Armature_Player/Hips/Spine/Spine1/Spine2"); //팔이 붙어 있는 몸통
         foreach (Transform bone in rigRoot.GetComponentsInChildren<Transform>(true))
         {
             if (bone == rigRoot) continue;
@@ -30,6 +40,8 @@ public class PlayerFirstPersonArmsComponent : MonoBehaviour
             if (source == null) continue;
             sourceBones.Add(source);
             viewBones.Add(bone);
+            if (spine != null && (bone == spine || spine.IsChildOf(bone)))
+                groundedTorso.Add((bone, bone.localPosition, bone.localRotation));
         }
 
         sourceRenderer = sourceAnimator.GetComponentInChildren<SkinnedMeshRenderer>(true);
@@ -56,6 +68,11 @@ public class PlayerFirstPersonArmsComponent : MonoBehaviour
         show();
         ItemWorldView view = item.GetComponent<ItemWorldView>(); //1인칭 도구의 장착 보정
         if (view != null) view.setHeld(handPoint, true);
+    }
+
+    internal void setHoldingItem(bool holding) //제스처와 미션 중에는 기존 팔 모션 사용
+    {
+        holdingItem = holding;
     }
 
     internal void show() //빈손 제스처와 장착에 공통인 팔 표시
@@ -86,6 +103,7 @@ public class PlayerFirstPersonArmsComponent : MonoBehaviour
             if (sourceBones[index] == null || viewBones[index] == null) continue;
             viewBones[index].SetLocalPositionAndRotation(sourceBones[index].localPosition, sourceBones[index].localRotation);
         }
+        stabilizeHeldTorso();
         if (sourceRenderer == null || properties == null) return;
         for (int index = 0; index < materialCount; index++)
         {
@@ -94,4 +112,16 @@ public class PlayerFirstPersonArmsComponent : MonoBehaviour
         }
     }
 
+    private void stabilizeHeldTorso() //뛰는 동작에서 몸통이 1인칭 소매를 카메라 앞으로 밀어 올리지 않도록 보정
+    {
+        if (!holdingItem || animator == null || holdLayer < 0 || animator.GetLayerWeight(holdLayer) < 0.5f) return;
+        bool jumping = !animator.GetBool(groundedHash) || animator.GetCurrentAnimatorStateInfo(0).shortNameHash == jumpHash ||
+            (animator.IsInTransition(0) && animator.GetNextAnimatorStateInfo(0).shortNameHash == jumpHash);
+        for (int i = 0; i < groundedTorso.Count; i++)
+        {
+            var pose = groundedTorso[i];
+            if (jumping) pose.bone.SetLocalPositionAndRotation(pose.position, pose.rotation);
+            else groundedTorso[i] = (pose.bone, pose.bone.localPosition, pose.bone.localRotation);
+        }
+    }
 }

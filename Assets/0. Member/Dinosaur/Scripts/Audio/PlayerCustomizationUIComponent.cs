@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.Events;
 using UnityEngine.UI;
 
@@ -26,6 +27,7 @@ public class PlayerCustomizationUIComponent : MonoBehaviour
     [SerializeField] private RectTransform accessoryContent; //현재 장식 목록의 선택 영역
     [SerializeField] private Button accessoryButtonPrefab; //이름과 그림을 표시할 장식 선택 버튼
     [SerializeField] private Button rotatePreviewButton; //정면과 후면 미리보기 전환
+    [SerializeField, Min(1f)] private float previewDragDegreesPerWidth = 360f; //미리보기 너비만큼 드래그할 때 회전하는 각도
     [SerializeField] private Button applyButton; //변경한 설정 저장
     [SerializeField] private Button cancelButton; //미적용 변경 취소
     [SerializeField] private Button defaultsButton; //꾸미기와 설정 기본값 복원
@@ -43,7 +45,7 @@ public class PlayerCustomizationUIComponent : MonoBehaviour
     private RenderTexture previewTexture; //미리보기 표시용 렌더 결과
     private Vector3 previewCenter; //정면과 후면에서 같은 구도의 기준점
     private float previewDistance; //캐릭터와 미리보기 카메라 사이 거리
-    private bool viewBack; //현재 미리보기가 캐릭터 뒤를 보는지 여부
+    private float previewYaw; //캐릭터를 바라보는 수평 각도
     private bool canEdit; //선택이 허용된 마지막 상태
     private int occupiedColors; //다른 참가자가 사용 중인 마지막 색상 목록
     private PlayerAppearanceSelection? displayed; //마지막으로 렌더링한 전체 외형
@@ -65,6 +67,13 @@ public class PlayerCustomizationUIComponent : MonoBehaviour
             colorLabels.Add(colorButtons[i].transform.Find("Color name").GetComponent<TMP_Text>());
         }
         rotatePreviewButton.onClick.AddListener(rotatePreview);
+        EventTrigger previewEvents = rotatePreviewButton.gameObject.AddComponent<EventTrigger>(); //미리보기 위에서만 회전 입력 받기
+        var beginDrag = new EventTrigger.Entry { eventID = EventTriggerType.BeginDrag };
+        beginDrag.callback.AddListener(data => ((PointerEventData)data).eligibleForClick = false);
+        previewEvents.triggers.Add(beginDrag);
+        var drag = new EventTrigger.Entry { eventID = EventTriggerType.Drag };
+        drag.callback.AddListener(data => dragPreview((PointerEventData)data));
+        previewEvents.triggers.Add(drag);
     }
 
     internal void bindActions(UnityAction apply, UnityAction close, UnityAction restoreDefaults) //설정창 진입점의 저장과 취소 처리 재사용
@@ -130,7 +139,7 @@ public class PlayerCustomizationUIComponent : MonoBehaviour
         itemScroll.StopMovement();
         itemScroll.horizontalNormalizedPosition = 0f;
         scrollToSelection();
-        setPreviewView(slot == PlayerAppearanceSlot.Body);
+        setPreviewYaw(slot == PlayerAppearanceSlot.Body ? 215f : 0f);
         refresh();
     }
 
@@ -264,7 +273,7 @@ public class PlayerCustomizationUIComponent : MonoBehaviour
         previewImage.texture = previewTexture;
         previewLight = createPreviewLight(cameraObject.transform, "Key light", 5.8f);
         previewFillLight = createPreviewLight(cameraObject.transform, "Fill light", 2.7f);
-        setPreviewView(viewBack);
+        setPreviewYaw(previewYaw);
     }
 
     private static Light createPreviewLight(Transform parent, string lightName, float intensity) //캐릭터에만 영향을 주는 미리보기 조명 생성
@@ -279,20 +288,30 @@ public class PlayerCustomizationUIComponent : MonoBehaviour
         return light;
     }
 
-    private void rotatePreview() //같은 캐릭터의 앞면과 뒷면 확인
+    private void rotatePreview() //클릭과 키보드 선택으로 반대편 확인
     {
-        setPreviewView(!viewBack);
+        setPreviewYaw(previewYaw + 180f);
     }
 
-    private void setPreviewView(bool back) //등 장식 선택 시 뒷면으로 즉시 이동
+    private void dragPreview(PointerEventData pointer) //마우스를 수평으로 움직인 만큼 캐릭터를 둘러봄
     {
-        viewBack = back;
+        RectTransform rect = (RectTransform)rotatePreviewButton.transform;
+        if (pointer.button != PointerEventData.InputButton.Left || rect.rect.width <= 0f ||
+            !RectTransformUtility.ScreenPointToLocalPointInRectangle(rect, pointer.position, pointer.pressEventCamera, out Vector2 current) ||
+            !RectTransformUtility.ScreenPointToLocalPointInRectangle(rect, pointer.position - pointer.delta, pointer.pressEventCamera, out Vector2 previous))
+            return;
+        setPreviewYaw(previewYaw - (current.x - previous.x) / rect.rect.width * previewDragDegreesPerWidth);
+    }
+
+    private void setPreviewYaw(float degrees) //캐릭터 기준으로 미리보기 카메라와 조명 회전
+    {
+        previewYaw = Mathf.Repeat(degrees, 360f);
         if (previewCamera == null) return;
-        Vector3 direction = back ? new Vector3(0.7f, 0f, 1f).normalized : Vector3.back; //가방과 어깨끈이 보이는 뒷면 방향
-        previewCamera.transform.position = previewCenter + direction * previewDistance;
+        Quaternion orbit = Quaternion.Euler(0f, previewYaw, 0f);
+        previewCamera.transform.position = previewCenter + orbit * (Vector3.back * previewDistance);
         previewCamera.transform.LookAt(previewCenter);
-        previewLight.transform.position = previewCenter + new Vector3(-1f, 1.5f, back ? 2f : -2f);
-        previewFillLight.transform.position = previewCenter + new Vector3(1.3f, 0.45f, back ? 1.8f : -1.7f);
+        previewLight.transform.position = previewCenter + orbit * new Vector3(-1f, 1.5f, -2f);
+        previewFillLight.transform.position = previewCenter + orbit * new Vector3(1.3f, 0.45f, -1.7f);
         previewCamera.Render();
     }
 
