@@ -15701,6 +15701,7 @@ GameObject:
   - component: {fileID: 8130826098607953430}
   - component: {fileID: 5182380536183196664}
   - component: {fileID: 9117041039403492485}
+  - component: {fileID: 5768375185074369059}
   m_Layer: 0
   m_Name: Pipe_Station
   m_TagString: Untagged
@@ -15810,6 +15811,21 @@ MonoBehaviour:
   gasInterval: 1
   gasDamage: 5
   gasMinHealth: 10
+--- !u!114 &5768375185074369059
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3437062577588468794}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ef4f3fa26b6a2fe409e34b943eaa7c70, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  kind: 0
+  missionId: TG012
+  label: 
 --- !u!1 &3777472833071989656
 GameObject:
   m_ObjectHideFlags: 0
