@@ -26,6 +26,11 @@ namespace TrustNoOne.Missions
         private Vector3 lowerStart;
         private float shownProgress = -2f;
 
+        public bool containsDoorCollider(Collider candidate) //문틀과 벽을 제외한 움직이는 문짝 충돌인지 확인
+        {
+            return doorColliders != null && System.Array.IndexOf(doorColliders, candidate) >= 0;
+        }
+
         private void Awake()
         {
             if (upperDoor != null)
