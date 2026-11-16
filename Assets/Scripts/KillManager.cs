@@ -7,6 +7,8 @@ namespace LockdownProtocol.Networking
     [RequireComponent(typeof(PlayerHealth))]
     public class KillManager : NetworkBehaviour
     {
+        private const int citizenKillLimit = 2; //시민 본인도 사망하게 되는 처치 횟수
+
         [Header("Kill Settings")]
         [SerializeField, Min(0.1f)] private float killRange = 2f;
         [SerializeField, Min(0f)] private float killCooldownSeconds = 15f;
@@ -19,6 +21,7 @@ namespace LockdownProtocol.Networking
         [Networked, OnChangedRender(nameof(playAttack))]
         private int attackSequence { get; set; } //호스트가 승인한 공격 횟수
         [Networked] private float attackDuration { get; set; } //공격 모션 재생 시간
+        [Networked] private int citizenKillCount { get; set; } //이번 라운드에 시민이 직접 처치한 횟수
 
         private PlayerHealth _health;
         private RoleAssignment _roles;
@@ -50,6 +53,7 @@ namespace LockdownProtocol.Networking
             animationController = GetComponent<PlayerAnimation>();
             interaction = GetComponent<PlayerInteraction>();
             stamina = GetComponent<PlayerStamina>();
+            if (HasStateAuthority) citizenKillCount = 0;
             findMatchSystems();
         }
 
@@ -90,22 +94,27 @@ namespace LockdownProtocol.Networking
                    _missions.HasCompletedKillerMissions(Object.InputAuthority); // 살인마 미션이 있고 모두 완료 — 옛 동작 그대로(6b)
         }
 
-        private bool canRequestAttack() //두 공격 경로에 공통으로 적용하는 호스트 검증
+        private bool canRequestAttack(out PlayerRole role) //두 공격 경로의 호스트 권한과 실제 역할 검증
         {
-            return HasStateAuthority && hasAssignedRole(out _) && _health != null && _health.CanAct &&
+            role = default;
+            return HasStateAuthority && hasAssignedRole(out role) && _health != null && _health.CanAct &&
                    attackTimer.ExpiredOrNotRunning(Runner);
         }
 
         [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
         private void RPC_RequestAttack() //장착 무기로 일반 피해 적용
         {
-            if (!canRequestAttack() || items == null || !items.tryGetEquippedWeapon(out ItemData weapon)) return;
+            if (!canRequestAttack(out PlayerRole role) || items == null || !items.tryGetEquippedWeapon(out ItemData weapon)) return;
             if (!beginAttack(weapon.AttackInterval, weapon)) return;
-            if (tryGetAttackTarget(weapon.AttackRange, out PlayerHealth target))
-            {
-                target.ApplyDamage(weapon.AttackDamage, Object.InputAuthority);
-                target.applyStun(weapon.StunDuration);
-            }
+            if (!tryGetAttackTarget(weapon.AttackRange, out PlayerHealth target)) return;
+
+            target.ApplyDamage(weapon.AttackDamage, Object.InputAuthority);
+            target.applyStun(weapon.StunDuration);
+            if (role != PlayerRole.Citizen || !target.IsDead) return;
+
+            citizenKillCount++;
+            if (citizenKillCount == citizenKillLimit)
+                _health.Kill();
         }
 
         [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
@@ -116,7 +125,7 @@ namespace LockdownProtocol.Networking
 
         private void ProcessKillRequest(NetworkId targetId)
         {
-            if (!canRequestAttack() || !hasKillerRole() || !hasCompletedKillerMissions() ||
+            if (!canRequestAttack(out PlayerRole role) || role != PlayerRole.Killer || !hasCompletedKillerMissions() ||
                 !CooldownTimer.ExpiredOrNotRunning(Runner)) return;
             if (!tryGetAttackTarget(killRange, out PlayerHealth target) || target.Object.Id != targetId) return;
 
