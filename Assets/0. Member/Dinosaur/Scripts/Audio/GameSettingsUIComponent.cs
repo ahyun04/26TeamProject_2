@@ -163,6 +163,7 @@ public class GameSettingsUIComponent : MonoBehaviour
         }
         if (!Input.GetKeyDown(KeyCode.Escape)) return;
         if (TrustNoOne.Minimap.MinimapController.IsFullMapOpen || TrustNoOne.Minimap.MinimapController.EscapeConsumedThisFrame) return; //지도가 ESC 를 먼저 사용
+        if (RoomListUI.IsOpen) return; //빠른 입장 방 목록이 ESC 를 먼저 사용
         if (applying) return;
         if (isOpen) close();
         else if (sceneName == "StandBy" && LobbyRoomUI.Instance != null && !LobbyRoomUI.Instance.hasAuxiliaryModal) showLobbySettings();
