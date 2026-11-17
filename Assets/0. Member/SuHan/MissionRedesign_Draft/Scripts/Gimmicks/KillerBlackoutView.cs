@@ -35,7 +35,7 @@ namespace TrustNoOne.Gimmicks
         /// <summary>지금 내 화면의 어두움 0 ~ 1</summary>
         public float Darkness { get; private set; }
 
-        /// <summary>디버그 패널 한 줄 (16b KB40) — 예) 팔 = 복사본(빈손) · 지도 = 씬에 없음 · 안내 = "[F]키를 눌러 상호작용"</summary>
+        /// <summary>디버그 패널 한 줄 (16b KB40 · 16d KB64) — 예) 시야 = 1.5 ~ 3m · 팔 = 복사본(빈손) · 지도 = 씬에 없음 · 안내 = 없음</summary>
         public string ScreenStatus
         {
             get
@@ -48,7 +48,8 @@ namespace TrustNoOne.Gimmicks
                 };
                 string mapText = mapBlocker != null ? mapBlocker.StatusLabel : "?";
                 string labelText = promptLabel != null && promptLabel.CurrentText != null ? $"\"{promptLabel.CurrentText}\"" : "없음";
-                return $"팔 = {armsText} · 지도 = {mapText} · 안내 = {labelText}";
+                string visionText = screenRig != null ? screenRig.VisionStatus : "시야 = ?";
+                return $"{visionText} · 팔 = {armsText} · 지도 = {mapText} · 안내 = {labelText}";
             }
         }
 

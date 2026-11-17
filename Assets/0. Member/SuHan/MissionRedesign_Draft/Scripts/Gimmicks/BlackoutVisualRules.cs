@@ -19,11 +19,11 @@ namespace TrustNoOne.Gimmicks
         /// <summary>암전 화면이 켜져 있는가 (어두움 &gt; 0 이고 내 화면에 적용됨)</summary>
         public readonly bool Active;
 
-        /// <summary>검은 판 진하기 0 ~ 1 (= 어두움)</summary>
+        /// <summary>
+        /// 어두움 0 ~ 1 — 가까운 시야 패스의 진하기에 곱한다 (16d KB60). 시야 재질이 없을 때는 대체 검은 판의 진하기 (16d KB62).
+        /// (16d — KB32 바뀜) 어두움 1 이어도 3D 는 그대로 그린다
+        /// </summary>
         public readonly float PlaneAlpha;
-
-        /// <summary>내 카메라가 아무것도 그리지 않게 하는가 (어두움 1 — KB32)</summary>
-        public readonly bool HideWorld;
 
         /// <summary>팔 전용 카메라를 켜는가 (어두워지는 1초 동안에도 — KB28 · KB33)</summary>
         public readonly bool ArmsCamera;
@@ -37,11 +37,10 @@ namespace TrustNoOne.Gimmicks
         /// <summary>조준점 아래 안내 글자 진하기 0 ~ 1 (= 어두움 — KB36)</summary>
         public readonly float LabelAlpha;
 
-        public BlackoutVisualState(bool active, float planeAlpha, bool hideWorld, bool armsCamera, BlackoutArmsSource arms, bool blockMap, float labelAlpha)
+        public BlackoutVisualState(bool active, float planeAlpha, bool armsCamera, BlackoutArmsSource arms, bool blockMap, float labelAlpha)
         {
             Active = active;
             PlaneAlpha = planeAlpha;
-            HideWorld = hideWorld;
             ArmsCamera = armsCamera;
             Arms = arms;
             BlockMap = blockMap;
@@ -49,16 +48,18 @@ namespace TrustNoOne.Gimmicks
         }
 
         /// <summary>평소 화면 — 아무것도 가리지 않음</summary>
-        public static BlackoutVisualState Off => new BlackoutVisualState(false, 0f, false, false, BlackoutArmsSource.None, false, 0f);
+        public static BlackoutVisualState Off => new BlackoutVisualState(false, 0f, false, BlackoutArmsSource.None, false, 0f);
     }
 
     /// <summary>
     /// [역할] 살인마 암전의 화면 상태 규칙 (엔진 참조 없음 — 엔진 밖 dotnet 으로 테스트).
-    ///  Decide: 어두움 · 적용 여부 · 팀원 팔이 켜져 있는지 → 검은 판 · 3D 끄기 · 팔 카메라 · 팔 출처 · 지도 막기 · 글자 진하기.
-    ///  PickLabel: 조준점 아래에 띄울 글자 하나를 고른다.
+    ///  Decide: 어두움 · 적용 여부 · 팀원 팔이 켜져 있는지 → 진하기 · 팔 카메라 · 팔 출처 · 지도 막기 · 글자 진하기.
+    ///  PickLabel: 조준점 아래에 띄울 글자 — (16d) 지도 대체 안내만.
+    ///  NearVisionAlpha: (16d) 카메라에서의 거리 → 그 점을 덮을 검은 진하기 (셰이더 KillerBlackoutNearVision 과 같은 식).
     /// [이유] 화면 부품 네 개(BlackoutScreenRig · BlackoutArms · BlackoutMapBlocker · BlackoutPromptLabel)가 같은 기준으로 켜지고 꺼지게
     ///  판단을 한곳에 모은다. 부품은 이 결과대로 팀원 오브젝트를 바꾸고 되돌리기만 한다.
-    /// [근거] 16b 명세 KB28 (1초 동안 팔은 밝게) · KB29 (지도 막기) · KB32 (어두움 1 에서 3D 끄기) · KB33 · KB34 · KB36 · KB38
+    /// [근거] 16b 명세 KB28 (1초 동안 팔은 밝게) · KB29 (지도 막기) · KB33 · KB34 · KB38, 16d 명세 KB55 · KB56 · KB59 · KB61
+    ///  (16d — 기획 피드백 "바로 앞까지만 보이도록") KB32 (어두움 1 에서 3D 끄기) · KB27 · KB36 (장치 문구를 화면 글자로) 는 바뀌었다
     /// </summary>
     public static class BlackoutVisualRules
     {
@@ -77,24 +78,45 @@ namespace TrustNoOne.Gimmicks
 
             float alpha = darkness >= 1f ? 1f : darkness;
 
-            // 어두움 1 = 판이 화면을 완전히 덮음 → 그때부터 카메라가 3D 를 아예 그리지 않는다 (반투명 효과가 판 위로 비치지 않게 — KB32)
-            bool hideWorld = alpha >= 1f;
-
             // 물건을 들어 팀원 팔이 켜져 있으면 그 팔(+ 물건)을, 빈손이면 내 복사본을 (KB26 · KB34)
             BlackoutArmsSource arms = teammateArmsShown ? BlackoutArmsSource.Teammate : BlackoutArmsSource.Copy;
 
-            return new BlackoutVisualState(true, alpha, hideWorld, true, arms, true, alpha);
+            // (16d KB55) 어두움 1 이어도 3D 는 끄지 않는다 — 가까운 시야 패스가 거리만큼 칠한다
+            return new BlackoutVisualState(true, alpha, true, arms, true, alpha);
         }
 
         /// <summary>
-        /// 조준점 아래 글자: 지도 대체 안내가 먼저 (지도가 열려 커서가 풀린 상태를 먼저 알려야 함), 없으면 켜진 조준 문구, 빈 문구면 없음(null).
+        /// 조준점 아래 글자: 지도 닫기 함수를 못 찾았는데 지도가 열려 있으면 "지도 닫기: M", 아니면 없음(null).
+        /// (16d KB56) 장치 조준 문구는 띄우지 않는다 — 조준 거리(2m)가 보이는 거리 안이라 장치의 3D 글자 · 외곽선이 평소대로 보인다.
         /// </summary>
-        public static string PickLabel(string promptText, bool mapOpenWithoutClose)
+        public static string PickLabel(bool mapOpenWithoutClose)
         {
-            if (mapOpenWithoutClose)
-                return MapCloseHint;
+            return mapOpenWithoutClose ? MapCloseHint : null;
+        }
 
-            return string.IsNullOrWhiteSpace(promptText) ? null : promptText;
+        /// <summary>
+        /// (16d KB59 · KB61) 카메라에서 distance(m) 떨어진 점을 덮을 검은 진하기 0 ~ 1.
+        /// start 까지 0 (그대로 보임), end 부터 1 (완전 검정), 사이는 부드러운 계단 smoothstep — 셰이더 KillerBlackoutNearVision 과 같은 식.
+        /// start ≥ end (잘못 넣은 값)이면 end 에서 0 → 1 로 딱 끊긴다 (셰이더의 step 과 같음). 음수 · NaN 거리는 0.
+        /// </summary>
+        public static float NearVisionAlpha(float distance, float start, float end)
+        {
+            // !(x > 0) 은 0 이하와 NaN 을 함께 거른다
+            if (!(distance > 0f))
+                return 0f;
+
+            if (!(end > start))
+                return distance >= end ? 1f : 0f;
+
+            float t = (distance - start) / (end - start);
+
+            if (t <= 0f)
+                return 0f;
+
+            if (t >= 1f)
+                return 1f;
+
+            return t * t * (3f - 2f * t);
         }
     }
 }

@@ -678,7 +678,7 @@ public static class SoloMissionTestSetup
     /// </summary>
     private static void CreateKillerBlackoutManager(Transform parent)
     {
-        KillerBlackoutManager manager = KillerBlackoutInstaller.Ensure(parent, out _, out _);
+        KillerBlackoutManager manager = KillerBlackoutInstaller.Ensure(parent, out _, out _, out _);
 
         SerializedObject so = new SerializedObject(manager);
         so.FindProperty("firstDelay").floatValue = SoloBlackoutFirstDelay;

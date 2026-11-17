@@ -1,18 +1,15 @@
 using TMPro;
-using TrustNoOne.Missions;
 using UnityEngine;
 
 namespace TrustNoOne.Gimmicks
 {
     /// <summary>
-    /// [역할] 살인마 암전 중 조준점 바로 아래에 화면 고정 글자 하나를 보인다.
-    ///  내용 = 지금 켜진 조준 문구(PromptBillboard.LatestShown)의 글자 그대로 — 예: 밸브 "[F]키를 눌러 상호작용", 좌표 "[F] X축 이동".
-    ///  지도 닫기 함수를 못 찾아 투명하게만 가렸는데 지도가 열려 있으면 "지도 닫기: M" 이 먼저 (BlackoutVisualRules.PickLabel).
-    ///  진하기 = 어두움 → 어두워지는 1초 동안 장치 글자가 판 뒤로 사라지면서 화면 글자가 같이 나타난다.
-    /// [이유] 장치 안내 글자는 장치에 붙은 3D 글자라 3D 를 가리면 같이 사라진다. 그대로 보이면 어둠 속에 장치 위치가 드러나므로
-    ///  내용만 화면 가운데로 옮긴다 (질문 2 C). 문구가 없는 장치(외곽선만)는 아무것도 띄우지 않는다 (계획 중 질문 A).
-    ///  글꼴은 원래 문구의 글꼴을 그대로 써서 한글이 깨지지 않게 한다.
-    /// [근거] 16b 명세 KB27 · KB36 · KB38, 조사 1-5
+    /// [역할] 살인마 암전 중 조준점 바로 아래에 화면 고정 글자 하나를 보인다 — (16d) 지도 닫기 함수를 못 찾아 투명하게만 가렸는데
+    ///  지도가 열려 있을 때의 "지도 닫기: M" 만 (BlackoutVisualRules.PickLabel). 진하기 = 어두움.
+    /// [이유] (16d KB56 — KB27 · KB36 바뀜) 16b 에서는 3D 를 다 가려 장치의 3D 안내 글자를 이 화면 글자로 옮겼지만,
+    ///  이제 가까운 곳(조준 거리 2m 포함)은 보이므로 장치 글자 · 외곽선을 평소대로 쓴다. 지도 안내는 지도 쪽 문제라 남긴다.
+    ///  글꼴은 화면에 있는 다른 TMP 글자에서 빌려 한글이 깨지지 않게 한다.
+    /// [근거] 16b 명세 KB29 · KB38, 16d 명세 KB56 · KB61
     /// </summary>
     public class BlackoutPromptLabel : MonoBehaviour
     {
@@ -40,9 +37,7 @@ namespace TrustNoOne.Gimmicks
                 return;
             }
 
-            PromptBillboard billboard = PromptBillboard.LatestShown;
-            TMP_Text source = billboard != null ? billboard.GetComponentInChildren<TMP_Text>(false) : null;
-            string text = BlackoutVisualRules.PickLabel(source != null ? source.text : null, mapOpenWithoutClose);
+            string text = BlackoutVisualRules.PickLabel(mapOpenWithoutClose);
 
             if (text == null)
             {
@@ -51,10 +46,6 @@ namespace TrustNoOne.Gimmicks
             }
 
             EnsureLabel();
-
-            // 원래 문구의 글꼴을 따라간다 (한글 글자가 들어 있는 글꼴)
-            if (source != null && source.font != null && label.font != source.font)
-                label.font = source.font;
 
             label.text = text;
             label.fontSize = fontSize;
@@ -92,7 +83,7 @@ namespace TrustNoOne.Gimmicks
             if (canvas != null)
                 return;
 
-            // 지도 안내처럼 원래 문구가 없을 때를 위해 처음 글꼴은 화면에 있는 다른 TMP 글자에서 빌린다 (기본 글꼴엔 한글이 없을 수 있음).
+            // 글꼴은 화면에 있는 다른 TMP 글자에서 빌린다 (기본 글꼴엔 한글이 없을 수 있음).
             // 내 글자를 만들기 전에 찾아야 자기 자신을 집지 않는다
             TextMeshProUGUI other = FindFirstObjectByType<TextMeshProUGUI>();
 

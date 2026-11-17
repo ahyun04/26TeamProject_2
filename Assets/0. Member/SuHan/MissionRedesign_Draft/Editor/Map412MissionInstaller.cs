@@ -157,7 +157,7 @@ public static class Map412MissionInstaller
         // 미션 목록: 왼쪽 위 글자 칸 하나 (10 명세 ML12 — 글자 칸이 없는 목록만)
         int listsSetUp = MissionMapInstaller.SetupMissionList(scene);
         // 살인마 암전 관리자 (16c KB48 — 없을 때만 만들고, 있으면 빈 팔 칸만 채움)
-        KillerBlackoutInstaller.Ensure(root, out bool blackoutCreated, out _);
+        KillerBlackoutInstaller.Ensure(root, out bool blackoutCreated, out _, out _);
 
         // 저장할 때 Fusion 이 씬 오브젝트의 정렬 키를 굽는다 (호스트 · 손님이 같은 오브젝트로 짝을 맞추는 번호)
         MissionMapInstaller.SaveScene(scene);
@@ -218,9 +218,9 @@ public static class Map412MissionInstaller
             return;
 
         Transform root = MissionMapInstaller.FindOrCreateRoot(scene);
-        KillerBlackoutInstaller.Ensure(root, out bool created, out bool armsFilled);
+        KillerBlackoutInstaller.Ensure(root, out bool created, out bool armsFilled, out bool visionFilled);
         MissionMapInstaller.SaveScene(scene);
 
-        Debug.Log($"[Map412MissionInstaller] 암전 관리자 {(created ? "새로 만듦" : "있음")} · 팔 칸 {(armsFilled ? "채움" : "그대로")} — 멀티 테스트 전에 SuHan/Build Full Game (Windows) 로 다시 빌드하세요.");
+        Debug.Log($"[Map412MissionInstaller] 암전 관리자 {(created ? "새로 만듦" : "있음")} · 팔 칸 {(armsFilled ? "채움" : "그대로")} · 시야 재질 칸 {(visionFilled ? "채움" : "그대로")} — 멀티 테스트 전에 SuHan/Build Full Game (Windows) 로 다시 빌드하세요.");
     }
 }
