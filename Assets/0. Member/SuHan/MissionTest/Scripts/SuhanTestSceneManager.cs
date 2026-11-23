@@ -11,20 +11,27 @@ using Fusion;
 ///  에디터에선 번호가 없고(−1 → 장면 없음), SuhanTest 하나만 넣은 테스트 빌드 안에선 0번이다.
 ///  기본 동작이면 에디터 호스트와 빌드 손님이 서로 다른 장면으로 알아, 손님이 열린 씬을 넘겨받지 못하고
 ///  씬 오브젝트(미션 장치)를 맞추지 못한다. 경로를 먼저 보면 양쪽 값이 같다.
-/// [근거] 6a 명세 MT2 (사용자 결정 A — 빌드 목록은 건드리지 않는다)
+/// [근거] 6a 명세 MT2 (사용자 결정 A — 빌드 목록은 건드리지 않는다). 17a: 무중력 테스트 씬(ZeroGTest)도 같은 방식 (17a 명세 ZG20)
 /// </summary>
 public class SuhanTestSceneManager : NetworkSceneManagerDefault
 {
     public const string ScenePath = "Assets/0. Member/SuHan/SuhanTest.unity";
 
+    /// <summary>17a 무중력 테스트 씬 (메뉴 SuHan/Build Zero-G Test Scene 이 만든다 — 빌드 목록에 없음)</summary>
+    public const string ZeroGScenePath = "Assets/0. Member/SuHan/ZeroGTest.unity";
+
     // 씬 이름만으로 물어 오는 경우도 받는다
     private const string SceneName = "SuhanTest";
+    private const string ZeroGSceneName = "ZeroGTest";
 
     public override SceneRef GetSceneRef(string sceneNameOrPath)
     {
         // 들어온 문자열이 아니라 항상 같은 문자열로 만들어, 에디터 · 빌드 · 호스트 · 손님 모두 같은 값이 되게 한다
         if (IsTestScene(sceneNameOrPath))
             return SceneRef.FromPath(ScenePath);
+
+        if (IsZeroGScene(sceneNameOrPath))
+            return SceneRef.FromPath(ZeroGScenePath);
 
         return base.GetSceneRef(sceneNameOrPath);
     }
@@ -33,5 +40,11 @@ public class SuhanTestSceneManager : NetworkSceneManagerDefault
     {
         return string.Equals(sceneNameOrPath, ScenePath, StringComparison.OrdinalIgnoreCase)
             || string.Equals(sceneNameOrPath, SceneName, StringComparison.OrdinalIgnoreCase);
+    }
+
+    public static bool IsZeroGScene(string sceneNameOrPath)
+    {
+        return string.Equals(sceneNameOrPath, ZeroGScenePath, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(sceneNameOrPath, ZeroGSceneName, StringComparison.OrdinalIgnoreCase);
     }
 }
