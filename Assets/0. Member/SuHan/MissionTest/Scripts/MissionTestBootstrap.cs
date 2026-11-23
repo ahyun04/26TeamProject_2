@@ -190,13 +190,19 @@ public class MissionTestBootstrap : MonoBehaviour, INetworkRunnerCallbacks
 
     private static void ReloadScene()
     {
+        // 17a: 지금 열린 테스트 씬을 다시 연다 (SuhanTest 또는 무중력 테스트 씬 ZeroGTest — 같은 시작 도구를 쓴다)
+        string scenePath = SceneManager.GetActiveScene().path;
+
+        if (string.IsNullOrEmpty(scenePath))
+            scenePath = SuhanTestSceneManager.ScenePath;
+
 #if UNITY_EDITOR
-        // 에디터: SuhanTest 는 빌드 목록에 없어 SceneManager.LoadScene 으로 열 수 없다 → 경로로 여는 에디터 전용 함수
+        // 에디터: 테스트 씬은 빌드 목록에 없어 SceneManager.LoadScene 으로 열 수 없다 → 경로로 여는 에디터 전용 함수
         UnityEditor.SceneManagement.EditorSceneManager.LoadSceneInPlayMode(
-            SuhanTestSceneManager.ScenePath, new LoadSceneParameters(LoadSceneMode.Single));
+            scenePath, new LoadSceneParameters(LoadSceneMode.Single));
 #else
-        // 빌드: SuhanTest 하나만 넣어 만들었으므로 경로로 바로 연다
-        SceneManager.LoadScene(SuhanTestSceneManager.ScenePath);
+        // 빌드: 테스트 씬 하나만 넣어 만들었으므로 경로로 바로 연다
+        SceneManager.LoadScene(scenePath);
 #endif
     }
 

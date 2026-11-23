@@ -9,6 +9,7 @@ using UnityEngine;
 /// [에디터 전용, 1클릭 도구] 멀티 테스트용 Windows 빌드 두 가지.
 ///  - `SuHan/Build Mission Test (Windows)`: SuhanTest 씬 하나만 → Builds/SuhanTest/SuhanTest.exe (6a 명세 MT13)
 ///  - `SuHan/Build Full Game (Windows)`: 공유 빌드 목록의 켜진 씬 그대로 (Main → Lobby → StandBy → GamePlay) → Builds/Game/ (6b 명세 SW13)
+///  - `SuHan/Build Zero-G Test (Windows)`: 무중력 테스트 씬 ZeroGTest 하나만 → Builds/ZeroGTest/ZeroGTest.exe (17a 명세 ZG20)
 ///
 /// [공통] BuildPipeline.BuildPlayer 에 씬 목록을 직접 넘긴다 → 공유 빌드 설정은 바꾸지 않는다. Builds/ 는 .gitignore 로 git 에서 빠진다.
 ///  개발 빌드라 오류가 빌드 창 구석에 바로 보이고, 로그는 %USERPROFILE%\AppData\LocalLow\DefaultCompany\26TeamProject_2\Player.log
@@ -22,6 +23,7 @@ public static class MissionTestBuild
 {
     private const string TestOutputPath = "Builds/SuhanTest/SuhanTest.exe";
     private const string FullGameOutputPath = "Builds/Game/26TeamProject_2.exe";
+    private const string ZeroGOutputPath = "Builds/ZeroGTest/ZeroGTest.exe";
 
     [MenuItem("SuHan/Build Mission Test (Windows)")]
     public static void Build()
@@ -33,6 +35,18 @@ public static class MissionTestBuild
         }
 
         BuildScenes("미션 테스트", new[] { SuhanTestSceneManager.ScenePath }, TestOutputPath);
+    }
+
+    [MenuItem("SuHan/Build Zero-G Test (Windows)")]
+    public static void BuildZeroG()
+    {
+        if (!File.Exists(SuhanTestSceneManager.ZeroGScenePath))
+        {
+            Debug.LogError($"[MissionTestBuild] 씬이 없습니다: {SuhanTestSceneManager.ZeroGScenePath} — 메뉴 SuHan/Build Zero-G Test Scene 을 먼저 실행하세요.");
+            return;
+        }
+
+        BuildScenes("무중력 테스트", new[] { SuhanTestSceneManager.ZeroGScenePath }, ZeroGOutputPath);
     }
 
     [MenuItem("SuHan/Build Full Game (Windows)")]
