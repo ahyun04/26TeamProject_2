@@ -85,7 +85,7 @@ public class NetworkItem : NetworkBehaviour
 
         Holder = player;
 
-        rb.velocity = Vector3.zero;
+        rb.linearVelocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
         rb.isKinematic = true;
     }
@@ -103,7 +103,7 @@ public class NetworkItem : NetworkBehaviour
 
         rb.isKinematic = false;
 
-        rb.velocity = Vector3.zero;
+        rb.linearVelocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
 
         rb.AddForce(
