@@ -416,7 +416,7 @@ public static class MissionMapInstaller
         text.fontSize = ListFontSize;
         text.enableAutoSizing = false;
         text.alignment = TextAlignmentOptions.TopLeft;
-        text.enableWordWrapping = false;
+        text.textWrappingMode = TextWrappingModes.NoWrap;   // 줄바꿈 안 함 (Unity 6 · ugui 2.0 — 옛 enableWordWrapping = false)
         text.richText = true;
         text.raycastTarget = false;
         text.color = Color.white;

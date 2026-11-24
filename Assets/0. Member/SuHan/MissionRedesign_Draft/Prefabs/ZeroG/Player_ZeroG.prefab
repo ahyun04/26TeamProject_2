@@ -8,6 +8,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 160436017558811486, guid: 36eaf6db234c47649a9aad19fe7fb7cd, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 9100000, guid: 8852d406b1ee7784494259f510ea5f48, type: 2}
     - target: {fileID: 910000000000000005, guid: 36eaf6db234c47649a9aad19fe7fb7cd, type: 3}
       propertyPath: spectatorPrefab
       value: 
@@ -25,13 +29,21 @@ PrefabInstance:
       value: 24
       objectReference: {fileID: 0}
     - target: {fileID: 3980937464169280454, guid: 36eaf6db234c47649a9aad19fe7fb7cd, type: 3}
-      propertyPath: NetworkedBehaviours.Array.data[22]
+      propertyPath: 'NetworkedBehaviours.Array.data[22]'
       value: 
       objectReference: {fileID: 4596759432608266277}
     - target: {fileID: 3980937464169280454, guid: 36eaf6db234c47649a9aad19fe7fb7cd, type: 3}
-      propertyPath: NetworkedBehaviours.Array.data[23]
+      propertyPath: 'NetworkedBehaviours.Array.data[23]'
       value: 
       objectReference: {fileID: 3163453003944307844}
+    - target: {fileID: 5394502414570155214, guid: 36eaf6db234c47649a9aad19fe7fb7cd, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.1183648
+      objectReference: {fileID: 0}
+    - target: {fileID: 5394502414570155214, guid: 36eaf6db234c47649a9aad19fe7fb7cd, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0.013071177
+      objectReference: {fileID: 0}
     - target: {fileID: 6973550270493207715, guid: 36eaf6db234c47649a9aad19fe7fb7cd, type: 3}
       propertyPath: m_Enabled
       value: 0
@@ -83,7 +95,15 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 1265554726670306911, guid: 36eaf6db234c47649a9aad19fe7fb7cd, type: 3}
       insertIndex: -1
       addedObject: {fileID: 4596759432608266277}
+    - targetCorrespondingSourceObject: {fileID: 1265554726670306911, guid: 36eaf6db234c47649a9aad19fe7fb7cd, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 389672533434526937}
   m_SourcePrefab: {fileID: 100100000, guid: 36eaf6db234c47649a9aad19fe7fb7cd, type: 3}
+--- !u!4 &2031597836301963400 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 4285035293467098114, guid: 36eaf6db234c47649a9aad19fe7fb7cd, type: 3}
+  m_PrefabInstance: {fileID: 2830001722815229066}
+  m_PrefabAsset: {fileID: 0}
 --- !u!114 &3163453003944307844 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 910000000000000014, guid: 36eaf6db234c47649a9aad19fe7fb7cd, type: 3}
@@ -115,3 +135,26 @@ MonoBehaviour:
   settings: {fileID: 11400000, guid: 77ea1dd7c695ac54a8fc7c9490b7f1a2, type: 2}
   minimumPitch: -80
   maximumPitch: 80
+--- !u!114 &389672533434526937
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3951355357701677781}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b38565da252f9b2479f9b9dcaafd6ee9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TrustNoOne.Gimmicks.ZeroGBodyLean
+  bodyPivot: {fileID: 6525727970327027068}
+  hips: {fileID: 2031597836301963400}
+  leanAngle: 30
+  startSpeed: 0.3
+  fullLeanSpeed: 1
+  turnSpeed: 90
+--- !u!4 &6525727970327027068 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 9067475105181430262, guid: 36eaf6db234c47649a9aad19fe7fb7cd, type: 3}
+  m_PrefabInstance: {fileID: 2830001722815229066}
+  m_PrefabAsset: {fileID: 0}

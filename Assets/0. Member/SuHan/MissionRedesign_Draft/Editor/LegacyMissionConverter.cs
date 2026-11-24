@@ -1428,7 +1428,7 @@ public static class LegacyMissionConverter
             Debug.LogWarning($"[LegacyMissionConverter] 글꼴을 찾지 못해 TextMeshPro 기본값을 씁니다 ({fontPath}).");
 
         text.alignment = TextAlignmentOptions.Center;
-        text.enableWordWrapping = false;
+        text.textWrappingMode = TextWrappingModes.NoWrap;   // 줄바꿈 안 함 (Unity 6 · ugui 2.0 — 옛 enableWordWrapping = false)
         text.color = color;
 
         // 가장 긴 문구로 크기를 한 번 재고 고정

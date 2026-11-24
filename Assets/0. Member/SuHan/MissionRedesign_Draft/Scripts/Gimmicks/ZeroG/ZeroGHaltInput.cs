@@ -14,7 +14,7 @@ namespace TrustNoOne.Gimmicks
     ///  누른 순간은 프레임에서 기억했다가 다음 입력 하나에 싣는다 (팀원 점프 처리와 같은 방식).
     /// [이유] "상호작용 중" 표시는 본인 PC 에만 있다. 입력에 실어 보내야 호스트도 같은 틱에 멈춰 위치가 튀지 않는다.
     ///  Photon 은 플레이어당 입력 구조체 하나라 내 구조체를 따로 보낼 수 없다 → 팀원 구조체의 빈 칸을 쓴다 (팀원 파일은 그대로).
-    ///  러너 시작 때 등록된 팀원 입력 제공자보다 뒤에 등록되어야 한다 — 앞에 불리면 팀원이 덮어써 멈춤이 사라진다 (위험 3, 진단 ③).
+    ///  러너 시작 때 등록된 팀원 입력 제공자보다 뒤에 등록되어야 한다 — 앞에 불리면 팀원이 덮어써 멈춤이 사라진다 (위험 3 — QA 로그에 "팀원 입력이 비어 있음" 경고가 없어 진단 로그를 지움, ZG42).
     /// [근거] 17a 명세 ZG6 · ZG16 · ZG22, 기획서 7장 "미션 UI가 활성화되면 플레이어의 이동을 정지"
     /// </summary>
     public class ZeroGHaltInput : MonoBehaviour, INetworkRunnerCallbacks
@@ -25,8 +25,6 @@ namespace TrustNoOne.Gimmicks
         private PlayerHealth health;
         private KillManager combat;
         private bool clickLatch;
-        private bool lastSent;
-        private bool warnedMissingInput;
 
         internal void Begin(NetworkRunner networkRunner)
         {
@@ -67,26 +65,10 @@ namespace TrustNoOne.Gimmicks
             clickLatch = false;
 
             if (!input.TryGet(out NetworkInputData data))
-            {
-                if (!warnedMissingInput)
-                {
-                    warnedMissingInput = true;
-                    Debug.LogWarning("[ZeroGMovement][진단] 팀원 입력이 아직 비어 있음 — 내 입력 콜백이 팀원 입력 제공자보다 먼저 불렸을 수 있음 (위험 3)");
-                }
-
-                return;
-            }
+                return;   // 팀원 입력 제공자가 아직 채우지 않음 (위험 3 — 등록 순서)
 
             data.Buttons.Set(ZeroGMovement.HaltButton, halt);
             input.Set(data);
-
-            if (halt != lastSent)
-            {
-                lastSent = halt;
-
-                if (halt)
-                    Debug.Log("[ZeroGMovement][진단] 멈춤 칸 보냄");
-            }
         }
 
         public void OnPlayerJoined(NetworkRunner networkRunner, PlayerRef player) { }

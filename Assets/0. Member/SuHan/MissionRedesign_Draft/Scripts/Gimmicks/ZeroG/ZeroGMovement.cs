@@ -36,14 +36,8 @@ namespace TrustNoOne.Gimmicks
         private SimpleKCC kcc;
         private PlayerHealth health;
         private PlayerStamina stamina;
-        private PlayerMovement teamMovement;
         private GameEndSystem gameEndSystem;   // 체력 없는 관전자의 게임 종료 중 이동 차단 (팀원 이동 부품과 같음)
         private ZeroGHaltInput haltInput;
-
-        // 진단 (17a 명세 ZG22 — 문제가 풀리면 지운다)
-        private int walkTicks;
-        private int upTicks;
-        private bool lastRemoteHalt;
 
         /// <summary>본인 PC 의 무중력 이동 부품 (테스트 글자가 읽는다 — ZG21)</summary>
         public static ZeroGMovement Local { get; private set; }
@@ -64,7 +58,6 @@ namespace TrustNoOne.Gimmicks
             kcc = GetComponent<SimpleKCC>();
             health = GetComponent<PlayerHealth>();
             stamina = GetComponent<PlayerStamina>();
-            teamMovement = GetComponent<PlayerMovement>();
 
             if (health == null)
                 gameEndSystem = FindFirstObjectByType<GameEndSystem>();
@@ -170,8 +163,6 @@ namespace TrustNoOne.Gimmicks
                 Vector2 move = Vector2.ClampMagnitude(input.MoveDirection, 1f);
                 Vector3 flatRight = kcc.TransformRotation * Vector3.right;
                 wish = ZeroGMotion.WishDirection(kcc.LookDirection, flatRight, move.y, move.x, up);
-
-                DiagnoseInput(input, halt);
             }
 
             Halted = halt;
@@ -182,8 +173,6 @@ namespace TrustNoOne.Gimmicks
             velocity = next;
             kcc.Move(next);
             blocked = ZeroGMotion.Blocked(next, kcc.RealVelocity);
-
-            DiagnoseUp(up, next);
         }
 
         private void UpdateLook(NetworkInputData input)
@@ -191,37 +180,5 @@ namespace TrustNoOne.Gimmicks
             kcc.AddLookRotation(new Vector2(-input.LookRotation.y, input.LookRotation.x), minimumPitch, maximumPitch);
         }
 
-        /// <summary>진단 ① · ③ (ZG22). 되감기 계산 중에는 찍지 않는다.</summary>
-        private void DiagnoseInput(NetworkInputData input, bool halt)
-        {
-            if (!Runner.IsForward)
-                return;
-
-            // ① Ctrl 을 10틱(약 0.16초) 누른 뒤 한 번: 팀원 이동 부품이 돌고 있으면 걷기 표시가 켜진다
-            if (HasInputAuthority && teamMovement != null && input.IsPressed(InputButton.Walk) && ++walkTicks == 10)
-            {
-                Debug.Log($"[ZeroGMovement][진단] 팀원 걷기 표시 = {teamMovement.isWalking} · 팀원 부품 켜짐 = {teamMovement.enabled} " +
-                          "(false 면 꺼 둔 팀원 이동 부품을 Photon 이 건너뜀 — 정상, true 면 팀원 부품이 돌고 있음 — 위험 1)");
-            }
-
-            // ③ 호스트: 다른 사람의 멈춤 칸을 받았을 때 (켜질 때마다)
-            if (HasStateAuthority && !HasInputAuthority && halt != lastRemoteHalt)
-            {
-                lastRemoteHalt = halt;
-
-                if (halt)
-                    Debug.Log($"[ZeroGMovement][진단] 멈춤 칸 받음 (플레이어 {Object.InputAuthority.PlayerId})");
-            }
-        }
-
-        /// <summary>진단 ② (ZG22): Shift 를 30틱(약 0.5초) 누른 뒤 한 번 — 넣은 위 속도와 실제로 움직인 위 속도</summary>
-        private void DiagnoseUp(float up, Vector3 next)
-        {
-            if (!Runner.IsForward || !HasInputAuthority || up <= 0f || ++upTicks != 30)
-                return;
-
-            Debug.Log($"[ZeroGMovement][진단] 넣은 위 속도 {next.y:0.00} / 실제 위 속도 {kcc.RealVelocity.y:0.00} m/s " +
-                      "(비슷하면 정상, 실제가 0 이면 중력 0 에서 위아래가 안 먹음 — 위험 2)");
-        }
     }
 }

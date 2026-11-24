@@ -36,7 +36,7 @@ namespace TrustNoOne.Gimmicks
 
         /// <summary>
         /// 기본값 (17a 명세 ZG11 — 사용자 승인한 제안 값). 걷기 4 m/s 보다 느리게 (기획서 3장 "일반 맵보다 느린 이동 속도"):
-        /// 2 m/s 에서 놓으면 2초 · 2 m, 최대에서 3.5초 · 6 m 미끄러짐, 최대에서 반대 키 1.2초, 벽 쪽 약 0.35초.
+        /// 2 m/s 에서 놓으면 2초 · 2 m, 최대에서 3.5초 · 6 m 미끄러짐, 2 m/s 에서 반대 키 약 1.3초 뒤 반대로 2 m/s (0 을 지나 끊김 없이 — ZG41), 벽 쪽 약 0.35초.
         /// </summary>
         public static ZeroGMotionSettings Default => new ZeroGMotionSettings(2f, 0.5f, 3.5f, 1f, 3f, 10f);
 
@@ -55,11 +55,11 @@ namespace TrustNoOne.Gimmicks
     /// 무중력 이동 규칙 (엔진 밖에서 테스트하는 순수 계산 — Vector3 계산만 쓴다).
     /// [역할] 이번 틱의 속도 = 지난 속도 + 입력 방향 + 멈춤 + 지난 틱에 막힌 속도 → 새 속도 (ZG10 순서 ① ~ ⑤).
     /// [이유] 호스트와 본인 PC 가 되감아 다시 계산해도 같은 답이 나오게, 입력과 [Networked] 값만으로 정한다.
-    /// [근거] 17a 명세 ZG4 · ZG5 · ZG6 · ZG9 · ZG10 · ZG15, 기획서 3 · 4 · 5 · 7장
+    /// [근거] 17a 명세 ZG4 · ZG5 · ZG6 · ZG9 · ZG10 · ZG15 · ZG41 (테스트 후 — 반대 키에서 멈추지 않게), 기획서 3 · 4 · 5 · 7장
     /// </summary>
     public static class ZeroGMotion
     {
-        /// <summary>이보다 느리면 0 — 아주 느리게 끝없이 흐르는 것을 막는다 (ZG10 ⑤)</summary>
+        /// <summary>이보다 느리면 0 — 아주 느리게 끝없이 흐르는 것을 막는다 (ZG10 ⑤). 이동 키를 누르는 동안은 끊지 않고 누른 쪽으로 이만큼 남긴다 (ZG41)</summary>
         public const float StopSpeed = 0.05f;
 
         /// <summary>막힌 속도가 이보다 작으면 닿지 않은 것으로 본다 (실제 움직임의 계산 오차 — ZG15)</summary>
@@ -100,7 +100,10 @@ namespace TrustNoOne.Gimmicks
             ZeroGMotionSettings s = settings.Sanitized();
             Vector3 v = velocity;
 
-            if (!IsFinite(wish) || wish.sqrMagnitude < InputEpsilon)
+            bool hasInput = IsFinite(wish) && wish.sqrMagnitude >= InputEpsilon;
+            Vector3 direction = hasInput ? wish.normalized : Vector3.zero;
+
+            if (!hasInput)
             {
                 // ② 이동 키 없음: 방향은 그대로, 속력만 관성 감속도로 줄인다 (4장 "서서히 감소하며 정지")
                 v = Shrink(v, s.InertiaDeceleration * dt);
@@ -108,14 +111,15 @@ namespace TrustNoOne.Gimmicks
             else
             {
                 // ③ 이동 키 있음: 누른 방향 성분 p 와 나머지 성분으로 나눈다
-                Vector3 direction = wish.normalized;
                 float p = Vector3.Dot(v, direction);
                 Vector3 rest = v - direction * p;
 
-                if (p < 0f)
-                    p = Mathf.Min(0f, p + s.ReverseDeceleration * dt);   // 반대쪽: 먼저 0 까지 줄인다 (4장 "감소한 후 반대 방향으로")
+                if (v.sqrMagnitude < InputEpsilon)
+                    p = s.MoveSpeed;                                     // 완전히 멈춰 있으면 바로 출발 속도로 (계속 가속형 — ZG4)
                 else if (p < s.MoveSpeed)
-                    p = s.MoveSpeed;                                     // 바로 출발 속도로 (계속 가속형 — ZG4)
+                    // 반대쪽 · 옆 · 느린 흐름: 역방향 감속도로 0 을 지나 이동 속도까지 이어서 늘린다 (4장 "감소한 후 반대 방향으로").
+                    // 예전에는 0 까지 줄인 뒤 다음 틱에 이동 속도로 튀어, 멈췄다 출발하는 느낌이었다 (QA — 사용자 결정 A, ZG41)
+                    p = Mathf.Min(p + s.ReverseDeceleration * dt, s.MoveSpeed);
                 else
                     p = Mathf.Min(p + s.Acceleration * dt, s.MaxSpeed);  // 계속 누르면 빨라짐 (최대에서 멈춤)
 
@@ -139,7 +143,12 @@ namespace TrustNoOne.Gimmicks
             if (speed > s.MaxSpeed)
                 v = v / speed * s.MaxSpeed;
 
-            return v.magnitude < StopSpeed ? Vector3.zero : v;
+            if (v.magnitude >= StopSpeed)
+                return v;
+
+            // 이동 키를 누르고 있으면 0 으로 끊지 않고 누른 쪽으로 StopSpeed 를 남긴다 (ZG41) —
+            // 0 이 되면 다음 틱이 "멈춰 있음"으로 보여 이동 속도로 튄다 (반대 키로 0 을 지날 때 · 벽에 대고 누를 때)
+            return hasInput ? direction * Mathf.Min(StopSpeed, s.MaxSpeed) : Vector3.zero;
         }
 
         /// <summary>막힌 속도 = 넣은 속도 − 실제로 움직인 속도 (ZG15). 차이가 BlockedEpsilon 보다 작으면 0 (안 닿음).</summary>
@@ -161,6 +170,22 @@ namespace TrustNoOne.Gimmicks
                 return "천장";
 
             return up < -0.7f ? "바닥" : "벽";
+        }
+
+        /// <summary>
+        /// 날 때 앞으로 숙이는 각도 (17a 테스트 후 추가 — ZG34). 수평 속력이 startSpeed 이하면 0°, fullSpeed 이상이면 maxAngle, 사이는 비례.
+        /// [이유] 날기 클립(Fly_move)에 엉덩이 뼈 회전이 없어 몸이 서 있는 채로 허우적거린다 → 움직일 때만 코드로 숙인다 (사용자 결정 C).
+        ///  정지(Fly_idle)는 숙이지 않는다. 시작 ≥ 끝이면 끝 속력에서 딱 끊는다. NaN · 음수 속력은 0°.
+        /// </summary>
+        public static float BodyLeanAngle(float horizontalSpeed, float startSpeed, float fullSpeed, float maxAngle)
+        {
+            if (float.IsNaN(horizontalSpeed) || float.IsNaN(maxAngle) || horizontalSpeed <= 0f)
+                return 0f;
+
+            if (fullSpeed <= startSpeed)
+                return horizontalSpeed >= fullSpeed ? maxAngle : 0f;
+
+            return maxAngle * Mathf.Clamp01((horizontalSpeed - startSpeed) / (fullSpeed - startSpeed));
         }
 
         private static Vector3 Shrink(Vector3 v, float amount)

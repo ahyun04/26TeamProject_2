@@ -37,8 +37,9 @@ namespace TrustNoOne.Missions
         /// 공개 배열 용량. 기획서 예시(Pool 7개 중 4개)보다 여유를 둔 값.
         /// 초과하는 단체 미션은 호스트 판정은 되지만 클라이언트에 표시되지 않으므로 오류 로그를 남긴다.
         /// 7a: 8 → 12 (테스트 후 추가 — 테스트 씬은 단체 11개 전부를 쓴다, 7a 명세 TC14 · TC16)
+        /// 17a QA: 12 → 16 (혼자 테스트 풀이 13a 배관 · 13b 좌표 뒤 단체 13개 전부를 써서 넘쳤다 — 17a 명세 ZG37. 실제 게임은 난이도별 개수로 11개 이하)
         /// </summary>
-        private const int MaxTeamMissions = 12;
+        private const int MaxTeamMissions = 16;
 
         [Header("데이터")]
         [SerializeField] private MissionPool pool;

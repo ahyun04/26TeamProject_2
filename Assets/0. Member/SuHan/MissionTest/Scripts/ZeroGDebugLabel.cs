@@ -7,12 +7,24 @@ using UnityEngine;
 /// [이유] 관성 · 최대 속도 · 벽 충돌 · 멈춤을 눈으로 숫자와 함께 확인하려고 (작업 규칙 "눈에 보이는 피드백").
 ///  오른쪽 위는 테스트 시작 도구의 배정 패널이 쓰므로 왼쪽 위 (이 씬에는 미션 디버그 패널을 두지 않는다).
 /// [근거] 17a 명세 ZG21 (위치는 계획에서 왼쪽 위로 — 계획 보충 2)
+///  (테스트 후 추가) 내 플레이어가 있는 동안 장면 카메라를 끈다 (ZG38). 프레임 끊김 진단 로그(ZG39)는 원인을 찾아 지움 (ZG42)
 /// </summary>
 public class ZeroGDebugLabel : MonoBehaviour
 {
     [SerializeField] private float width = 320f;
 
+    [Tooltip("시작 화면용 장면 카메라 — 내 플레이어가 생기면 끈다 (메뉴가 채운다)")]
+    [SerializeField] private Camera sceneCamera;
+
     private GUIStyle style;
+
+    private void Update()
+    {
+        bool hasPlayer = ZeroGMovement.Local != null;
+
+        if (sceneCamera != null && sceneCamera.enabled == hasPlayer)
+            sceneCamera.enabled = !hasPlayer;
+    }
 
     private void OnGUI()
     {

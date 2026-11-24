@@ -96,7 +96,7 @@ namespace TrustNoOne.Gimmicks
             textObject.transform.SetParent(canvasObject.transform, false);
             label = textObject.AddComponent<TextMeshProUGUI>();
             label.alignment = TextAlignmentOptions.Center;
-            label.enableWordWrapping = false;
+            label.textWrappingMode = TextWrappingModes.NoWrap;   // 줄바꿈 안 함 (Unity 6 · ugui 2.0 — 옛 enableWordWrapping = false)
             label.raycastTarget = false;   // 클릭을 막지 않는다
 
             if (other != null && other.font != null)

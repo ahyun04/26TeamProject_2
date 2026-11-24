@@ -1,8 +1,10 @@
+using System.IO;
 using LockdownProtocol.Networking;
 using TrustNoOne.Gimmicks;
 using TrustNoOne.Missions;
 using Fusion;
 using UnityEditor;
+using UnityEditor.Animations;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -15,9 +17,11 @@ using UnityEngine.SceneManagement;
 ///     팀원 이동 부품 꺼짐 · ZeroGMovement + 설정 연결 · (플레이어) 관전자 프리팹 칸 → Spectator_ZeroG (ZG17)
 ///  3) 씬 `ZeroGTest.unity` — 처음부터 다시: 20 × 20 m · 높이 8 m 닫힌 방(면마다 다른 색) · 기둥 3 · 상자 1 ·
 ///     북쪽 벽에 내 장치 3개(놓기만) · 미션 관리자 · 테스트 시작 도구(플레이어 = Player_ZeroG) · 시작 위치 방 가운데 높이 3 m (ZG20)
+///  4) (테스트 후 추가) 날기 애니메이터 복사본 `Player_ZeroG.controller` — 팀원 컨트롤러를 덮어 복사(.meta GUID 유지) → 이동 묶음 클립을
+///     날기로(가운데 Fly_idle · 나머지 Fly_move) · 점프로 넘어가는 전환 지움. 플레이어 변형의 Animator 를 이것으로, 몸 숙이기(ZeroGBodyLean) 연결 (ZG32 ~ ZG35)
 /// [이유] 혼자 씬 메뉴(SuHan/Setup Solo Mission Test)는 변환 도구가 팀원이 내 장치 프리팹에 넣은 미니맵 마커를 지워 쓰지 않는다
 ///  (verification.md 4장 43). 이 메뉴는 장치 프리팹을 다시 만들지 않고 놓기만 한다. 팀원 원본 프리팹 · 씬은 바꾸지 않는다.
-/// [근거] 17a 명세 ZG7 · ZG12 · ZG17 · ZG18 · ZG20 · ZG21
+/// [근거] 17a 명세 ZG7 · ZG12 · ZG17 · ZG18 · ZG20 · ZG21 · ZG32 ~ ZG35
 /// </summary>
 public static class ZeroGTestSceneBuilder
 {
@@ -33,6 +37,12 @@ public static class ZeroGTestSceneBuilder
     // 팀원 원본 프리팹 (이름이 바뀌어도 찾게 GUID 로 — 혼자 씬 메뉴의 Player GUID 와 같다)
     private const string PlayerPrefabGuid = "36eaf6db234c47649a9aad19fe7fb7cd";      // Assets/Prefabs/Player/Player.prefab
     private const string SpectatorPrefabGuid = "6fc0776cb3c4b6343b7114a25e6892b8";   // Assets/Prefabs/Player/Spectator.prefab
+
+    // (테스트 후 추가) 날기 동작 — 팀원 플레이어 애니메이터와 날기 클립 (애니메이션 담당이 11-22 에 추가 — 262ae61)
+    private const string SourceControllerGuid = "2e361c0c599f85a4a83bf5da4412a677";  // Assets/0. Member/Hyunwoo/HW_Anim/Player.controller
+    private const string FlyIdleGuid = "3b969e4895076c344b4578547ce0a594";           // Assets/0. Member/Taewoo/Anim_Use/ANM_Player_Fly_idle.anim
+    private const string FlyMoveGuid = "c27ace6cc36a6384e81d8a9e51326cf1";           // Assets/0. Member/Taewoo/Anim_Use/ANM_Player_Fly_move.anim
+    private const string FlyControllerPath = PrefabFolder + "/Player_ZeroG.controller";
 
     // 방 크기 (ZG20) — 안쪽 20 × 20 m, 높이 8 m, 면 두께 0.5 m
     private const float RoomHalf = 10f;
@@ -53,8 +63,9 @@ public static class ZeroGTestSceneBuilder
         EnsureFolder(DraftFolder + "/Materials", "ZeroG");
 
         ZeroGMovementSettings settings = EnsureSettings();
-        NetworkObject spectator = EnsureVariant(SpectatorPrefabGuid, SpectatorVariantPath, "관전자", settings, null);
-        NetworkObject player = spectator != null ? EnsureVariant(PlayerPrefabGuid, PlayerVariantPath, "플레이어", settings, spectator) : null;
+        AnimatorController flyController = EnsureFlyController();
+        NetworkObject spectator = EnsureVariant(SpectatorPrefabGuid, SpectatorVariantPath, "관전자", settings, null, null);
+        NetworkObject player = spectator != null ? EnsureVariant(PlayerPrefabGuid, PlayerVariantPath, "플레이어", settings, spectator, flyController) : null;
 
         if (player == null)
         {
@@ -68,7 +79,7 @@ public static class ZeroGTestSceneBuilder
         Fusion.Editor.NetworkProjectConfigUtilities.RebuildPrefabTable();
 
         Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-        int stations = BuildScene(player);
+        int stations = BuildScene();
 
         EditorSceneManager.MarkSceneDirty(scene);
         // 저장할 때 Fusion 이 씬 오브젝트의 정렬 키를 굽는다 (호스트 · 손님이 같은 오브젝트로 짝을 맞추는 번호)
@@ -100,7 +111,7 @@ public static class ZeroGTestSceneBuilder
     /// 변형에 남는 것은 "원본과 다른 칸"뿐이라 팀원이 원본을 고치면 변형도 따라간다.
     /// </summary>
     private static NetworkObject EnsureVariant(string sourceGuid, string variantPath, string what,
-        ZeroGMovementSettings settings, NetworkObject spectatorVariant)
+        ZeroGMovementSettings settings, NetworkObject spectatorVariant, RuntimeAnimatorController flyController)
     {
         GameObject source = AssetDatabase.LoadAssetAtPath<GameObject>(AssetDatabase.GUIDToAssetPath(sourceGuid));
 
@@ -155,6 +166,10 @@ public static class ZeroGTestSceneBuilder
                 }
             }
 
+            // (테스트 후 추가) 날기 동작 · 몸 숙이기 — 플레이어 변형만 (관전자는 팀원 몸 방향 코드가 없다 — ZG35)
+            if (flyController != null)
+                ApplyFlyBody(contents, what, flyController);
+
             PrefabUtility.SaveAsPrefabAsset(contents, variantPath);
         }
         finally
@@ -166,11 +181,122 @@ public static class ZeroGTestSceneBuilder
         return saved != null ? saved.GetComponent<NetworkObject>() : null;
     }
 
+    /// <summary>
+    /// (테스트 후 추가 — ZG32 · ZG33) 팀원 플레이어 애니메이터를 내 폴더로 덮어 복사하고, 이동 묶음(MoveX · MoveY 2D)의 클립을 날기로 바꾼다:
+    /// 가운데 (0, 0) → Fly_idle, 나머지 → Fly_move. 그 상태에서 IsGrounded 거짓으로 점프에 넘어가는 전환은 지운다 (무중력에서는 늘 떠 있다).
+    /// 파일 내용만 덮어써 .meta GUID 가 유지된다 → 변형의 연결이 끊기지 않고, 팀원 원본이 바뀌면 다시 돌릴 때 따라간다. 원본은 바꾸지 않는다.
+    /// </summary>
+    private static AnimatorController EnsureFlyController()
+    {
+        string source = AssetDatabase.GUIDToAssetPath(SourceControllerGuid);
+        AnimationClip idle = AssetDatabase.LoadAssetAtPath<AnimationClip>(AssetDatabase.GUIDToAssetPath(FlyIdleGuid));
+        AnimationClip move = AssetDatabase.LoadAssetAtPath<AnimationClip>(AssetDatabase.GUIDToAssetPath(FlyMoveGuid));
+
+        if (string.IsNullOrEmpty(source) || idle == null || move == null)
+        {
+            Debug.LogWarning("[ZeroGTestSceneBuilder] 팀원 애니메이터 또는 날기 클립을 찾지 못해 날기 동작 없이 만듭니다 " +
+                             $"(컨트롤러 {SourceControllerGuid} · Fly_idle {FlyIdleGuid} · Fly_move {FlyMoveGuid}).");
+            return null;
+        }
+
+        File.Copy(source, FlyControllerPath, true);
+        AssetDatabase.ImportAsset(FlyControllerPath, ImportAssetOptions.ForceUpdate);
+        AnimatorController controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(FlyControllerPath);
+
+        if (controller == null)
+        {
+            Debug.LogError($"[ZeroGTestSceneBuilder] 애니메이터 복사본을 불러오지 못했습니다: {FlyControllerPath}");
+            return null;
+        }
+
+        int trees = 0, clips = 0, jumps = 0;
+
+        foreach (AnimatorControllerLayer layer in controller.layers)
+        {
+            foreach (ChildAnimatorState child in layer.stateMachine.states)
+            {
+                AnimatorState state = child.state;
+
+                if (!(state.motion is BlendTree tree) || tree.blendParameter != "MoveX" || tree.blendParameterY != "MoveY")
+                    continue;
+
+                ChildMotion[] motions = tree.children;
+
+                for (int i = 0; i < motions.Length; i++)
+                {
+                    motions[i].motion = motions[i].position == Vector2.zero ? idle : move;
+                    clips++;
+                }
+
+                tree.children = motions;
+                EditorUtility.SetDirty(tree);
+                trees++;
+
+                foreach (AnimatorStateTransition transition in state.transitions)
+                {
+                    if (System.Array.Exists(transition.conditions, c => c.parameter == "IsGrounded" && c.mode == AnimatorConditionMode.IfNot))
+                    {
+                        state.RemoveTransition(transition);
+                        jumps++;
+                    }
+                }
+            }
+        }
+
+        EditorUtility.SetDirty(controller);
+        AssetDatabase.SaveAssets();
+        Debug.Log($"[ZeroGTestSceneBuilder] 날기 애니메이터 복사본: {FlyControllerPath} — 이동 묶음 {trees}개 · 클립 {clips}개 바꿈 · 점프 전환 {jumps}개 지움");
+        return controller;
+    }
+
+    /// <summary>(테스트 후 추가 — ZG33 · ZG34) 플레이어 변형: Animator 를 날기 복사본으로, 몸 숙이기(ZeroGBodyLean)에 몸 모델 · 엉덩이 뼈를 연결한다.</summary>
+    private static void ApplyFlyBody(GameObject contents, string what, RuntimeAnimatorController flyController)
+    {
+        // 몸 모델 = 팀원 몸 방향 코드의 Body Pivot 칸 (이름으로 찾는다 — 팀원 타입을 직접 쓰지 않음)
+        Component lookVisual = contents.GetComponent("PlayerLookVisualComponent");
+        Transform pivot = lookVisual != null ? new SerializedObject(lookVisual).FindProperty("bodyPivot")?.objectReferenceValue as Transform : null;
+        Animator animator = pivot != null && pivot.GetComponent<Animator>() != null ? pivot.GetComponent<Animator>() : contents.GetComponentInChildren<Animator>(true);
+
+        if (animator != null)
+            animator.runtimeAnimatorController = flyController;
+        else
+            Debug.LogWarning($"[ZeroGTestSceneBuilder] {what} 변형에 Animator 가 없어 날기 애니메이터를 연결하지 못했습니다.");
+
+        Transform hips = pivot != null ? FindDeep(pivot, "Hips") : null;
+
+        if (pivot == null || hips == null)
+        {
+            Debug.LogWarning($"[ZeroGTestSceneBuilder] {what} 변형: 몸 모델(Body Pivot) 또는 엉덩이 뼈(Hips)를 찾지 못해 몸 숙이기를 연결하지 못했습니다.");
+            return;
+        }
+
+        ZeroGBodyLean lean = contents.GetComponent<ZeroGBodyLean>();
+
+        if (lean == null)
+            lean = contents.AddComponent<ZeroGBodyLean>();
+
+        SerializedObject leanSO = new SerializedObject(lean);
+        leanSO.FindProperty("bodyPivot").objectReferenceValue = pivot;
+        leanSO.FindProperty("hips").objectReferenceValue = hips;
+        leanSO.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    private static Transform FindDeep(Transform root, string name)
+    {
+        foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
+        {
+            if (t.name == name)
+                return t;
+        }
+
+        return null;
+    }
+
     // ═════════════════════════════════════════════════════════════
     //  씬 구성
     // ═════════════════════════════════════════════════════════════
 
-    private static int BuildScene(NetworkObject player)
+    private static int BuildScene()
     {
         // 방: 면마다 다른 색 — 무중력에서 어디가 위인지 헷갈리지 않게, 17b 의 뒤집힌 맵과 비교하기 쉽게 (ZG20)
         Transform room = new GameObject("ZeroGRoom").transform;
@@ -200,8 +326,8 @@ public static class ZeroGTestSceneBuilder
 
         GameObject cameraObject = new GameObject("Main Camera");
         cameraObject.tag = "MainCamera";
-        cameraObject.AddComponent<Camera>();
-        cameraObject.AddComponent<AudioListener>();
+        // 소리 듣는 부품은 붙이지 않는다 — 플레이어 카메라가 자기 것을 켠다 (둘이면 매 프레임 경고 — QA 2, ZG38)
+        Camera sceneCamera = cameraObject.AddComponent<Camera>();
         cameraObject.transform.SetPositionAndRotation(new Vector3(0f, 5f, -9f), Quaternion.Euler(15f, 0f, 0f));
 
         // 장치 조건 확인 (MissionStation 이 자동으로 찾아 쓴다 — 혼자 씬과 같음)
@@ -227,12 +353,26 @@ public static class ZeroGTestSceneBuilder
         MissionTestBootstrap bootstrap = bootstrapObject.AddComponent<MissionTestBootstrap>();
         bootstrapObject.AddComponent<MissionTestAssignmentPanel>();
         bootstrapObject.AddComponent<MissionHoldGaugeHUD>();
-        bootstrapObject.AddComponent<ZeroGDebugLabel>();
+        ZeroGDebugLabel debugLabel = bootstrapObject.AddComponent<ZeroGDebugLabel>();
+        bootstrapObject.AddComponent<ZeroGSelfView>();   // F3 내 몸 보기 (테스트 후 추가 — ZG40)
+
+        // 내 플레이어가 생기면 장면 카메라를 끈다 (화면을 두 번 그리지 않게 — ZG38)
+        SerializedObject labelSO = new SerializedObject(debugLabel);
+        labelSO.FindProperty("sceneCamera").objectReferenceValue = sceneCamera;
+        labelSO.ApplyModifiedPropertiesWithoutUndo();
+
+        // 새 씬을 열 때 Unity 가 쓰지 않는 에셋을 메모리에서 내려, 앞에서 들고 있던 변형 참조가 풀린다 (Unity 6 QA — 플레이어 칸이 비었음)
+        // → 새 씬을 연 뒤 경로로 다시 불러 넣는다 (테스트 후 추가 — 17a 명세 ZG36)
+        GameObject playerAsset = AssetDatabase.LoadAssetAtPath<GameObject>(PlayerVariantPath);
+        NetworkObject playerPrefab = playerAsset != null ? playerAsset.GetComponent<NetworkObject>() : null;
 
         SerializedObject so = new SerializedObject(bootstrap);
-        so.FindProperty("playerPrefab").objectReferenceValue = player;
+        so.FindProperty("playerPrefab").objectReferenceValue = playerPrefab;
         so.FindProperty("playerSpawnPoint").objectReferenceValue = spawnPoint;
         so.ApplyModifiedPropertiesWithoutUndo();
+
+        if (so.FindProperty("playerPrefab").objectReferenceValue == null)
+            Debug.LogError($"[ZeroGTestSceneBuilder] 시작 도구의 플레이어 칸을 채우지 못했습니다 — {PlayerVariantPath} 를 확인하세요.");
 
         return stations;
     }
