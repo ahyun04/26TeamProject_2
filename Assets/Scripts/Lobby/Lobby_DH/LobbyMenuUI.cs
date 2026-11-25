@@ -1,6 +1,7 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 using LockdownProtocol.Networking;
 
 namespace LockdownProtocol.Lobby
@@ -30,6 +31,11 @@ namespace LockdownProtocol.Lobby
         [SerializeField] private TMP_InputField joinRoomNameInput; // 초대 코드 입력란
         [SerializeField] private Button joinRoomButton;            // [입력] 버튼
 
+        [Header("Back To Login")]
+        [Tooltip("우측 상단 [로그인으로 돌아가기] 버튼")]
+        [SerializeField] private Button backToLoginButton;
+        [SerializeField] private string loginSceneName = "Main";
+
         [Header("Feedback")]
         [SerializeField] private TMP_Text feedbackText;
 
@@ -40,6 +46,7 @@ namespace LockdownProtocol.Lobby
             createRoomButton.onClick.AddListener(OnCreateRoomButtonClicked);
             joinRoomButton.onClick.AddListener(OnJoinClicked);
             if (quickJoinButton != null) quickJoinButton.onClick.AddListener(OnQuickJoinClicked);
+            if (backToLoginButton != null) backToLoginButton.onClick.AddListener(OnBackToLoginClicked);
             if (createPanel != null) createPanel.SetActive(false);
         }
 
@@ -48,6 +55,20 @@ namespace LockdownProtocol.Lobby
             createRoomButton.onClick.RemoveListener(OnCreateRoomButtonClicked);
             joinRoomButton.onClick.RemoveListener(OnJoinClicked);
             if (quickJoinButton != null) quickJoinButton.onClick.RemoveListener(OnQuickJoinClicked);
+            if (backToLoginButton != null) backToLoginButton.onClick.RemoveListener(OnBackToLoginClicked);
+        }
+
+        /// <summary>로그인(시작) 화면으로 돌아간다. 방 목록 창을 닫고, 씬을 넘어 유지되는 NetworkBootstrap 을 정리한 뒤 이동한다.</summary>
+        private void OnBackToLoginClicked()
+        {
+            if (_isBusy) return;
+            _isBusy = true;
+            SetInteractable(false);
+
+            if (roomListUI != null && RoomListUI.IsOpen) roomListUI.Close();
+            if (bootstrap != null) Destroy(bootstrap.gameObject); // Main 에서 다시 만들어지므로 중복 방지
+
+            SceneManager.LoadScene(loginSceneName);
         }
 
         /// <summary>빠른 입장 - 공개 방 목록 창을 연다. 목록에서 방을 눌러 입장한다 (RoomListUI).</summary>
@@ -134,6 +155,7 @@ namespace LockdownProtocol.Lobby
             createRoomButton.interactable = interactable;
             joinRoomButton.interactable = interactable;
             if (quickJoinButton != null) quickJoinButton.interactable = interactable;
+            if (backToLoginButton != null) backToLoginButton.interactable = interactable;
         }
 
         private void ShowFeedback(string message)

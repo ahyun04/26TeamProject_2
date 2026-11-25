@@ -143,10 +143,17 @@ namespace LockdownProtocol.Lobby
             int shown = 0;
             if (sessions != null)
             {
+                // 공개 방만 모아서 정렬: 준비 중 -> 게임 중, 각 그룹 안에서는 이름순(한글 -> 영문 -> 기타)
+                var sorted = new List<Fusion.SessionInfo>();
                 foreach (Fusion.SessionInfo s in sessions)
                 {
                     if (!s.IsVisible) continue; // 비공개 방은 제외 (게임 중인 방은 "게임 중" 으로 표시)
+                    sorted.Add(s);
+                }
+                sorted.Sort(compareSessions);
 
+                foreach (Fusion.SessionInfo s in sorted)
+                {
                     string roomName = readString(s, "n", s.Name);
                     int max = readInt(s, "m", s.MaxPlayers);
                     bool waiting = s.IsOpen; // 닫혀 있으면 게임 진행 중(또는 시작 중)
@@ -160,6 +167,33 @@ namespace LockdownProtocol.Lobby
             }
 
             if (emptyText != null) emptyText.gameObject.SetActive(shown == 0);
+        }
+
+        /// <summary>정렬 기준: 준비 중 먼저 -> 이름 첫 글자 종류(한글, 영문, 기타) -> 이름(영문은 대소문자 무시) -> 세션 이름.</summary>
+        private static int compareSessions(Fusion.SessionInfo a, Fusion.SessionInfo b)
+        {
+            int byState = (a.IsOpen ? 0 : 1).CompareTo(b.IsOpen ? 0 : 1);
+            if (byState != 0) return byState;
+
+            string nameA = readString(a, "n", a.Name);
+            string nameB = readString(b, "n", b.Name);
+
+            int byKind = nameKind(nameA).CompareTo(nameKind(nameB));
+            if (byKind != 0) return byKind;
+
+            int byName = string.Compare(nameA, nameB, System.StringComparison.OrdinalIgnoreCase);
+            if (byName != 0) return byName;
+
+            return string.CompareOrdinal(a.Name, b.Name);
+        }
+
+        private static int nameKind(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return 2;
+            char c = name[0];
+            if (c >= '가' && c <= '힣') return 0;                          // 한글 음절
+            if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) return 1; // 영문
+            return 2;                                                        // 숫자, 기호 등
         }
 
         private static string readString(Fusion.SessionInfo s, string key, string fallback)
