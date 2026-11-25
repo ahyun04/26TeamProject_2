@@ -8,10 +8,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 160436017558811486, guid: 36eaf6db234c47649a9aad19fe7fb7cd, type: 3}
-      propertyPath: m_Controller
-      value: 
-      objectReference: {fileID: 9100000, guid: 8852d406b1ee7784494259f510ea5f48, type: 2}
     - target: {fileID: 910000000000000005, guid: 36eaf6db234c47649a9aad19fe7fb7cd, type: 3}
       propertyPath: spectatorPrefab
       value: 
@@ -43,10 +39,6 @@ PrefabInstance:
     - target: {fileID: 5394502414570155214, guid: 36eaf6db234c47649a9aad19fe7fb7cd, type: 3}
       propertyPath: m_LocalRotation.z
       value: -0.013071177
-      objectReference: {fileID: 0}
-    - target: {fileID: 6973550270493207715, guid: 36eaf6db234c47649a9aad19fe7fb7cd, type: 3}
-      propertyPath: m_Enabled
-      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7188171388816269462, guid: 36eaf6db234c47649a9aad19fe7fb7cd, type: 3}
       propertyPath: m_LocalPosition.x
@@ -98,10 +90,18 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 1265554726670306911, guid: 36eaf6db234c47649a9aad19fe7fb7cd, type: 3}
       insertIndex: -1
       addedObject: {fileID: 389672533434526937}
+    - targetCorrespondingSourceObject: {fileID: 1265554726670306911, guid: 36eaf6db234c47649a9aad19fe7fb7cd, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 221905919364080838}
   m_SourcePrefab: {fileID: 100100000, guid: 36eaf6db234c47649a9aad19fe7fb7cd, type: 3}
 --- !u!4 &2031597836301963400 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4285035293467098114, guid: 36eaf6db234c47649a9aad19fe7fb7cd, type: 3}
+  m_PrefabInstance: {fileID: 2830001722815229066}
+  m_PrefabAsset: {fileID: 0}
+--- !u!95 &2702111567861800916 stripped
+Animator:
+  m_CorrespondingSourceObject: {fileID: 160436017558811486, guid: 36eaf6db234c47649a9aad19fe7fb7cd, type: 3}
   m_PrefabInstance: {fileID: 2830001722815229066}
   m_PrefabAsset: {fileID: 0}
 --- !u!114 &3163453003944307844 stripped
@@ -153,6 +153,30 @@ MonoBehaviour:
   startSpeed: 0.3
   fullLeanSpeed: 1
   turnSpeed: 90
+  animator: {fileID: 2702111567861800916}
+  flyController: {fileID: 9100000, guid: 8852d406b1ee7784494259f510ea5f48, type: 2}
+  bodyCenterHeight: 0.7
+  bobAmplitude: 0.04
+--- !u!114 &221905919364080838
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3951355357701677781}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e271705265cdc8f47aedd7cd605f12c7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TrustNoOne.Gimmicks.ZeroGCameraRoll
+  cameraPivot: {fileID: 5242557724362249011}
+  bodyCenterHeight: 0.7
+  bobAmplitude: 0.04
+--- !u!4 &5242557724362249011 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 8036499726057783225, guid: 36eaf6db234c47649a9aad19fe7fb7cd, type: 3}
+  m_PrefabInstance: {fileID: 2830001722815229066}
+  m_PrefabAsset: {fileID: 0}
 --- !u!4 &6525727970327027068 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 9067475105181430262, guid: 36eaf6db234c47649a9aad19fe7fb7cd, type: 3}

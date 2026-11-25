@@ -55,7 +55,8 @@ namespace TrustNoOne.Gimmicks
     /// 무중력 이동 규칙 (엔진 밖에서 테스트하는 순수 계산 — Vector3 계산만 쓴다).
     /// [역할] 이번 틱의 속도 = 지난 속도 + 입력 방향 + 멈춤 + 지난 틱에 막힌 속도 → 새 속도 (ZG10 순서 ① ~ ⑤).
     /// [이유] 호스트와 본인 PC 가 되감아 다시 계산해도 같은 답이 나오게, 입력과 [Networked] 값만으로 정한다.
-    /// [근거] 17a 명세 ZG4 · ZG5 · ZG6 · ZG9 · ZG10 · ZG15 · ZG41 (테스트 후 — 반대 키에서 멈추지 않게), 기획서 3 · 4 · 5 · 7장
+    /// [근거] 17a 명세 ZG4 · ZG5 · ZG6 · ZG9 · ZG10 · ZG15 · ZG41 (테스트 후 — 반대 키에서 멈추지 않게), 기획서 3 · 4 · 5 · 7장,
+    ///  17d 명세 ZG86 (닿음 글자를 화면 기준으로) · 9장 ZG94 (되돌기 동안 위아래를 빼는 Horizontal)
     /// </summary>
     public static class ZeroGMotion
     {
@@ -73,7 +74,16 @@ namespace TrustNoOne.Gimmicks
         /// </summary>
         public static Vector3 WishDirection(Vector3 lookForward, Vector3 flatRight, float forwardInput, float rightInput, float upInput)
         {
-            Vector3 wish = lookForward.normalized * forwardInput + flatRight.normalized * rightInput + Vector3.up * upInput;
+            return WishDirection(lookForward, flatRight, Vector3.up, forwardInput, rightInput, upInput);
+        }
+
+        /// <summary>
+        /// (17c) 화면 기준 축으로 (ZG72): A/D = rightAxis, Shift/Ctrl = upAxis — 뒤집히면 ZeroGFlip.ScreenRight · ScreenUp
+        /// (180° 이면 A/D 반대, Shift = 머리 쪽 = 세계 아래). W/S 는 그대로 시선 방향. 0° 이면 위 WishDirection 과 같다.
+        /// </summary>
+        public static Vector3 WishDirection(Vector3 lookForward, Vector3 rightAxis, Vector3 upAxis, float forwardInput, float rightInput, float upInput)
+        {
+            Vector3 wish = lookForward.normalized * forwardInput + rightAxis.normalized * rightInput + upAxis.normalized * upInput;
             float length = wish.magnitude;
 
             if (float.IsNaN(length) || length < InputEpsilon)
@@ -158,13 +168,29 @@ namespace TrustNoOne.Gimmicks
             return IsFinite(blocked) && blocked.magnitude >= BlockedEpsilon ? blocked : Vector3.zero;
         }
 
-        /// <summary>테스트 글자용 (ZG21): 막힌 방향이 거의 위면 천장, 거의 아래면 바닥, 나머지는 벽.</summary>
+        /// <summary>(17d 테스트 후 — ZG94) 세계 위아래 성분을 뺀 수평 벡터 (되돌기 동안 위아래는 중력만). NaN · 무한이면 0</summary>
+        public static Vector3 Horizontal(Vector3 v)
+        {
+            return IsFinite(v) ? new Vector3(v.x, 0f, v.z) : Vector3.zero;
+        }
+
+        /// <summary>테스트 글자용 (ZG21): 막힌 방향이 거의 세계 위면 천장, 거의 아래면 바닥, 나머지는 벽 (= 화면 위 축이 세계 위 — 뒤집히지 않았을 때).</summary>
         public static string DescribeContact(Vector3 blocked)
+        {
+            return DescribeContact(blocked, Vector3.up);
+        }
+
+        /// <summary>
+        /// (17d) 화면 기준 닿음 (ZG86): 막힌 방향이 거의 화면 위(머리 쪽)면 천장, 거의 화면 아래(발 쪽)면 바닥, 나머지는 벽.
+        /// 뒤집히면 screenUp = ZeroGFlip.ScreenUp (180° 이면 세계 아래 → 원래 천장에 막히면 "바닥"). screenUp 이 0 · NaN 이면 세계 위.
+        /// </summary>
+        public static string DescribeContact(Vector3 blocked, Vector3 screenUp)
         {
             if (!IsFinite(blocked) || blocked.magnitude < BlockedEpsilon)
                 return "없음";
 
-            float up = blocked.normalized.y;
+            Vector3 axis = IsFinite(screenUp) && screenUp.sqrMagnitude > InputEpsilon ? screenUp.normalized : Vector3.up;
+            float up = Vector3.Dot(blocked.normalized, axis);
 
             if (up > 0.7f)
                 return "천장";

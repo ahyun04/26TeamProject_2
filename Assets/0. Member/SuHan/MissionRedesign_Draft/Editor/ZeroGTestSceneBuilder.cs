@@ -14,14 +14,16 @@ using UnityEngine.SceneManagement;
 /// [역할] 한 번에 세 가지를 만들거나 고친다.
 ///  1) 설정 에셋 `ZeroGMovementSettings.asset` — 없을 때만 만든다 (Play 중 바꾼 값을 덮어쓰지 않는다 — ZG12)
 ///  2) 프리팹 변형 `Spectator_ZeroG` · `Player_ZeroG` — 팀원 원본(Spectator · Player)의 변형. 변형에 내가 바꾸는 칸만 다시 쓴다:
-///     팀원 이동 부품 꺼짐 · ZeroGMovement + 설정 연결 · (플레이어) 관전자 프리팹 칸 → Spectator_ZeroG (ZG17)
+///     팀원 이동 부품 켬(17b — 무중력 동안만 ZeroGMovement 가 끔) · ZeroGMovement + 설정 연결 · (플레이어) 관전자 프리팹 칸 → Spectator_ZeroG (ZG17 · 17b ZG60)
 ///  3) 씬 `ZeroGTest.unity` — 처음부터 다시: 20 × 20 m · 높이 8 m 닫힌 방(면마다 다른 색) · 기둥 3 · 상자 1 ·
 ///     북쪽 벽에 내 장치 3개(놓기만) · 미션 관리자 · 테스트 시작 도구(플레이어 = Player_ZeroG) · 시작 위치 방 가운데 높이 3 m (ZG20)
 ///  4) (테스트 후 추가) 날기 애니메이터 복사본 `Player_ZeroG.controller` — 팀원 컨트롤러를 덮어 복사(.meta GUID 유지) → 이동 묶음 클립을
 ///     날기로(가운데 Fly_idle · 나머지 Fly_move) · 점프로 넘어가는 전환 지움. 플레이어 변형의 Animator 를 이것으로, 몸 숙이기(ZeroGBodyLean) 연결 (ZG32 ~ ZG35)
 /// [이유] 혼자 씬 메뉴(SuHan/Setup Solo Mission Test)는 변환 도구가 팀원이 내 장치 프리팹에 넣은 미니맵 마커를 지워 쓰지 않는다
 ///  (verification.md 4장 43). 이 메뉴는 장치 프리팹을 다시 만들지 않고 놓기만 한다. 팀원 원본 프리팹 · 씬은 바꾸지 않는다.
-/// [근거] 17a 명세 ZG7 · ZG12 · ZG17 · ZG18 · ZG20 · ZG21 · ZG32 ~ ZG35
+///  5) (17b) 씬에 무중력 사건 관리자(ZeroGEventManager + 화면 ZeroGEventView), 시작 위치는 바닥 — 평소 중력으로 시작, F2 = 바로 시작
+///  6) (17c) 두 변형에 화면 돌리기(ZeroGCameraRoll) — 받침대 = 팀원 카메라 코드의 Camera Pivot 칸
+/// [근거] 17a 명세 ZG7 · ZG12 · ZG17 · ZG18 · ZG20 · ZG21 · ZG32 ~ ZG35, 17b 명세 ZG59 · ZG60 · ZG62 · ZG63, 17c 명세 ZG79
 /// </summary>
 public static class ZeroGTestSceneBuilder
 {
@@ -86,7 +88,7 @@ public static class ZeroGTestSceneBuilder
         EditorSceneManager.SaveScene(scene, SuhanTestSceneManager.ZeroGScenePath);
 
         Debug.Log($"[ZeroGTestSceneBuilder] 완료 — 씬 {SuhanTestSceneManager.ZeroGScenePath} · 장치 {stations}개 · 변형 2개 · 설정 {SettingsPath}. " +
-                  "Play → [혼자] / [호스트] / [손님]. 2인 테스트 전에는 메뉴 SuHan/Build Zero-G Test (Windows) 로 다시 빌드하세요.");
+                  "Play → [혼자] / [호스트] / [손님] → F2 = 무중력 바로 시작 (호스트). 2인 테스트 전에는 메뉴 SuHan/Build Zero-G Test (Windows) 로 다시 빌드하세요.");
     }
 
     // ═════════════════════════════════════════════════════════════
@@ -137,7 +139,7 @@ public static class ZeroGTestSceneBuilder
             PlayerMovement teamMovement = contents.GetComponent<PlayerMovement>();
 
             if (teamMovement != null)
-                teamMovement.enabled = false;   // 지우지 않고 끈다 — 다른 팀원 코드가 GetComponent 로 찾는다 (ZG8)
+                KeepTeamMovementOn(teamMovement);   // 17b: 켜 둔다 — 무중력 동안만 ZeroGMovement 가 끈다 (ZG57 · ZG60)
             else
                 Debug.LogWarning($"[ZeroGTestSceneBuilder] {what} 변형에 팀원 이동 부품(PlayerMovement)이 없습니다 — 원본이 바뀌었는지 확인하세요 (위험 5).");
 
@@ -149,6 +151,8 @@ public static class ZeroGTestSceneBuilder
             SerializedObject zeroGSO = new SerializedObject(zeroG);
             zeroGSO.FindProperty("settings").objectReferenceValue = settings;
             zeroGSO.ApplyModifiedPropertiesWithoutUndo();
+
+            ApplyCameraRoll(contents, what);   // 17c: 두 변형 모두 (관전자도 같은 팀원 카메라 코드 — ZG73 · ZG79)
 
             if (spectatorVariant != null)
             {
@@ -257,10 +261,11 @@ public static class ZeroGTestSceneBuilder
         Transform pivot = lookVisual != null ? new SerializedObject(lookVisual).FindProperty("bodyPivot")?.objectReferenceValue as Transform : null;
         Animator animator = pivot != null && pivot.GetComponent<Animator>() != null ? pivot.GetComponent<Animator>() : contents.GetComponentInChildren<Animator>(true);
 
+        // 17b: Animator 는 팀원 원래 컨트롤러로 둔다 (17a 의 덮어쓰기를 되돌림) — 무중력 동안만 ZeroGBodyLean 이 날기 복사본을 끼운다 (ZG59 · ZG60)
         if (animator != null)
-            animator.runtimeAnimatorController = flyController;
+            RevertAnimatorController(animator);
         else
-            Debug.LogWarning($"[ZeroGTestSceneBuilder] {what} 변형에 Animator 가 없어 날기 애니메이터를 연결하지 못했습니다.");
+            Debug.LogWarning($"[ZeroGTestSceneBuilder] {what} 변형에 Animator 가 없어 날기 동작을 연결하지 못했습니다.");
 
         Transform hips = pivot != null ? FindDeep(pivot, "Hips") : null;
 
@@ -278,7 +283,53 @@ public static class ZeroGTestSceneBuilder
         SerializedObject leanSO = new SerializedObject(lean);
         leanSO.FindProperty("bodyPivot").objectReferenceValue = pivot;
         leanSO.FindProperty("hips").objectReferenceValue = hips;
+        leanSO.FindProperty("animator").objectReferenceValue = animator;
+        leanSO.FindProperty("flyController").objectReferenceValue = flyController;
         leanSO.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    /// <summary>(17c — ZG79) 화면 돌리기(ZeroGCameraRoll)를 붙이고 카메라 받침대를 연결한다 — 팀원 카메라 코드의 Camera Pivot 칸 (이름으로 찾음)</summary>
+    private static void ApplyCameraRoll(GameObject contents, string what)
+    {
+        Component cameraController = contents.GetComponent("PlayerCameraController");
+        Transform pivot = cameraController != null ? new SerializedObject(cameraController).FindProperty("cameraPivot")?.objectReferenceValue as Transform : null;
+
+        if (pivot == null)
+        {
+            Debug.LogWarning($"[ZeroGTestSceneBuilder] {what} 변형: 팀원 카메라 코드의 Camera Pivot 을 찾지 못해 화면 돌리기를 연결하지 못했습니다.");
+            return;
+        }
+
+        ZeroGCameraRoll roll = contents.GetComponent<ZeroGCameraRoll>();
+
+        if (roll == null)
+            roll = contents.AddComponent<ZeroGCameraRoll>();
+
+        SerializedObject rollSO = new SerializedObject(roll);
+        rollSO.FindProperty("cameraPivot").objectReferenceValue = pivot;
+        rollSO.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    /// <summary>(17b — ZG60) 17a 가 변형에 남긴 "팀원 이동 부품 끔" 덮어쓰기를 되돌려 원본 값(켬)을 따르게 한다 — 원본이 바뀌면 변형도 따라감</summary>
+    private static void KeepTeamMovementOn(PlayerMovement teamMovement)
+    {
+        if (PrefabUtility.IsPartOfPrefabInstance(teamMovement))
+            PrefabUtility.RevertObjectOverride(teamMovement, InteractionMode.AutomatedAction);
+
+        if (!teamMovement.enabled)
+            teamMovement.enabled = true;
+    }
+
+    /// <summary>(17b — ZG60) 17a 가 변형 Animator 에 덮어쓴 날기 컨트롤러를 되돌려 팀원 원래 컨트롤러를 따르게 한다</summary>
+    private static void RevertAnimatorController(Animator animator)
+    {
+        if (!PrefabUtility.IsPartOfPrefabInstance(animator))
+            return;
+
+        SerializedProperty controller = new SerializedObject(animator).FindProperty("m_Controller");
+
+        if (controller != null && controller.prefabOverride)
+            PrefabUtility.RevertPropertyOverride(controller, InteractionMode.AutomatedAction);
     }
 
     private static Transform FindDeep(Transform root, string name)
@@ -337,6 +388,14 @@ public static class ZeroGTestSceneBuilder
         Transform networkRoot = new GameObject("NetworkObjects (씬 배치)").transform;
         PlacePrefab(MissionManagerPrefabPath, networkRoot, "MissionManager", Vector3.zero, Quaternion.identity);
 
+        // (17b) 무중력 사건 관리자 + 화면 — 씬에 놓인 네트워크 오브젝트 (16a 암전 관리자와 같은 방식, ZG62).
+        // 판 길이 = 500 (이 씬엔 GameTimer 없음) · 첫 대기 120 그대로 — 가만히 두면 2분 뒤 실제처럼 온다. 암전 관리자는 없다 (피하기 없이 뽑음)
+        GameObject eventObject = new GameObject("ZeroGEventManager");
+        eventObject.transform.SetParent(networkRoot, false);
+        eventObject.AddComponent<NetworkObject>();
+        eventObject.AddComponent<ZeroGEventManager>();
+        eventObject.AddComponent<ZeroGEventView>();
+
         // 북쪽 벽에 장치 3개 — 방 가운데(시작 위치)를 바라보게. 프리팹을 다시 만들지 않고 놓기만 한다 (verification.md 4장 43)
         Quaternion faceCenter = Quaternion.LookRotation(Vector3.back);
         int stations = 0;
@@ -344,9 +403,9 @@ public static class ZeroGTestSceneBuilder
         stations += PlacePrefab($"{StationFolder}/Valve_Station.prefab", networkRoot, "Valve_Station (F 누르는 동안 멈춤)", new Vector3(0f, ValveMountHeight, 8.5f), faceCenter) ? 1 : 0;
         stations += PlacePrefab($"{StationFolder}/Pressure_Station.prefab", networkRoot, "Pressure_Station (버튼 여러 번)", new Vector3(5f, 0f, 8.5f), faceCenter) ? 1 : 0;
 
-        // 시작 위치: 방 가운데 높이 3 m — 공중에서 시작해 바로 떠 있는지 본다. 장치 쪽(북)을 바라봄
+        // 시작 위치: 방 가운데 바닥 — 17b 부터 평소 중력으로 시작 (무중력은 판 중 사건 — F2 바로 시작, ZG62). 장치 쪽(북)을 바라봄
         Transform spawnPoint = new GameObject("PlayerSpawnPoint").transform;
-        spawnPoint.SetPositionAndRotation(new Vector3(0f, 3f, 0f), Quaternion.identity);
+        spawnPoint.SetPositionAndRotation(new Vector3(0f, 0.1f, 0f), Quaternion.identity);
 
         // 테스트 시작 도구 (혼자 · F5/F6 2인) + 누르고 있기 게이지 + 무중력 테스트 글자 (ZG21)
         GameObject bootstrapObject = new GameObject("MissionTestBootstrap");

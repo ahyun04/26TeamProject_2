@@ -12,10 +12,6 @@ PrefabInstance:
       propertyPath: m_Name
       value: Spectator_ZeroG
       objectReference: {fileID: 0}
-    - target: {fileID: 1955129548154162913, guid: 6fc0776cb3c4b6343b7114a25e6892b8, type: 3}
-      propertyPath: m_Enabled
-      value: 0
-      objectReference: {fileID: 0}
     - target: {fileID: 8010313425204507749, guid: 6fc0776cb3c4b6343b7114a25e6892b8, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -79,6 +75,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 1858021315336285876, guid: 6fc0776cb3c4b6343b7114a25e6892b8, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1491104532502258357}
+    - targetCorrespondingSourceObject: {fileID: 1858021315336285876, guid: 6fc0776cb3c4b6343b7114a25e6892b8, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1312829377444379677}
   m_SourcePrefab: {fileID: 100100000, guid: 6fc0776cb3c4b6343b7114a25e6892b8, type: 3}
 --- !u!1 &288572156324854249 stripped
 GameObject:
@@ -100,6 +99,21 @@ MonoBehaviour:
   settings: {fileID: 11400000, guid: 77ea1dd7c695ac54a8fc7c9490b7f1a2, type: 2}
   minimumPitch: -80
   maximumPitch: 80
+--- !u!114 &1312829377444379677
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 288572156324854249}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e271705265cdc8f47aedd7cd605f12c7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TrustNoOne.Gimmicks.ZeroGCameraRoll
+  cameraPivot: {fileID: 3463131310932635115}
+  bodyCenterHeight: 0.7
+  bobAmplitude: 0.04
 --- !u!114 &682411637799273177 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 1490792180722750852, guid: 6fc0776cb3c4b6343b7114a25e6892b8, type: 3}
@@ -111,3 +125,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a44b28bfea1533047998bc6846293436, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!4 &3463131310932635115 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 3298800716283034294, guid: 6fc0776cb3c4b6343b7114a25e6892b8, type: 3}
+  m_PrefabInstance: {fileID: 2146020550755391325}
+  m_PrefabAsset: {fileID: 0}
