@@ -58,6 +58,14 @@ namespace LockdownProtocol.Lobby
             if (backToLoginButton != null) backToLoginButton.onClick.RemoveListener(OnBackToLoginClicked);
         }
 
+        private void Update()
+        {
+            // 방 목록 창이 열려 있는 동안에는 [로그인으로 돌아가기] 버튼을 숨겨 새로고침 버튼과 겹치지 않게 한다
+            if (backToLoginButton == null) return;
+            bool show = !RoomListUI.IsOpen;
+            if (backToLoginButton.gameObject.activeSelf != show) backToLoginButton.gameObject.SetActive(show);
+        }
+
         /// <summary>로그인(시작) 화면으로 돌아간다. 방 목록 창을 닫고, 씬을 넘어 유지되는 NetworkBootstrap 을 정리한 뒤 이동한다.</summary>
         private void OnBackToLoginClicked()
         {
